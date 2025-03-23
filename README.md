@@ -3,10 +3,28 @@
 ## Features
 
 ## Installing
+
+### Prerequisites
+- Mac / Windows
+- Install [Ghidra](https://ghidra-sre.org)
+- Python3
+
+### Ghidra
+First, download the latest release from this repository. This contains the Ghidra plugin and Python MCP client. Then, you can directly import the plugin into Ghidra.
+
+1. Run Ghidra
+2. Select `File` -> `Install Extensions`
+3. Click the `+` button
+4. Select the GhidraMCP-1-0.zip (or your chosen version) from the downloaded release
+5. Restart Ghidra
+
+
+### Option 1: Claude Desktop
 Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json
 
 /Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json
 
+```
 {
   "mcpServers": {
     "ghidra": {
@@ -17,19 +35,18 @@ Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json
     }
   }
 }
+```
 
-Import the plugin from the releases page into Ghidra
+### Option 1: 5ire
+https://github.com/nanbingxyz/5ire
 
-* Make sure Ghidra is installed
-  https://ghidra-sre.org/
-* Install the extension
-  * Start Ghidra
-  * Open `File->Install Extensions...`
-  * Press the `+` icon found in the top right of the `Install Extensions` window
-  * Navigate to the file location where you downloaded the extension zip file
-    above and select it
-  * Press `OK`
-  * You will be prompted to restart Ghidra for the changes to take effect
+## Building from Source
+Build with Maven by running:
 
-## Building
-mvn clean package assembly:single
+`mvn clean package assembly:single`
+
+The generated zip file includes the built Ghidra plugin and its resources.
+
+- lib/GhidraMCP.jar
+- extensions.properties
+- Module.manifest
