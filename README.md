@@ -1,6 +1,11 @@
 # GhidraMCP
 
 ## Features
+MCP Server + Ghidra Plugin
+
+- Automatically rename methods and data
+- List methods, classes, imports, and exports
+- Decompile and analyze
 
 ## Installing
 
@@ -17,12 +22,11 @@ First, download the latest release from this repository. This contains the Ghidr
 3. Click the `+` button
 4. Select the GhidraMCP-1-0.zip (or your chosen version) from the downloaded release
 5. Restart Ghidra
+6. Make sure the GhidraMCPPlugin is enabled in `File` -> `Configure` -> `Developer`
 
 
 ### Option 1: Claude Desktop
-Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json
-
-/Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json
+Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json and add the following:
 
 ```
 {
@@ -37,7 +41,9 @@ Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json
 }
 ```
 
-### Option 1: 5ire
+Alternatively, edit this file `/Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json`.
+
+### Option 2: 5ire
 https://github.com/nanbingxyz/5ire
 
 ## Building from Source
