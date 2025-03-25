@@ -38,8 +38,18 @@ First, download the latest [release](https://github.com/LaurieWired/GhidraMCP/re
 5. Restart Ghidra
 6. Make sure the GhidraMCPPlugin is enabled in `File` -> `Configure` -> `Developer`
 
+Video Installation Guide:
 
-## Option 1: Claude Desktop
+
+https://github.com/user-attachments/assets/75f0c176-6da1-48dc-ad96-c182eb4648c3
+
+
+
+## MCP Clients
+
+Theoretically, any MCP client should work with ghidraMCP.  Two examples are given below.
+
+## Example 1: Claude Desktop
 To set up Claude Desktop as a Ghidra MCP client, go to `Claude` -> `Settings` -> `Developer` -> `Edit Config` -> `claude_desktop_config.json` and add the following:
 
 ```json
@@ -60,7 +70,7 @@ Alternatively, edit this file directly:
 /Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-## Option 2: 5ire
+## Example 2: 5ire
 Another MCP client that supports multiple models on the backend is [5ire](https://github.com/nanbingxyz/5ire). To set up GhidraMCP, open 5ire and go to `Tools` -> `New` and set the following configurations:
 
 1. Tool Key: ghidra
