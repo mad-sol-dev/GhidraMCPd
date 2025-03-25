@@ -28,7 +28,7 @@ First, download the latest release from this repository. This contains the Ghidr
 ### Option 1: Claude Desktop
 Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json and add the following:
 
-```
+```json
 {
   "mcpServers": {
     "ghidra": {
