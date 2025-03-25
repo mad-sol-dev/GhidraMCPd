@@ -1,13 +1,14 @@
 # GhidraMCP
+GhidraMCP is an Model Context Protocol server for allowing LLMs to autonomously reverse engineer applications. It exposes numerous tools from core Ghidra functionality to MCP clients.
 
 ## Features
 MCP Server + Ghidra Plugin
 
+- Decompile and analyze binaries in Ghidra
 - Automatically rename methods and data
 - List methods, classes, imports, and exports
-- Decompile and analyze
 
-## Installing
+## Installation
 
 ### Prerequisites
 - Mac / Windows
@@ -15,7 +16,7 @@ MCP Server + Ghidra Plugin
 - Python3
 
 ### Ghidra
-First, download the latest release from this repository. This contains the Ghidra plugin and Python MCP client. Then, you can directly import the plugin into Ghidra.
+First, download the latest [release](https://github.com/LaurieWired/GhidraMCP/releases) from this repository. This contains the Ghidra plugin and Python MCP client. Then, you can directly import the plugin into Ghidra.
 
 1. Run Ghidra
 2. Select `File` -> `Install Extensions`
@@ -26,7 +27,7 @@ First, download the latest release from this repository. This contains the Ghidr
 
 
 ### Option 1: Claude Desktop
-Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json and add the following:
+To set up Claude Desktop as a Ghidra MCP client, go to `Claude` -> `Settings` -> `Developer` -> `Edit Config` -> `claude_desktop_config.json` and add the following:
 
 ```json
 {
@@ -58,7 +59,7 @@ Build with Maven by running:
 
 `mvn clean package assembly:single`
 
-The generated zip file includes the built Ghidra plugin and its resources.
+The generated zip file includes the built Ghidra plugin and its resources. These files are required for Ghidra to recognize the new extension.
 
 - lib/GhidraMCP.jar
 - extensions.properties
