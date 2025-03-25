@@ -41,7 +41,10 @@ Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json a
 }
 ```
 
-Alternatively, edit this file `/Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json`.
+Alternatively, edit this file directly:
+```
+/Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json
+```
 
 ### Option 2: 5ire
 Another MCP client that supports multiple models on the backend is [5ire](https://github.com/nanbingxyz/5ire). To set up GhidraMCP, open 5ire and go to `Tools` -> `New` and set the following configurations:
