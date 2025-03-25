@@ -20,7 +20,7 @@ First, download the latest release from this repository. This contains the Ghidr
 1. Run Ghidra
 2. Select `File` -> `Install Extensions`
 3. Click the `+` button
-4. Select the GhidraMCP-1-0.zip (or your chosen version) from the downloaded release
+4. Select the `GhidraMCP-1-0.zip` (or your chosen version) from the downloaded release
 5. Restart Ghidra
 6. Make sure the GhidraMCPPlugin is enabled in `File` -> `Configure` -> `Developer`
 
