@@ -11,8 +11,7 @@
 # GhidraMCP
 GhidraMCP is an Model Context Protocol server for allowing LLMs to autonomously reverse engineer applications. It exposes numerous tools from core Ghidra functionality to MCP clients.
 
-
-![ghidraMCP_demo](https://github.com/user-attachments/assets/1906683c-c596-4ccc-98f7-2261ccd04583)
+https://github.com/user-attachments/assets/36080514-f227-44bd-af84-78e29ee1d7f9
 
 
 # Features
