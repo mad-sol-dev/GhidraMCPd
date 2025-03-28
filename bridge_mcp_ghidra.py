@@ -1,3 +1,10 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "mcp==1.5.0",
+#     "requests==2.32.3",
+# ]
+# ///
 import sys
 import requests
 
