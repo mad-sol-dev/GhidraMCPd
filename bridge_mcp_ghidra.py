@@ -1,7 +1,10 @@
-from mcp.server.fastmcp import FastMCP
+import sys
 import requests
 
-ghidra_server_url = "http://localhost:8080"
+from mcp.server.fastmcp import FastMCP
+
+DEFAULT_GHIDRA_SERVER = "http://127.0.0.1:8080/"
+ghidra_server_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GHIDRA_SERVER
 
 mcp = FastMCP("ghidra-mcp")
 
