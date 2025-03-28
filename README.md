@@ -24,9 +24,9 @@ MCP Server + Ghidra Plugin
 # Installation
 
 ## Prerequisites
-- Mac / Windows
 - Install [Ghidra](https://ghidra-sre.org)
 - Python3
+- MCP [SDK](https://github.com/modelcontextprotocol/python-sdk)
 
 ## Ghidra
 First, download the latest [release](https://github.com/LaurieWired/GhidraMCP/releases) from this repository. This contains the Ghidra plugin and Python MCP client. Then, you can directly import the plugin into Ghidra.
