@@ -10,18 +10,15 @@ mcp = FastMCP("ghidra-mcp")
 
 def safe_get(endpoint: str, params: dict = None) -> list:
     """
-    Perform a GET request. If 'params' is given, we convert it to a query string.
+    Perform a GET request with optional query parameters.
     """
     if params is None:
         params = {}
-    qs = [f"{k}={v}" for k, v in params.items()]
-    query_string = "&".join(qs)
+
     url = f"{ghidra_server_url}/{endpoint}"
-    if query_string:
-        url += "?" + query_string
 
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, params=params, timeout=5)
         response.encoding = 'utf-8'
         if response.ok:
             return response.text.splitlines()
