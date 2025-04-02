@@ -16,6 +16,7 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.services.ProgramManager;
+import ghidra.framework.options.Options;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.util.Msg;
@@ -38,25 +39,47 @@ import java.util.concurrent.atomic.AtomicBoolean;
     packageName = ghidra.app.DeveloperPluginPackage.NAME,
     category = PluginCategoryNames.ANALYSIS,
     shortDescription = "HTTP server plugin",
-    description = "Starts an embedded HTTP server to expose program data."
+    description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options."
 )
 public class GhidraMCPPlugin extends Plugin {
 
     private HttpServer server;
+    private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
+    private static final String PORT_OPTION_NAME = "Server Port";
+    private static final int DEFAULT_PORT = 8080;
 
     public GhidraMCPPlugin(PluginTool tool) {
         super(tool);
-        Msg.info(this, "GhidraMCPPlugin loaded!");
+        Msg.info(this, "GhidraMCPPlugin loading...");
+
+        // Register the configuration option
+        Options options = tool.getOptions(OPTION_CATEGORY_NAME);
+        options.registerOption(PORT_OPTION_NAME, DEFAULT_PORT,
+            null, // No help location for now
+            "The network port number the embedded HTTP server will listen on. " +
+            "Requires Ghidra restart or plugin reload to take effect after changing.");
+
         try {
             startServer();
         }
         catch (IOException e) {
             Msg.error(this, "Failed to start HTTP server", e);
         }
+        Msg.info(this, "GhidraMCPPlugin loaded!");
     }
 
     private void startServer() throws IOException {
-        int port = 8080;
+        // Read the configured port
+        Options options = tool.getOptions(OPTION_CATEGORY_NAME);
+        int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
+
+        // Stop existing server if running (e.g., if plugin is reloaded)
+        if (server != null) {
+            Msg.info(this, "Stopping existing HTTP server before starting new one.");
+            server.stop(0);
+            server = null;
+        }
+
         server = HttpServer.create(new InetSocketAddress(port), 0);
 
         // Each listing endpoint uses offset & limit from query params:
@@ -146,8 +169,13 @@ public class GhidraMCPPlugin extends Plugin {
 
         server.setExecutor(null);
         new Thread(() -> {
-            server.start();
-            Msg.info(this, "GhidraMCP HTTP server started on port " + port);
+            try {
+                server.start();
+                Msg.info(this, "GhidraMCP HTTP server started on port " + port);
+            } catch (Exception e) {
+                Msg.error(this, "Failed to start HTTP server on port " + port + ". Port might be in use.", e);
+                server = null; // Ensure server isn't considered running
+            }
         }, "GhidraMCP-HTTP-Server").start();
     }
 
@@ -597,8 +625,10 @@ public class GhidraMCPPlugin extends Plugin {
     @Override
     public void dispose() {
         if (server != null) {
-            server.stop(0);
-            Msg.info(this, "HTTP server stopped.");
+            Msg.info(this, "Stopping GhidraMCP HTTP server...");
+            server.stop(1); // Stop with a small delay (e.g., 1 second) for connections to finish
+            server = null; // Nullify the reference
+            Msg.info(this, "GhidraMCP HTTP server stopped.");
         }
         super.dispose();
     }
