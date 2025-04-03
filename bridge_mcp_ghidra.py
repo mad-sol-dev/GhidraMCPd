@@ -1,10 +1,11 @@
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.10"
 # dependencies = [
-#     "mcp==1.5.0",
-#     "requests==2.32.3",
+#     "requests>=2,<3",
+#     "mcp>=1.2.0,<2",
 # ]
 # ///
+
 import sys
 import requests
 
@@ -127,6 +128,16 @@ def search_functions_by_name(query: str, offset: int = 0, limit: int = 100) -> l
         return ["Error: query string is required"]
     return safe_get("searchFunctions", {"query": query, "offset": offset, "limit": limit})
 
+@mcp.tool()
+def rename_variable(function_name: str, old_name: str, new_name: str) -> str:
+    """
+    Rename a local variable within a function.
+    """
+    return safe_post("renameVariable", {
+        "functionName": function_name,
+        "oldName": old_name,
+        "newName": new_name
+    })
 
 if __name__ == "__main__":
     mcp.run()

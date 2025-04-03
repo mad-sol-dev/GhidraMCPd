@@ -7,10 +7,16 @@ import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.symbol.*;
+import ghidra.program.model.pcode.HighFunction;
+import ghidra.program.model.pcode.HighSymbol;
+import ghidra.program.model.pcode.LocalSymbolMap;
+import ghidra.program.model.pcode.HighFunctionDBUtil;
+import ghidra.program.model.pcode.HighFunctionDBUtil.ReturnCommitOption;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.services.ProgramManager;
+import ghidra.framework.options.Options;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.util.Msg;
@@ -33,25 +39,47 @@ import java.util.concurrent.atomic.AtomicBoolean;
     packageName = ghidra.app.DeveloperPluginPackage.NAME,
     category = PluginCategoryNames.ANALYSIS,
     shortDescription = "HTTP server plugin",
-    description = "Starts an embedded HTTP server to expose program data."
+    description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options."
 )
 public class GhidraMCPPlugin extends Plugin {
 
     private HttpServer server;
+    private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
+    private static final String PORT_OPTION_NAME = "Server Port";
+    private static final int DEFAULT_PORT = 8080;
 
     public GhidraMCPPlugin(PluginTool tool) {
         super(tool);
-        Msg.info(this, "GhidraMCPPlugin loaded!");
+        Msg.info(this, "GhidraMCPPlugin loading...");
+
+        // Register the configuration option
+        Options options = tool.getOptions(OPTION_CATEGORY_NAME);
+        options.registerOption(PORT_OPTION_NAME, DEFAULT_PORT,
+            null, // No help location for now
+            "The network port number the embedded HTTP server will listen on. " +
+            "Requires Ghidra restart or plugin reload to take effect after changing.");
+
         try {
             startServer();
         }
         catch (IOException e) {
             Msg.error(this, "Failed to start HTTP server", e);
         }
+        Msg.info(this, "GhidraMCPPlugin loaded!");
     }
 
     private void startServer() throws IOException {
-        int port = 8080;
+        // Read the configured port
+        Options options = tool.getOptions(OPTION_CATEGORY_NAME);
+        int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
+
+        // Stop existing server if running (e.g., if plugin is reloaded)
+        if (server != null) {
+            Msg.info(this, "Stopping existing HTTP server before starting new one.");
+            server.stop(0);
+            server = null;
+        }
+
         server = HttpServer.create(new InetSocketAddress(port), 0);
 
         // Each listing endpoint uses offset & limit from query params:
@@ -85,6 +113,15 @@ public class GhidraMCPPlugin extends Plugin {
             Map<String, String> params = parsePostParams(exchange);
             renameDataAtAddress(params.get("address"), params.get("newName"));
             sendResponse(exchange, "Rename data attempted");
+        });
+
+        server.createContext("/renameVariable", exchange -> {
+            Map<String, String> params = parsePostParams(exchange);
+            String functionName = params.get("functionName");
+            String oldName = params.get("oldName");
+            String newName = params.get("newName");
+            String result = renameVariableInFunction(functionName, oldName, newName);
+            sendResponse(exchange, result);
         });
 
         server.createContext("/segments", exchange -> {
@@ -132,8 +169,13 @@ public class GhidraMCPPlugin extends Plugin {
 
         server.setExecutor(null);
         new Thread(() -> {
-            server.start();
-            Msg.info(this, "GhidraMCP HTTP server started on port " + port);
+            try {
+                server.start();
+                Msg.info(this, "GhidraMCP HTTP server started on port " + port);
+            } catch (Exception e) {
+                Msg.error(this, "Failed to start HTTP server on port " + port + ". Port might be in use.", e);
+                server = null; // Ensure server isn't considered running
+            }
         }, "GhidraMCP-HTTP-Server").start();
     }
 
@@ -358,6 +400,131 @@ public class GhidraMCPPlugin extends Plugin {
         }
     }
 
+    private String renameVariableInFunction(String functionName, String oldVarName, String newVarName) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+
+        DecompInterface decomp = new DecompInterface();
+        decomp.openProgram(program);
+
+        Function func = null;
+        for (Function f : program.getFunctionManager().getFunctions(true)) {
+            if (f.getName().equals(functionName)) {
+                func = f;
+                break;
+            }
+        }
+
+        if (func == null) {
+            return "Function not found";
+        }
+
+        DecompileResults result = decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
+        if (result == null || !result.decompileCompleted()) {
+            return "Decompilation failed";
+        }
+
+        HighFunction highFunction = result.getHighFunction();
+        if (highFunction == null) {
+            return "Decompilation failed (no high function)";
+        }
+
+        LocalSymbolMap localSymbolMap = highFunction.getLocalSymbolMap();
+        if (localSymbolMap == null) {
+            return "Decompilation failed (no local symbol map)";
+        }
+
+        HighSymbol highSymbol = null;
+        Iterator<HighSymbol> symbols = localSymbolMap.getSymbols();
+        while (symbols.hasNext()) {
+            HighSymbol symbol = symbols.next();
+            String symbolName = symbol.getName();
+            
+            if (symbolName.equals(oldVarName)) {
+                highSymbol = symbol;
+            }
+            if (symbolName.equals(newVarName)) {
+                return "Error: A variable with name '" + newVarName + "' already exists in this function";
+            }
+        }
+
+        if (highSymbol == null) {
+            return "Variable not found";
+        }
+
+        boolean commitRequired = checkFullCommit(highSymbol, highFunction);
+
+        final HighSymbol finalHighSymbol = highSymbol;
+        final Function finalFunction = func;
+        AtomicBoolean successFlag = new AtomicBoolean(false);
+
+        try {
+            SwingUtilities.invokeAndWait(() -> {           
+                int tx = program.startTransaction("Rename variable");
+                try {
+                    if (commitRequired) {
+                        HighFunctionDBUtil.commitParamsToDatabase(highFunction, false,
+                            ReturnCommitOption.NO_COMMIT, finalFunction.getSignatureSource());
+                    }
+                    HighFunctionDBUtil.updateDBVariable(
+                        finalHighSymbol,
+                        newVarName,
+                        null,
+                        SourceType.USER_DEFINED
+                    );
+                    successFlag.set(true);
+                }
+                catch (Exception e) {
+                    Msg.error(this, "Failed to rename variable", e);
+                }
+                finally {
+                    program.endTransaction(tx, true);
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException e) {
+            String errorMsg = "Failed to execute rename on Swing thread: " + e.getMessage();
+            Msg.error(this, errorMsg, e);
+            return errorMsg;
+        }
+        return successFlag.get() ? "Variable renamed" : "Failed to rename variable";
+    }
+
+    /**
+     * Copied from AbstractDecompilerAction.checkFullCommit, it's protected.
+	 * Compare the given HighFunction's idea of the prototype with the Function's idea.
+	 * Return true if there is a difference. If a specific symbol is being changed,
+	 * it can be passed in to check whether or not the prototype is being affected.
+	 * @param highSymbol (if not null) is the symbol being modified
+	 * @param hfunction is the given HighFunction
+	 * @return true if there is a difference (and a full commit is required)
+	 */
+	protected static boolean checkFullCommit(HighSymbol highSymbol, HighFunction hfunction) {
+		if (highSymbol != null && !highSymbol.isParameter()) {
+			return false;
+		}
+		Function function = hfunction.getFunction();
+		Parameter[] parameters = function.getParameters();
+		LocalSymbolMap localSymbolMap = hfunction.getLocalSymbolMap();
+		int numParams = localSymbolMap.getNumParams();
+		if (numParams != parameters.length) {
+			return true;
+		}
+
+		for (int i = 0; i < numParams; i++) {
+			HighSymbol param = localSymbolMap.getParamSymbol(i);
+			if (param.getCategoryIndex() != i) {
+				return true;
+			}
+			VariableStorage storage = param.getStorage();
+			// Don't compare using the equals method so that DynamicVariableStorage can match
+			if (0 != storage.compareTo(parameters[i].getVariableStorage())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
     // ----------------------------------------------------------------------------------
     // Utility: parse query params, parse post params, pagination, etc.
     // ----------------------------------------------------------------------------------
@@ -458,8 +625,10 @@ public class GhidraMCPPlugin extends Plugin {
     @Override
     public void dispose() {
         if (server != null) {
-            server.stop(0);
-            Msg.info(this, "HTTP server stopped.");
+            Msg.info(this, "Stopping GhidraMCP HTTP server...");
+            server.stop(1); // Stop with a small delay (e.g., 1 second) for connections to finish
+            server = null; // Nullify the reference
+            Msg.info(this, "GhidraMCP HTTP server stopped.");
         }
         super.dispose();
     }
