@@ -1,24 +1,32 @@
-from mcp.server.fastmcp import FastMCP
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "requests>=2,<3",
+#     "mcp>=1.2.0,<2",
+# ]
+# ///
+
+import sys
 import requests
 
-ghidra_server_url = "http://localhost:8080"
+from mcp.server.fastmcp import FastMCP
+
+DEFAULT_GHIDRA_SERVER = "http://127.0.0.1:8080/"
+ghidra_server_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GHIDRA_SERVER
 
 mcp = FastMCP("ghidra-mcp")
 
 def safe_get(endpoint: str, params: dict = None) -> list:
     """
-    Perform a GET request. If 'params' is given, we convert it to a query string.
+    Perform a GET request with optional query parameters.
     """
     if params is None:
         params = {}
-    qs = [f"{k}={v}" for k, v in params.items()]
-    query_string = "&".join(qs)
+
     url = f"{ghidra_server_url}/{endpoint}"
-    if query_string:
-        url += "?" + query_string
 
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, params=params, timeout=5)
         response.encoding = 'utf-8'
         if response.ok:
             return response.text.splitlines()
@@ -120,7 +128,16 @@ def search_functions_by_name(query: str, offset: int = 0, limit: int = 100) -> l
         return ["Error: query string is required"]
     return safe_get("searchFunctions", {"query": query, "offset": offset, "limit": limit})
 
-# New functionalities
+@mcp.tool()
+def rename_variable(function_name: str, old_name: str, new_name: str) -> str:
+    """
+    Rename a local variable within a function.
+    """
+    return safe_post("renameVariable", {
+        "functionName": function_name,
+        "oldName": old_name,
+        "newName": new_name
+    })
 
 @mcp.tool()
 def get_function_by_address(address: str) -> str:
@@ -179,13 +196,6 @@ def set_disassembly_comment(address: str, comment: str) -> str:
     return safe_post("set_disassembly_comment", {"address": address, "comment": comment})
 
 @mcp.tool()
-def rename_local_variable(function_address: str, old_name: str, new_name: str) -> str:
-    """
-    Rename a local variable in a function.
-    """
-    return safe_post("rename_local_variable", {"function_address": function_address, "old_name": old_name, "new_name": new_name})
-
-@mcp.tool()
 def rename_function_by_address(function_address: str, new_name: str) -> str:
     """
     Rename a function by its address.
@@ -208,3 +218,4 @@ def set_local_variable_type(function_address: str, variable_name: str, new_type:
 
 if __name__ == "__main__":
     mcp.run()
+

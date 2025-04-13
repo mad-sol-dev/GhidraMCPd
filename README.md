@@ -34,9 +34,10 @@ First, download the latest [release](https://github.com/LaurieWired/GhidraMCP/re
 1. Run Ghidra
 2. Select `File` -> `Install Extensions`
 3. Click the `+` button
-4. Select the `GhidraMCP-1-0.zip` (or your chosen version) from the downloaded release
+4. Select the `GhidraMCP-1-1.zip` (or your chosen version) from the downloaded release
 5. Restart Ghidra
 6. Make sure the GhidraMCPPlugin is enabled in `File` -> `Configure` -> `Developer`
+7. *Optional*: Configure the port in Ghidra with `Edit` -> `Tool Options` -> `GhidraMCP HTTP Server`
 
 Video Installation Guide:
 
@@ -58,7 +59,8 @@ To set up Claude Desktop as a Ghidra MCP client, go to `Claude` -> `Settings` ->
     "ghidra": {
       "command": "python",
       "args": [
-        "/ABSOLUTE_PATH_TO/bridge_mcp_ghidra.py"
+        "/ABSOLUTE_PATH_TO/bridge_mcp_ghidra.py",
+        "http://127.0.0.1:8080/"
       ]
     }
   }
@@ -69,6 +71,8 @@ Alternatively, edit this file directly:
 ```
 /Users/YOUR_USER/Library/Application Support/Claude/claude_desktop_config.json
 ```
+
+The server IP and port are configurable and should be set to point to the target Ghidra instance. If not set, both will default to localhost:8080.
 
 ## Example 2: 5ire
 Another MCP client that supports multiple models on the backend is [5ire](https://github.com/nanbingxyz/5ire). To set up GhidraMCP, open 5ire and go to `Tools` -> `New` and set the following configurations:

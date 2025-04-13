@@ -61,6 +61,13 @@
       <scope>system</scope>
       <systemPath>${project.basedir}/lib/Base.jar</systemPath>
     </dependency>
+    <dependency>
+      <groupId>ghidra</groupId>
+      <artifactId>Gui</artifactId>
+      <version>11.3.1</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/Gui.jar</systemPath>
+    </dependency>
 
     <!-- JUnit (test only) -->
     <dependency>
