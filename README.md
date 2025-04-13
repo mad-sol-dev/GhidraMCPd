@@ -34,7 +34,7 @@ First, download the latest [release](https://github.com/LaurieWired/GhidraMCP/re
 1. Run Ghidra
 2. Select `File` -> `Install Extensions`
 3. Click the `+` button
-4. Select the `GhidraMCP-1-1.zip` (or your chosen version) from the downloaded release
+4. Select the `GhidraMCP-1-2.zip` (or your chosen version) from the downloaded release
 5. Restart Ghidra
 6. Make sure the GhidraMCPPlugin is enabled in `File` -> `Configure` -> `Developer`
 7. *Optional*: Configure the port in Ghidra with `Edit` -> `Tool Options` -> `GhidraMCP HTTP Server`
