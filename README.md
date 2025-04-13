@@ -75,7 +75,23 @@ Alternatively, edit this file directly:
 
 The server IP and port are configurable and should be set to point to the target Ghidra instance. If not set, both will default to localhost:8080.
 
-## Example 2: 5ire
+## Example 2: Cline
+To use GhidraMCP with [Cline](https://cline.bot), this requires manually running the MCP server as well. First run the following command:
+
+```
+python bridge_mcp_ghidra.py --transport sse --mcp-host 127.0.0.1 --mcp-port 8081 --ghidra-server http://127.0.0.1:8080/
+```
+
+The only *required* argument is the transport. If all other arguments are unspecified, they will default to the above. Once the MCP server is running, open up Cline and select `MCP Servers` at the top.
+
+![Cline select](https://github.com/user-attachments/assets/88e1f336-4729-46ee-9b81-53271e9c0ce0)
+
+Then select `Remote Servers` and add the following, ensuring that the url matches the MCP host and port:
+
+1. Server Name: GhidraMCP
+2. Server URL: `http://127.0.0.1:8081/sse`
+
+## Example 3: 5ire
 Another MCP client that supports multiple models on the backend is [5ire](https://github.com/nanbingxyz/5ire). To set up GhidraMCP, open 5ire and go to `Tools` -> `New` and set the following configurations:
 
 1. Tool Key: ghidra
