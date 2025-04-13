@@ -60,6 +60,7 @@ To set up Claude Desktop as a Ghidra MCP client, go to `Claude` -> `Settings` ->
       "command": "python",
       "args": [
         "/ABSOLUTE_PATH_TO/bridge_mcp_ghidra.py",
+        "--ghidra-server",
         "http://127.0.0.1:8080/"
       ]
     }
