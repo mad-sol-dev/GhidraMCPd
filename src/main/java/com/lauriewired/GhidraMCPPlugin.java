@@ -1365,13 +1365,10 @@ public class GhidraMCPPlugin extends Plugin {
         while (dataIt.hasNext()) {
             Data data = dataIt.next();
             
-            // Check if this is a string data type
             if (data != null && isStringData(data)) {
                 String value = data.getValue() != null ? data.getValue().toString() : "";
                 
-                // Apply filter if provided
                 if (filter == null || value.toLowerCase().contains(filter.toLowerCase())) {
-                    // Escape string for better display
                     String escapedValue = escapeString(value);
                     lines.add(String.format("%s: \"%s\"", data.getAddress(), escapedValue));
                 }
