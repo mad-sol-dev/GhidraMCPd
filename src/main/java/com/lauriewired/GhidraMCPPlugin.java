@@ -333,6 +333,14 @@ public class GhidraMCPPlugin extends Plugin {
             sendResponse(exchange, getFunctionXrefs(name, offset, limit));
         });
 
+        server.createContext("/strings", exchange -> {
+            Map<String, String> qparams = parseQueryParams(exchange);
+            int offset = parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = parseIntOrDefault(qparams.get("limit"), 100);
+            String filter = qparams.get("filter");
+            sendResponse(exchange, listDefinedStrings(offset, limit, filter));
+        });
+
         server.setExecutor(null);
         new Thread(() -> {
             try {
@@ -1342,6 +1350,70 @@ public class GhidraMCPPlugin extends Plugin {
         } catch (Exception e) {
             return "Error getting function references: " + e.getMessage();
         }
+    }
+
+/**
+ * List all defined strings in the program with their addresses
+ */
+    private String listDefinedStrings(int offset, int limit, String filter) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+
+        List<String> lines = new ArrayList<>();
+        DataIterator dataIt = program.getListing().getDefinedData(true);
+        
+        while (dataIt.hasNext()) {
+            Data data = dataIt.next();
+            
+            // Check if this is a string data type
+            if (data != null && isStringData(data)) {
+                String value = data.getValue() != null ? data.getValue().toString() : "";
+                
+                // Apply filter if provided
+                if (filter == null || value.toLowerCase().contains(filter.toLowerCase())) {
+                    // Escape string for better display
+                    String escapedValue = escapeString(value);
+                    lines.add(String.format("%s: \"%s\"", data.getAddress(), escapedValue));
+                }
+            }
+        }
+        
+        return paginateList(lines, offset, limit);
+    }
+
+    /**
+     * Check if the given data is a string type
+     */
+    private boolean isStringData(Data data) {
+        if (data == null) return false;
+        
+        DataType dt = data.getDataType();
+        String typeName = dt.getName().toLowerCase();
+        return typeName.contains("string") || typeName.contains("char") || typeName.equals("unicode");
+    }
+
+    /**
+     * Escape special characters in a string for display
+     */
+    private String escapeString(String input) {
+        if (input == null) return "";
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c >= 32 && c < 127) {
+                sb.append(c);
+            } else if (c == '\n') {
+                sb.append("\\n");
+            } else if (c == '\r') {
+                sb.append("\\r");
+            } else if (c == '\t') {
+                sb.append("\\t");
+            } else {
+                sb.append(String.format("\\x%02x", (int)c & 0xFF));
+            }
+        }
+        return sb.toString();
     }
 
     /**

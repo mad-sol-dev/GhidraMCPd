@@ -267,6 +267,24 @@ def get_function_xrefs(name: str, offset: int = 0, limit: int = 100) -> list:
     """
     return safe_get("function_xrefs", {"name": name, "offset": offset, "limit": limit})
 
+@mcp.tool()
+def list_strings(offset: int = 0, limit: int = 2000, filter: str = None) -> list:
+    """
+    List all defined strings in the program with their addresses.
+    
+    Args:
+        offset: Pagination offset (default: 0)
+        limit: Maximum number of strings to return (default: 2000)
+        filter: Optional filter to match within string content
+        
+    Returns:
+        List of strings with their addresses
+    """
+    params = {"offset": offset, "limit": limit}
+    if filter:
+        params["filter"] = filter
+    return safe_get("strings", params)
+
 def main():
     parser = argparse.ArgumentParser(description="MCP server for Ghidra")
     parser.add_argument("--ghidra-server", type=str, default=DEFAULT_GHIDRA_SERVER,
