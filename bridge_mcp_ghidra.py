@@ -8,14 +8,20 @@
 
 import sys
 import requests
+import argparse
+import logging
 from urllib.parse import urljoin
 
 from mcp.server.fastmcp import FastMCP
 
 DEFAULT_GHIDRA_SERVER = "http://127.0.0.1:8080/"
-ghidra_server_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GHIDRA_SERVER
+
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP("ghidra-mcp")
+
+# Initialize ghidra_server_url with default value
+ghidra_server_url = DEFAULT_GHIDRA_SERVER
 
 def safe_get(endpoint: str, params: dict = None) -> list:
     """
@@ -24,7 +30,7 @@ def safe_get(endpoint: str, params: dict = None) -> list:
     if params is None:
         params = {}
 
-    url =  urljoin(ghidra_server_url, endpoint)
+    url = urljoin(ghidra_server_url, endpoint)
 
     try:
         response = requests.get(url, params=params, timeout=5)
@@ -38,10 +44,11 @@ def safe_get(endpoint: str, params: dict = None) -> list:
 
 def safe_post(endpoint: str, data: dict | str) -> str:
     try:
+        url = urljoin(ghidra_server_url, endpoint)
         if isinstance(data, dict):
-            response = requests.post( urljoin(ghidra_server_url, endpoint), data=data, timeout=5)
+            response = requests.post(url, data=data, timeout=5)
         else:
-            response = requests.post( urljoin(ghidra_server_url, endpoint), data=data.encode("utf-8"), timeout=5)
+            response = requests.post(url, data=data.encode("utf-8"), timeout=5)
         response.encoding = 'utf-8'
         if response.ok:
             return response.text.strip()
@@ -140,6 +147,129 @@ def rename_variable(function_name: str, old_name: str, new_name: str) -> str:
         "newName": new_name
     })
 
+@mcp.tool()
+def get_function_by_address(address: str) -> str:
+    """
+    Get a function by its address.
+    """
+    return "\n".join(safe_get("get_function_by_address", {"address": address}))
+
+@mcp.tool()
+def get_current_address() -> str:
+    """
+    Get the address currently selected by the user.
+    """
+    return "\n".join(safe_get("get_current_address"))
+
+@mcp.tool()
+def get_current_function() -> str:
+    """
+    Get the function currently selected by the user.
+    """
+    return "\n".join(safe_get("get_current_function"))
+
+@mcp.tool()
+def list_functions() -> list:
+    """
+    List all functions in the database.
+    """
+    return safe_get("list_functions")
+
+@mcp.tool()
+def decompile_function_by_address(address: str) -> str:
+    """
+    Decompile a function at the given address.
+    """
+    return "\n".join(safe_get("decompile_function", {"address": address}))
+
+@mcp.tool()
+def disassemble_function(address: str) -> list:
+    """
+    Get assembly code (address: instruction; comment) for a function.
+    """
+    return safe_get("disassemble_function", {"address": address})
+
+@mcp.tool()
+def set_decompiler_comment(address: str, comment: str) -> str:
+    """
+    Set a comment for a given address in the function pseudocode.
+    """
+    return safe_post("set_decompiler_comment", {"address": address, "comment": comment})
+
+@mcp.tool()
+def set_disassembly_comment(address: str, comment: str) -> str:
+    """
+    Set a comment for a given address in the function disassembly.
+    """
+    return safe_post("set_disassembly_comment", {"address": address, "comment": comment})
+
+@mcp.tool()
+def rename_function_by_address(function_address: str, new_name: str) -> str:
+    """
+    Rename a function by its address.
+    """
+    return safe_post("rename_function_by_address", {"function_address": function_address, "new_name": new_name})
+
+@mcp.tool()
+def set_function_prototype(function_address: str, prototype: str) -> str:
+    """
+    Set a function's prototype.
+    """
+    return safe_post("set_function_prototype", {"function_address": function_address, "prototype": prototype})
+
+@mcp.tool()
+def set_local_variable_type(function_address: str, variable_name: str, new_type: str) -> str:
+    """
+    Set a local variable's type.
+    """
+    return safe_post("set_local_variable_type", {"function_address": function_address, "variable_name": variable_name, "new_type": new_type})
+
+def main():
+    parser = argparse.ArgumentParser(description="MCP server for Ghidra")
+    parser.add_argument("--ghidra-server", type=str, default=DEFAULT_GHIDRA_SERVER,
+                        help=f"Ghidra server URL, default: {DEFAULT_GHIDRA_SERVER}")
+    parser.add_argument("--mcp-host", type=str, default="127.0.0.1",
+                        help="Host to run MCP server on (only used for sse), default: 127.0.0.1")
+    parser.add_argument("--mcp-port", type=int,
+                        help="Port to run MCP server on (only used for sse), default: 8081")
+    parser.add_argument("--transport", type=str, default="stdio", choices=["stdio", "sse"],
+                        help="Transport protocol for MCP, default: stdio")
+    args = parser.parse_args()
+    
+    # Use the global variable to ensure it's properly updated
+    global ghidra_server_url
+    if args.ghidra_server:
+        ghidra_server_url = args.ghidra_server
+    
+    if args.transport == "sse":
+        try:
+            # Set up logging
+            log_level = logging.INFO
+            logging.basicConfig(level=log_level)
+            logging.getLogger().setLevel(log_level)
+
+            # Configure MCP settings
+            mcp.settings.log_level = "INFO"
+            if args.mcp_host:
+                mcp.settings.host = args.mcp_host
+            else:
+                mcp.settings.host = "127.0.0.1"
+
+            if args.mcp_port:
+                mcp.settings.port = args.mcp_port
+            else:
+                mcp.settings.port = 8081
+
+            logger.info(f"Connecting to Ghidra server at {ghidra_server_url}")
+            logger.info(f"Starting MCP server on http://{mcp.settings.host}:{mcp.settings.port}/sse")
+            logger.info(f"Using transport: {args.transport}")
+
+            mcp.run(transport="sse")
+        except KeyboardInterrupt:
+            logger.info("Server stopped by user")
+    else:
+        mcp.run()
+        
 if __name__ == "__main__":
-    mcp.run()
+    main()
 
