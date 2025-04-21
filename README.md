@@ -48,7 +48,7 @@ https://github.com/user-attachments/assets/75f0c176-6da1-48dc-ad96-c182eb4648c3
 
 ## MCP Clients
 
-Theoretically, any MCP client should work with ghidraMCP.  Two examples are given below.
+Theoretically, any MCP client should work with ghidraMCP.  Three examples are given below.
 
 ## Example 1: Claude Desktop
 To set up Claude Desktop as a Ghidra MCP client, go to `Claude` -> `Settings` -> `Developer` -> `Edit Config` -> `claude_desktop_config.json` and add the following:
@@ -107,6 +107,7 @@ Another MCP client that supports multiple models on the backend is [5ire](https:
 - `Ghidra/Framework/Project/lib/Project.jar`
 - `Ghidra/Framework/SoftwareModeling/lib/SoftwareModeling.jar`
 - `Ghidra/Framework/Utility/lib/Utility.jar`
+- `Ghidra/Framework/Gui/lib/Gui.jar`
 2. Build with Maven by running:
 
 `mvn clean package assembly:single`
