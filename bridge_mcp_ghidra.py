@@ -234,6 +234,8 @@ def main():
                         help="Transport protocol for MCP, default: stdio")
     args = parser.parse_args()
     
+    # Use the global variable to ensure it's properly updated
+    global ghidra_server_url
     if args.ghidra_server:
         ghidra_server_url = args.ghidra_server
     
