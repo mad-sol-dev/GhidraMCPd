@@ -20,6 +20,7 @@ jobs:
         Framework/Project/lib/Project.jar
         Framework/SoftwareModeling/lib/SoftwareModeling.jar
         Framework/Utility/lib/Utility.jar
+        Framework/Gui/lib/Gui.jar
 
     steps:
     - uses: actions/checkout@v4
