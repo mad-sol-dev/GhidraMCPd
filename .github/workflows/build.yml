@@ -38,7 +38,7 @@ jobs:
 
     - name: Copy Ghidra libs
       run: |
-        mkdir ./lib
+        mkdir -p ./lib
         for libfile in ${{ env.GHIDRA_LIBS }}
           do echo "Copying ${libfile} to lib/"
           cp ghidra_${{ env.GHIDRA_VERSION }}_PUBLIC/Ghidra/${libfile} ./lib/
