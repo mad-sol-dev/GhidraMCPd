@@ -84,7 +84,7 @@ Get a live server running and make a deterministic request in three commands:
 # 1. Set up the environment
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt
 
-# 2. Run the server (legacy script — deprecated; see "Advanced start" below for uvicorn)
+# 2. Run the server (legacy script — deprecated; see "Legacy entrypoint" below)
 GHIDRA_SERVER_URL=http://127.0.0.1:8080/ python bridge_mcp_ghidra.py --transport sse
 
 # 3. Make a test call to a deterministic endpoint
@@ -136,6 +136,19 @@ BASE=http://127.0.0.1:8081
     # → JSON {"error":"sse_already_active", ...}, status=409
     ```
 
+### Legacy entrypoint (deprecated)
+
+The historical `bridge_mcp_ghidra.py` shim remains available for compatibility, but it now emits a runtime warning and is slated for removal.
+
+Prefer the uvicorn factory when starting the bridge:
+
+```bash
+GHIDRA_SERVER_URL=http://127.0.0.1:8080/ \
+uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8081
+```
+
+If you must rely on the legacy shim, expect the warning to point back to this command so migrations remain obvious.
+
 ### SSE Troubleshooting
 
 The `/sse` endpoint only allows a single active connection. A second `GET /sse` while another client is connected will receive `409 Conflict` with an explanatory JSON payload. This is intentional and prevents multiple OpenWebUI sessions from racing. Check the bridge logs for `sse.reject` (includes `status_code=409` and `reason=sse_already_active`) to identify the rejecting IP/User-Agent, and wait for the matching `sse.disconnect` before retrying. If messages arrive before the MCP session is initialized, the server emits `messages.not_ready` with `status_code=425` and returns `{ "error": "mcp_not_ready" }`.
@@ -144,7 +157,7 @@ For quick diagnostics hit `GET /state` to retrieve `{ready, active_sse, connects
 
 ### Bridge guard smoke walkthrough
 
-Once the shim is running (`python bridge_mcp_ghidra.py --transport sse`), the guard rails can be exercised end-to-end with:
+Once the legacy shim is running (`python bridge_mcp_ghidra.py --transport sse`), the guard rails can be exercised end-to-end with:
 
 ```bash
 GHIDRA_SERVER_URL=http://127.0.0.1:8080/ \
@@ -245,7 +258,7 @@ pip install -r requirements-dev.txt
 # 2. (Optional) Customize configuration
 cp .env.sample .env
 
-# 3. Run the bridge server
+# 3. Run the bridge server (legacy entrypoint — deprecated; prefer the uvicorn factory)
 python bridge_mcp_ghidra.py --transport sse --ghidra-server http://127.0.0.1:8080/
 ```
 
