@@ -293,7 +293,10 @@ def build_api_app() -> Starlette:
 def create_app() -> Starlette:
     """Factory compatible with ``uvicorn --factory``."""
 
-    return build_api_app()
+    api_app = build_api_app()
+    sse_app = MCP_SERVER.sse_app()
+    api_app.router.routes.extend(sse_app.routes)
+    return api_app
 
 
 app = build_api_app()

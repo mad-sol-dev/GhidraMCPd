@@ -84,7 +84,7 @@ Get a live server running and make a deterministic request in three commands:
 # 1. Set up the environment
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt
 
-# 2. Run the server (points to your Ghidra instance)
+# 2. Run the server (legacy script — deprecated; see "Advanced start" below for uvicorn)
 GHIDRA_SERVER_URL=http://127.0.0.1:8080/ python bridge_mcp_ghidra.py --transport sse
 
 # 3. Make a test call to a deterministic endpoint
@@ -92,6 +92,49 @@ curl -s http://127.0.0.1:8081/api/jt_slot_check.json \
   -H 'content-type: application/json' \
   -d '{"jt_base":"0x00100000","slot_index":0,"code_min":"0x00100000","code_max":"0x0010FFFF"}' | jq
 ```
+
+### Advanced start (uvicorn factory)
+
+> The legacy `bridge_mcp_ghidra.py` script is deprecated. Prefer running the dev server via the uvicorn factory when iterating locally.
+
+Start the factory app and expose `/sse` directly:
+
+```bash
+GHIDRA_SERVER_URL=http://127.0.0.1:8080/ \
+uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8081
+```
+
+With the server running, verify the SSE guards end-to-end:
+
+```bash
+BASE=http://127.0.0.1:8081
+```
+
+1. **405 guard**
+
+    ```bash
+    curl -s -o - -w '\nstatus=%{http_code}\n' -X POST \
+      -H 'accept: text/event-stream' "$BASE/sse"
+    # → JSON {"error":"method_not_allowed","allow":"GET"}, status=405
+    ```
+
+2. **Single active SSE + heartbeats**
+
+    ```bash
+    curl -N -H 'accept: text/event-stream' "$BASE/sse"
+    # First lines include:
+    # event: endpoint
+    # data: /messages/<session>?session_id=...
+    # event: heartbeat (emitted periodically thereafter)
+    ```
+
+3. **409 on concurrent GET** (run while the first stream is still open)
+
+    ```bash
+    curl -s -o - -w '\nstatus=%{http_code}\n' -H 'accept: text/event-stream' \
+      "$BASE/sse"
+    # → JSON {"error":"sse_already_active", ...}, status=409
+    ```
 
 ### SSE Troubleshooting
 
