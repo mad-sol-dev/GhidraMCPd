@@ -270,8 +270,8 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 
 **What changed:** Factory app now mounts the guarded `/sse` routes and the README documents an advanced uvicorn start with curl checks and a deprecated legacy shim note.
 
-### 35) ⬜ LEGACY-DEPRECATE-DOC — Document & deprecate legacy entrypoint (ID: LEGACY-DEPRECATE-DOC)
-**DoD:**
+### 35) ✅ LEGACY-DEPRECATE-DOC — Document & deprecate legacy entrypoint (ID: LEGACY-DEPRECATE-DOC)
+**DoD:** _commit:85b75af_
 
 * README marks `bridge_mcp_ghidra.py` as deprecated and points to the factory start.
 * Launching the legacy script prints a clear **deprecation warning** (stderr/log) with the new start command.
@@ -284,3 +284,5 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 3. Retag any references in the repo (README, `bin/*`, comments) to highlight deprecation or direct users to the factory start (no deletions).
 
 **Notes:** Commit `docs: deprecate legacy bridge entrypoint and add runtime warning`
+
+**What changed:** Deprecated the legacy shim in README, printed a runtime warning, and retagged references with explicit notices.
