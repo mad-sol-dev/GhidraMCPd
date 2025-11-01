@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from types import MethodType
 
 from mcp import types
@@ -35,6 +36,7 @@ class BridgeState:
     connects: int = 0
     ready: asyncio.Event = field(default_factory=asyncio.Event)
     initialization_logged: bool = False
+    last_init_ts: str | None = None
     ghidra_sema: asyncio.Semaphore = field(
         default_factory=lambda: asyncio.Semaphore(1)
     )
@@ -93,6 +95,7 @@ def configure() -> None:
             async with _STATE_LOCK:
                 if not _BRIDGE_STATE.ready.is_set():
                     _BRIDGE_STATE.ready.set()
+                    _BRIDGE_STATE.last_init_ts = datetime.now(timezone.utc).isoformat()
                     if not _BRIDGE_STATE.initialization_logged:
                         _SSE_LOGGER.info("MCP INITIALIZED")
                         _BRIDGE_STATE.initialization_logged = True
@@ -139,10 +142,13 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 _SSE_LOGGER.warning(
                     "sse.reject",
                     extra={
+                        "path": request.url.path,
                         "client_host": client[0],
                         "client_port": client[1],
                         "user_agent": user_agent,
                         "active_sse_id": _BRIDGE_STATE.active_sse_id,
+                        "status_code": 409,
+                        "reason": "sse_already_active",
                     },
                 )
                 return JSONResponse(
@@ -154,6 +160,7 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
             _BRIDGE_STATE.connects += 1
             _BRIDGE_STATE.ready.clear()
             _BRIDGE_STATE.initialization_logged = False
+            _BRIDGE_STATE.last_init_ts = None
 
         _SSE_LOGGER.info(
             "sse.connect",
@@ -182,6 +189,7 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 if _BRIDGE_STATE.active_sse_id == connection_id:
                     _BRIDGE_STATE.active_sse_id = None
                 _BRIDGE_STATE.ready.clear()
+                _BRIDGE_STATE.last_init_ts = None
             _SSE_LOGGER.info(
                 "sse.disconnect",
                 extra={
@@ -198,9 +206,12 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
         _SSE_LOGGER.info(
             "sse.method_not_allowed",
             extra={
+                "path": request.url.path,
                 "client_host": client[0],
                 "client_port": client[1],
                 "user_agent": user_agent,
+                "status_code": 405,
+                "reason": "method_not_allowed",
             },
         )
         return JSONResponse(
@@ -234,6 +245,8 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 "client_port": client[1],
                 "user_agent": user_agent,
                 "path": scope.get("path"),
+                "status_code": 425,
+                "reason": "mcp_not_ready",
             },
         )
         response = JSONResponse({"error": "mcp_not_ready"}, status_code=425)
@@ -251,13 +264,29 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
 
 def build_api_app() -> Starlette:
     configure()
+    async def state(_: Request) -> JSONResponse:
+        async with _STATE_LOCK:
+            payload = {
+                "ready": _BRIDGE_STATE.ready.is_set(),
+                "active_sse": _BRIDGE_STATE.active_sse_id,
+                "connects": _BRIDGE_STATE.connects,
+                "last_init_ts": _BRIDGE_STATE.last_init_ts,
+            }
+        return JSONResponse(payload)
+
+    state_route = Route("/state", state, methods=["GET"], name="state")
+
     routes = list(make_routes(_client_factory, call_semaphore=_BRIDGE_STATE.ghidra_sema))
-    schema = _build_openapi_schema(routes)
+    schema = _build_openapi_schema([*routes, state_route])
 
     async def openapi(_: Request) -> JSONResponse:
         return JSONResponse(schema)
 
-    routes.append(Route("/openapi.json", openapi, methods=["GET"], name="openapi"))
+    openapi_route = Route(
+        "/openapi.json", openapi, methods=["GET"], name="openapi"
+    )
+
+    routes.extend([openapi_route, state_route])
     return Starlette(routes=routes)
 
 
