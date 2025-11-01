@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import anyio
 import pytest
@@ -229,3 +230,120 @@ async def test_messages_block_until_initialized() -> None:
         assert status == 202
 
         cancel_scope.cancel()
+
+
+@pytest.mark.anyio
+async def test_second_sse_request_logs_rejection(caplog: pytest.LogCaptureFixture) -> None:
+    configure()
+    app = MCP_SERVER.sse_app()
+
+    caplog.set_level(logging.WARNING, logger="bridge.sse")
+
+    async with bridge_app._STATE_LOCK:  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.active_sse_id = "existing"  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.ready.clear()  # type: ignore[attr-defined]
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/sse",
+        "raw_path": b"/sse",
+        "root_path": "",
+        "query_string": b"",
+        "headers": [(b"accept", b"text/event-stream")],
+        "client": ("testclient", 12345),
+        "server": ("testserver", 80),
+    }
+
+    async def receive() -> dict[str, object]:
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    messages: list[dict[str, object]] = []
+
+    async def send(message: dict[str, object]) -> None:
+        messages.append(message)
+
+    await app(scope, receive, send)
+
+    status = next(m for m in messages if m["type"] == "http.response.start")["status"]
+    assert status == 409
+    payload = b"".join(
+        m.get("body", b"") for m in messages if m["type"] == "http.response.body"
+    )
+    assert json.loads(payload) == {
+        "error": "sse_already_active",
+        "detail": "Another client is connected.",
+    }
+
+    rejection_records = [r for r in caplog.records if r.message == "sse.reject"]
+    assert rejection_records, "Expected a rejection log entry"
+    record = rejection_records[0]
+    assert getattr(record, "status_code", None) == 409
+    assert getattr(record, "reason", "") == "sse_already_active"
+    assert getattr(record, "active_sse_id", "") == "existing"
+    assert getattr(record, "path", "") == "/sse"
+
+    async with bridge_app._STATE_LOCK:  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.active_sse_id = None  # type: ignore[attr-defined]
+
+
+@pytest.mark.anyio
+async def test_messages_not_ready_logs_rejection(caplog: pytest.LogCaptureFixture) -> None:
+    configure()
+    app = MCP_SERVER.sse_app()
+
+    caplog.set_level(logging.WARNING, logger="bridge.sse")
+
+    async with bridge_app._STATE_LOCK:  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.active_sse_id = None  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.ready.clear()  # type: ignore[attr-defined]
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/messages/test",
+        "raw_path": b"/messages/test",
+        "root_path": "",
+        "query_string": b"",
+        "headers": [(b"content-type", b"application/json")],
+        "client": ("testclient", 54321),
+        "server": ("testserver", 80),
+    }
+
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping", "params": None}).encode(
+        "utf-8"
+    )
+    sent = False
+    messages: list[dict[str, object]] = []
+
+    async def receive() -> dict[str, object]:
+        nonlocal sent
+        if sent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        sent = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message: dict[str, object]) -> None:
+        messages.append(message)
+
+    await app(scope, receive, send)
+
+    status = next(m for m in messages if m["type"] == "http.response.start")["status"]
+    assert status == 425
+    payload = b"".join(
+        m.get("body", b"") for m in messages if m["type"] == "http.response.body"
+    )
+    assert json.loads(payload) == {"error": "mcp_not_ready"}
+
+    rejection_records = [r for r in caplog.records if r.message == "messages.not_ready"]
+    assert rejection_records, "Expected a readiness rejection log entry"
+    record = rejection_records[0]
+    assert getattr(record, "status_code", None) == 425
+    assert getattr(record, "reason", "") == "mcp_not_ready"
+    assert getattr(record, "path", "") == "/messages/test"

@@ -233,13 +233,9 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 3. Emit concise timing logs per call (path, status, duration ms) to show serialization.
 **Notes:** Commit message `bridge_guard_03_serialize_plugin: single-flight guard around plugin HTTP calls`.
 
-### 31) ⬜ bridge_guard_04_diagnostics — /state endpoint & logging polish (ID: BRIDGE_GUARD_04_DIAGNOSTICS)
-**DoD:** Provide `/state` diagnostics JSON and sharpen logs for SSE/message rejections.
-**Actions:**
-1. Add `GET /state` returning `{ ready, active_sse, connects, last_init_ts }`.
-2. Ensure logs clearly note extra SSE attempts (409) and `/messages` readiness rejections (425).
-3. Update README accordingly if needed.
-**Notes:** Commit message `bridge_guard_04_diagnostics: add /state endpoint and refine logs`.
+### 31) ✅ bridge_guard_04_diagnostics — /state endpoint & logging polish (ID: BRIDGE_GUARD_04_DIAGNOSTICS)
+**DoD:** Provide `/state` diagnostics JSON and sharpen logs for SSE/message rejections. _commit:1ee499b_
+**What changed:** Added `/state` diagnostics route, enriched SSE/message rejection logs, and expanded tests/docs.
 
 ### 32) ⬜ bridge_guard_05_smoke_tests — Script & README walkthrough (ID: BRIDGE_GUARD_05_SMOKE_TESTS)
 **DoD:** Smoke script exercises 405/409/425 flows and README documents the walkthrough.
