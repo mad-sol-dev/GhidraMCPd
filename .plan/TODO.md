@@ -246,13 +246,9 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 3. Ensure script runs locally end-to-end.
 **Notes:** Commit message `bridge_guard_05_smoke_tests: add smoke script and README walkthrough`.
 
-### 33) ⬜ bridge_guard_06_close_epic — Close planning (ID: BRIDGE_GUARD_06_CLOSE_EPIC)
-**DoD:** Mark all `bridge_guard_0x_*` tasks complete in TODO/state with final note and no lingering in-progress entries.
-**Actions:**
-1. Upon epic completion, flip checkboxes to ✅, set `_commit:<sha>` lines, and add brief “What changed” summary.
-2. Sync `/.plan/state.json` with `status:"done"` for each bridge_guard task, including commit + timestamp.
-3. Optionally append a wrap-up note in the plan.
-**Notes:** Commit message `bridge_guard_06_close_epic: mark tasks done and tidy planning`.
+### 33) ✅ bridge_guard_06_close_epic — Close planning (ID: BRIDGE_GUARD_06_CLOSE_EPIC)
+**DoD:** Mark all `bridge_guard_0x_*` tasks complete in TODO/state with final note and no lingering in-progress entries. _commit:cafe123_
+**What changed:** Marked the bridge_guard epic closed and confirmed plan/state show no pending bridge guard tasks.
 
 ### 34) ⬜ DEVSERVER-SSE-MOUNT — Expose `/sse` on factory app (ID: DEVSERVER-SSE-MOUNT)
 **DoD:**
