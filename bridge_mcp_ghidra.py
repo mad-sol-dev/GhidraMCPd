@@ -19,6 +19,7 @@
 import logging
 import os
 import re
+import sys
 from typing import Optional, Dict, Any, List
 from urllib.parse import urljoin
 
@@ -582,6 +583,11 @@ def find_text_window(q: str, start: str, end: str, case: bool = False, regex: bo
 # ──────────────────────────────────────────────────────────────────────────────
 
 def main():
+    print(
+        "DEPRECATED: `bridge_mcp_ghidra.py` will be removed in a future release. "
+        "Start the bridge with `uvicorn bridge.app:create_app --factory` instead.",
+        file=sys.stderr,
+    )
     parser = build_cli_parser(DEFAULT_GHIDRA_SERVER)
     args = parser.parse_args()
 
