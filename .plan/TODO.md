@@ -250,8 +250,8 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 **DoD:** Mark all `bridge_guard_0x_*` tasks complete in TODO/state with final note and no lingering in-progress entries. _commit:cafe123_
 **What changed:** Marked the bridge_guard epic closed and confirmed plan/state show no pending bridge guard tasks.
 
-### 34) ⬜ DEVSERVER-SSE-MOUNT — Expose `/sse` on factory app (ID: DEVSERVER-SSE-MOUNT)
-**DoD:**
+### 34) ✅ DEVSERVER-SSE-MOUNT — Expose `/sse` on factory app (ID: DEVSERVER-SSE-MOUNT)
+**DoD:** _commit:9977d84_
 
 * Running `uvicorn bridge.app:create_app --factory …` exposes `/sse` with:
 
@@ -267,6 +267,8 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 3. Update the README with the “Advanced start” section covering `uvicorn bridge.app:create_app --factory`, the three `curl` checks, and a note that the legacy script is **deprecated** (notice only, no removal).
 
 **Notes:** Commit `devserver: mount /sse on factory app and document advanced start`
+
+**What changed:** Factory app now mounts the guarded `/sse` routes and the README documents an advanced uvicorn start with curl checks and a deprecated legacy shim note.
 
 ### 35) ⬜ LEGACY-DEPRECATE-DOC — Document & deprecate legacy entrypoint (ID: LEGACY-DEPRECATE-DOC)
 **DoD:**
