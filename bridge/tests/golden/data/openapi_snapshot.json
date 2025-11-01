@@ -13,11 +13,6 @@
         "summary": "health_route"
       }
     },
-    "/api/jt_scan.json": {
-      "post": {
-        "summary": "jt_scan_route"
-      }
-    },
     "/api/jt_slot_check.json": {
       "post": {
         "summary": "jt_slot_check_route"
@@ -28,9 +23,24 @@
         "summary": "jt_slot_process_route"
       }
     },
-    "/api/mmio_annotate.json": {
+    "/api/jt_scan.json": {
       "post": {
-        "summary": "mmio_annotate_route"
+        "summary": "jt_scan_route"
+      }
+    },
+    "/api/string_xrefs.json": {
+      "post": {
+        "summary": "string_xrefs_route"
+      }
+    },
+    "/api/search_strings.json": {
+      "post": {
+        "summary": "search_strings_route"
+      }
+    },
+    "/api/strings_compact.json": {
+      "post": {
+        "summary": "strings_compact_route"
       }
     },
     "/api/search_imports.json": {
@@ -53,19 +63,17 @@
         "summary": "search_functions_route"
       }
     },
-    "/api/search_strings.json": {
+    "/api/mmio_annotate.json": {
       "post": {
-        "summary": "search_strings_route"
+        "summary": "mmio_annotate_route"
       }
     },
-    "/api/string_xrefs.json": {
-      "post": {
-        "summary": "string_xrefs_route"
-      }
-    },
-    "/api/strings_compact.json": {
-      "post": {
-        "summary": "strings_compact_route"
+    "/state": {
+      "get": {
+        "summary": "state"
+      },
+      "head": {
+        "summary": "state"
       }
     }
   }
