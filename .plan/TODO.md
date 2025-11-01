@@ -237,8 +237,9 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 **DoD:** Provide `/state` diagnostics JSON and sharpen logs for SSE/message rejections. _commit:1ee499b_
 **What changed:** Added `/state` diagnostics route, enriched SSE/message rejection logs, and expanded tests/docs.
 
-### 32) ⬜ bridge_guard_05_smoke_tests — Script & README walkthrough (ID: BRIDGE_GUARD_05_SMOKE_TESTS)
-**DoD:** Smoke script exercises 405/409/425 flows and README documents the walkthrough.
+### 32) ✅ bridge_guard_05_smoke_tests — Script & README walkthrough (ID: BRIDGE_GUARD_05_SMOKE_TESTS)
+**DoD:** Smoke script exercises 405/409/425 flows and README documents the walkthrough. _commit:da29132_
+**What changed:** Added `scripts/smoke_bridge.sh` to cover SSE guards and documented the walkthrough in the README.
 **Actions:**
 1. Add executable `scripts/smoke_bridge.sh` covering: `POST /sse` → 405, first `GET /sse` → 200 with heartbeats, second GET → 409, `/messages` → 425 pre-init (if reproducible), success after init.
 2. Document exact commands, expected outputs, and heartbeat note in README.

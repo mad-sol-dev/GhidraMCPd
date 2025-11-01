@@ -99,6 +99,76 @@ The `/sse` endpoint only allows a single active connection. A second `GET /sse` 
 
 For quick diagnostics hit `GET /state` to retrieve `{ready, active_sse, connects, last_init_ts}`. This helps confirm whether the current session is established and when it last completed initialization.
 
+### Bridge guard smoke walkthrough
+
+Once the shim is running (`python bridge_mcp_ghidra.py --transport sse`), the guard rails can be exercised end-to-end with:
+
+```bash
+GHIDRA_SERVER_URL=http://127.0.0.1:8080/ \
+MCP_SHIM=http://127.0.0.1:8081 \
+bash scripts/smoke_bridge.sh
+```
+
+The script verifies the full flow: `POST /sse` is rejected with `405`, the first `GET /sse` streams an `event: endpoint` frame and periodic `event: heartbeat` lines, the second `GET /sse` yields `409`, and the `/messages` session blocks with `425` until `initialize` and `notifications/initialized` are sent (after which `ping` returns `202`).
+
+You can also step through the same checks manually:
+
+1. **405 guard**
+
+    ```bash
+    curl -s -o - -w '\nstatus=%{http_code}\n' -X POST \
+      -H 'accept: text/event-stream' http://127.0.0.1:8081/sse
+    # → JSON {"error":"method_not_allowed","allow":"GET"}, status=405
+    ```
+
+2. **Single active SSE + heartbeats**
+
+    ```bash
+    curl -N -H 'accept: text/event-stream' http://127.0.0.1:8081/sse
+    # First lines include:
+    # event: endpoint
+    # data: /messages/<session>?session_id=...
+    # event: heartbeat (emitted periodically thereafter)
+    ```
+
+3. **409 on concurrent GET** (run while the first stream is still open)
+
+    ```bash
+    curl -s -o - -w '\nstatus=%{http_code}\n' -H 'accept: text/event-stream' \
+      http://127.0.0.1:8081/sse
+    # → JSON {"error":"sse_already_active", ...}, status=409
+    ```
+
+4. **Readiness gate** – use the session URI reported in step 2:
+
+    ```bash
+    SESSION="/messages/<session>?session_id=..."
+    # 425 before initialize
+    curl -s -o - -w '\nstatus=%{http_code}\n' \
+      -H 'content-type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"ping","params":null}' \
+      "http://127.0.0.1:8081${SESSION}"
+
+    # Initialize and mark ready
+    curl -s -o - -w '\nstatus=%{http_code}\n' \
+      -H 'content-type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"manual","version":"1.0"}}}' \
+      "http://127.0.0.1:8081${SESSION}"
+
+    curl -s -o - -w '\nstatus=%{http_code}\n' \
+      -H 'content-type: application/json' \
+      -d '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' \
+      "http://127.0.0.1:8081${SESSION}"
+
+    # Successful ping after initialization → 202
+    curl -s -o - -w '\nstatus=%{http_code}\n' \
+      -H 'content-type: application/json' \
+      -d '{"jsonrpc":"2.0","id":2,"method":"ping","params":null}' \
+      "http://127.0.0.1:8081${SESSION}"
+    ```
+
+These commands mirror the smoke script and document the expected status codes and heartbeat behaviour for quick regression checks.
+
 ## Deterministic API Endpoints
 
 The core of this project is its schema-locked, deterministic API. All endpoints share the same reliable response envelope.
