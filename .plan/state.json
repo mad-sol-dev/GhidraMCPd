@@ -176,9 +176,9 @@
       "updated_at": "2025-11-02T00:00:00+00:00"
     },
     "DEVSERVER-SSE-MOUNT": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "9977d84",
+      "status": "done",
+      "updated_at": "2025-11-01T23:07:03+00:00"
     },
     "LEGACY-DEPRECATE-DOC": {
       "commit": null,
