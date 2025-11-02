@@ -314,10 +314,11 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
     - Vier Calls (`search_*`, `strings_compact`) → `jq` prüft `data.total` und `data.page>=1`, Feld `total_results` existiert nicht mehr.
   - **What changed:** Search-Endpunkte liefern `total` mit 1-basiger `page`, Schemas/Tests/OpenAPI spiegeln das wider.
 
-- [ ] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE
+- [x] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE _commit:44b649c_
   - **Problem:** Nach Nutzung von `/sse` erzeugt Ctrl-C noisy Stacktraces.
   - **DoD:** Graceful Shutdown ohne `CancelledError`-Trace bei Ctrl-C, auch nach vorheriger SSE-Nutzung.
   - **Tests:** Start → `/sse` kurz öffnen/schließen → Ctrl-C → Logs enthalten keinen Trace.
+  - **What changed:** Treat cancelled SSE requests as normal disconnects, cancel internal tasks, and avoid propagating `CancelledError` during shutdown.
 
 - [ ] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren
   - **Problem:** `ready:false` irritiert, obwohl `/api/*` funktioniert.
