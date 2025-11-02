@@ -289,7 +289,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 
 ## Bugs / Hotfix (neu)
 
-- [ ] **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch
+- [x] **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch _commit:6343362_
   - **Problem:** `/sse` bleibt gesperrt (409), `active_sse` bleibt ≫15s gesetzt, auch nach SIGKILL des Clients.
   - **DoD:**
     - Server gibt Lock ≤1s nach Client-Disconnect frei.
@@ -298,6 +298,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **Tests (manuell):**
     - `curl -N …/sse &` → PID killen → `until /state.active_sse==null` (≤1s).
     - Direkt danach `curl -i …/sse` → `HTTP/1.1 200 OK`.
+  - **What changed:** Release SSE lock on disconnect, return 204 on teardown, and add regression test for quick recovery.
 
 - [ ] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
   - **Problem:** `openapi.json` hat für `/api/search_*.json` kein JSON-Schema.
