@@ -13,6 +13,11 @@
         "summary": "health_route"
       }
     },
+    "/api/jt_scan.json": {
+      "post": {
+        "summary": "jt_scan_route"
+      }
+    },
     "/api/jt_slot_check.json": {
       "post": {
         "summary": "jt_slot_check_route"
@@ -23,34 +28,384 @@
         "summary": "jt_slot_process_route"
       }
     },
-    "/api/jt_scan.json": {
+    "/api/mmio_annotate.json": {
       "post": {
-        "summary": "jt_scan_route"
-      }
-    },
-    "/api/string_xrefs.json": {
-      "post": {
-        "summary": "string_xrefs_route"
-      }
-    },
-    "/api/search_strings.json": {
-      "post": {
-        "summary": "search_strings_route"
-      }
-    },
-    "/api/strings_compact.json": {
-      "post": {
-        "summary": "strings_compact_route"
-      }
-    },
-    "/api/search_imports.json": {
-      "post": {
-        "summary": "search_imports_route"
+        "summary": "mmio_annotate_route"
       }
     },
     "/api/search_exports.json": {
       "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "search_exports.request.v1.json",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "default": 100,
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "default": 0,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "query": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "response_model": "search_exports.v1.json",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "search_exports.v1.json",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "address"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total_results",
+                    "page",
+                    "limit",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
         "summary": "search_exports_route"
+      }
+    },
+    "/api/search_functions.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "search_functions.request.v1.json",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "default": 100,
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "default": 0,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "query": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "response_model": "search_functions.v1.json",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "search_functions.v1.json",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "address"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total_results",
+                    "page",
+                    "limit",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "search_functions_route"
+      }
+    },
+    "/api/search_imports.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "search_imports.request.v1.json",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "default": 100,
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "default": 0,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "query": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "response_model": "search_imports.v1.json",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "search_imports.v1.json",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "address"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total_results",
+                    "page",
+                    "limit",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "search_imports_route"
+      }
+    },
+    "/api/search_strings.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:search-strings.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "query": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "response_model": "search_strings.v1.json",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:search-strings.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "urn:schema:strings-compact.v1#/properties/items/items"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total_results": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total_results",
+                    "page",
+                    "limit",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "search_strings_route"
       }
     },
     "/api/search_xrefs_to.json": {
@@ -58,14 +413,14 @@
         "summary": "search_xrefs_to_route"
       }
     },
-    "/api/search_functions.json": {
+    "/api/string_xrefs.json": {
       "post": {
-        "summary": "search_functions_route"
+        "summary": "string_xrefs_route"
       }
     },
-    "/api/mmio_annotate.json": {
+    "/api/strings_compact.json": {
       "post": {
-        "summary": "mmio_annotate_route"
+        "summary": "strings_compact_route"
       }
     },
     "/state": {
