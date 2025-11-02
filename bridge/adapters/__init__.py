@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib import import_module
-from typing import TYPE_CHECKING, Dict, Mapping, Protocol, Tuple
+from typing import TYPE_CHECKING, Dict, Mapping, Protocol
 
 if TYPE_CHECKING:  # pragma: no cover - import only used for typing
     from ..ghidra.client import GhidraClient
+
+Probe = tuple[str | None, int | None]
 
 
 class ArchAdapter(Protocol):
@@ -20,7 +22,7 @@ class ArchAdapter(Protocol):
 
     def probe_function(
         self, client: "GhidraClient", ptr: int, code_min: int, code_max: int
-    ) -> Tuple[str | None, int | None]:
+    ) -> Probe:
         ...
 
 
@@ -56,6 +58,7 @@ def load_optional_adapter(name: str) -> ArchAdapter:
 
 __all__ = [
     "ArchAdapter",
+    "Probe",
     "ProbeResult",
     "load_optional_adapter",
     "optional_adapter_names",

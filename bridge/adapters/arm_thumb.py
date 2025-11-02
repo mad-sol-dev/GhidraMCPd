@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from . import ArchAdapter
+from . import ArchAdapter, Probe
 
 BX_SENTINELS = {0xE12FFF1C, 0xE12FFF33}
 
@@ -21,7 +21,7 @@ class ARMThumbAdapter(ArchAdapter):
 
     def probe_function(
         self, client, ptr: int, code_min: int, code_max: int
-    ) -> tuple[str | None, int | None]:
+    ) -> Probe:
         candidates: list[tuple[str, int]] = []
         if self.in_code_range(ptr, code_min, code_max):
             candidates.append(("ARM", ptr))

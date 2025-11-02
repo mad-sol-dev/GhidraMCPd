@@ -353,14 +353,14 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 - In `bridge/adapters/arm_thumb.py` and `bridge/adapters/x86.py`, remove `ProbeResult` import and drop it from `__all__`.
 **What changed:** Stopped exporting `ProbeResult` from optional adapters so they rely solely on tuple returns.
 
-### ⬜️ ADAPTER-PROBE-ALIAS — Introduce Probe typing alias in adapters Protocol (ID: ADAPTER-PROBE-ALIAS)
-**DoD:** `adapters/__init__.py` defines `Probe = tuple[str|None, int|None]`; `ArchAdapter.probe_function` returns `Probe`. Implementations type-hint updated only (no behavior change). Tests green. _commit:_
+### ✅ ADAPTER-PROBE-ALIAS — Introduce Probe typing alias in adapters Protocol (ID: ADAPTER-PROBE-ALIAS)
+**DoD:** `adapters/__init__.py` defines `Probe = tuple[str|None, int|None]`; `ArchAdapter.probe_function` returns `Probe`. Implementations type-hint updated only (no behavior change). Tests green. _commit:04381b5_
 **Run:**
 - `python -m pytest -q bridge/tests/unit/test_adapters_*.py`
 **Steps:**
 - In `bridge/adapters/__init__.py`: add `Probe` alias; switch Protocol signature to `-> Probe`.
 - Update implementation annotations accordingly (no logic changes).
-**What changed:** 
+**What changed:** Added a shared `Probe` alias and updated adapter signatures to use it without altering behavior.
 
 ### ⬜️ SMOKE-MOJIBAKE-FIX — Fix mojibake in bin/smoke.sh (ID: SMOKE-MOJIBAKE-FIX)
 **DoD:** `bin/smoke.sh` contains no mojibake (`â…`). Output renders as ASCII or UTF-8 ellipsis. _commit:_
