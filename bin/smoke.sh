@@ -6,7 +6,7 @@ echo "Smoke @ $base"
 echo "- GET /openapi.json ..."
 curl -fsS "$base/openapi.json" | jq -re '.openapi' >/dev/null
 
-echo "- GET /api/health.json (optional)…"
+echo "- GET /api/health.json (optional)..."
 if curl -fsS "$base/api/health.json" | jq -e '.ok == true' >/dev/null 2>&1; then
   echo "health ok"
 else
