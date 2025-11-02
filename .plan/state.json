@@ -5,20 +5,65 @@
     "updated_at": null
   },
   "tasks": {
+    "ADAPTER-PROBE-ALIAS": {
+      "commit": "04381b5",
+      "status": "done",
+      "updated_at": "2025-11-02T14:00:03.745036+00:00"
+    },
+    "ADAPTER-PROBERESULT-CLEANUP": {
+      "commit": "e82cdb2",
+      "status": "done",
+      "updated_at": "2025-11-02T13:46:46.047218+00:00"
+    },
     "API-MOUNT": {
       "commit": "3e8f1b2",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
+    },
+    "API-SCHEMA-UNIFY": {
+      "commit": "7ba7f46",
+      "status": "done",
+      "updated_at": "2025-11-02T05:33:13.557397+00:00"
+    },
+    "BRIDGE_GUARD_01_SINGLE_SSE": {
+      "commit": "b4305b1",
+      "status": "done",
+      "updated_at": "2025-11-01T12:59:09.759941+00:00"
+    },
+    "BRIDGE_GUARD_02_INIT_BARRIER": {
+      "commit": "153fcfb",
+      "status": "done",
+      "updated_at": "2025-11-01T20:55:43.620272+00:00"
+    },
+    "BRIDGE_GUARD_03_SERIALIZE_PLUGIN": {
+      "commit": "3e8f1b2",
+      "status": "done",
+      "updated_at": "2025-11-02T14:00:10+00:00"
+    },
+    "BRIDGE_GUARD_04_DIAGNOSTICS": {
+      "commit": "1ee499b",
+      "status": "done",
+      "updated_at": "2025-11-01T21:26:38+00:00"
+    },
+    "BRIDGE_GUARD_05_SMOKE_TESTS": {
+      "commit": "da29132",
+      "status": "done",
+      "updated_at": "2025-11-01T21:41:01+00:00"
+    },
+    "BRIDGE_GUARD_06_CLOSE_EPIC": {
+      "commit": "cafe123",
+      "status": "done",
+      "updated_at": "2025-11-02T00:00:00+00:00"
     },
     "CI-TESTS": {
       "commit": "c79666e",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "CLIENT-UNIFY": {
       "commit": "2d3b1d0",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "CONTROL-FILES": {
       "commit": "a74a426",
@@ -30,30 +75,40 @@
       "status": "done",
       "updated_at": "2025-10-30T01:59:38.984625+00:00"
     },
+    "DEVSERVER-SSE-MOUNT": {
+      "commit": "9977d84",
+      "status": "done",
+      "updated_at": "2025-11-01T23:07:03+00:00"
+    },
     "DOCS-BOOTSTRAP": {
       "commit": "1ea67bf",
       "status": "done",
       "updated_at": "2025-10-30T02:45:47+00:00"
-    },
-    "JT-SCAN": {
-      "commit": "3e8f1b2",
-      "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
     },
     "JT-DOCS-EXAMPLES": {
       "commit": "1cdb4b5",
       "status": "done",
       "updated_at": "2025-11-02T11:16:21+00:00"
     },
+    "JT-SCAN": {
+      "commit": "3e8f1b2",
+      "status": "done",
+      "updated_at": "2025-11-02T14:00:10+00:00"
+    },
     "JT-SCAN-CONSISTENCY": {
       "commit": "83aedd2",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "JT-VERIFY": {
       "commit": "844252e",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
+    },
+    "LEGACY-DEPRECATE-DOC": {
+      "commit": "85b75af",
+      "status": "done",
+      "updated_at": "2025-11-01T23:20:01+00:00"
     },
     "LEGACY-PARITY": {
       "commit": "e024c15",
@@ -73,7 +128,7 @@
     "OPENAPI-FREEZE": {
       "commit": "c7027e7",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "OPTIONAL-ADAPTERS": {
       "commit": "deadbee",
@@ -86,9 +141,9 @@
       "updated_at": "2025-10-31T05:15:55+01:00"
     },
     "RANGE-CONTRACT": {
-      "commit": "e82cdb2",
+      "commit": "04381b5",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "README-LEGACY-MAP": {
       "commit": "6ebf303",
@@ -100,25 +155,25 @@
       "status": "done",
       "updated_at": "2025-10-28T01:21:10+01:00"
     },
+    "SEARCH-EXPORTS-ENDPOINT": {
+      "commit": "14c47f8",
+      "status": "done",
+      "updated_at": "2025-11-01T19:07:10+00:00"
+    },
     "SEARCH-FUNCTIONS-ENDPOINT": {
       "commit": "b1554dc",
       "status": "done",
       "updated_at": "2025-10-31T04:50:10+01:00"
-    },
-    "SEARCH-STRINGS-ENDPOINT": {
-      "commit": "cf6f65e",
-      "status": "done",
-      "updated_at": "2025-10-31T02:36:15.603186+00:00"
     },
     "SEARCH-IMPORTS-ENDPOINT": {
       "commit": "5bdc665",
       "status": "done",
       "updated_at": "2025-11-01T14:33:51+00:00"
     },
-    "SEARCH-EXPORTS-ENDPOINT": {
-      "commit": "14c47f8",
+    "SEARCH-STRINGS-ENDPOINT": {
+      "commit": "cf6f65e",
       "status": "done",
-      "updated_at": "2025-11-01T19:07:10+00:00"
+      "updated_at": "2025-10-31T02:36:15.603186+00:00"
     },
     "SEARCH-XREFS-ENDPOINT": {
       "commit": "859401c",
@@ -130,15 +185,25 @@
       "status": "done",
       "updated_at": "2025-10-29T01:05:43.006161+00:00"
     },
+    "SSE-DISCONNECT-FIX": {
+      "commit": "6343362",
+      "status": "done",
+      "updated_at": "2025-11-02T03:55:14+00:00"
+    },
     "SSE-HANDSHAKE": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
+    },
+    "STATE-FLAGS-CLARIFY": {
+      "commit": "ed073fd",
+      "status": "done",
+      "updated_at": "2025-11-02T06:51:18+00:00"
     },
     "STRINGS-ASSERTS": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
+      "updated_at": "2025-11-02T14:00:10+00:00"
     },
     "STRINGS-COMPACT": {
       "commit": "af974cb",
@@ -149,66 +214,6 @@
       "commit": "9ebb00f",
       "status": "done",
       "updated_at": "2025-10-28T22:29:19+00:00"
-    },
-    "BRIDGE_GUARD_01_SINGLE_SSE": {
-      "commit": "b4305b1",
-      "status": "done",
-      "updated_at": "2025-11-01T12:59:09.759941+00:00"
-    },
-    "BRIDGE_GUARD_02_INIT_BARRIER": {
-      "commit": "153fcfb",
-      "status": "done",
-      "updated_at": "2025-11-01T20:55:43.620272+00:00"
-    },
-    "BRIDGE_GUARD_03_SERIALIZE_PLUGIN": {
-      "commit": "3e8f1b2",
-      "status": "done",
-      "updated_at": "2025-11-02T13:47:01+00:00"
-    },
-    "BRIDGE_GUARD_04_DIAGNOSTICS": {
-      "commit": "1ee499b",
-      "status": "done",
-      "updated_at": "2025-11-01T21:26:38+00:00"
-    },
-    "BRIDGE_GUARD_05_SMOKE_TESTS": {
-      "commit": "da29132",
-      "status": "done",
-      "updated_at": "2025-11-01T21:41:01+00:00"
-    },
-    "BRIDGE_GUARD_06_CLOSE_EPIC": {
-      "commit": "cafe123",
-      "status": "done",
-      "updated_at": "2025-11-02T00:00:00+00:00"
-    },
-    "DEVSERVER-SSE-MOUNT": {
-      "commit": "9977d84",
-      "status": "done",
-      "updated_at": "2025-11-01T23:07:03+00:00"
-    },
-    "LEGACY-DEPRECATE-DOC": {
-      "commit": "85b75af",
-      "status": "done",
-      "updated_at": "2025-11-01T23:20:01+00:00"
-    },
-    "SSE-DISCONNECT-FIX": {
-      "commit": "6343362",
-      "status": "done",
-      "updated_at": "2025-11-02T03:55:14+00:00"
-    },
-    "STATE-FLAGS-CLARIFY": {
-      "commit": "ed073fd",
-      "status": "done",
-      "updated_at": "2025-11-02T06:51:18+00:00"
-    },
-    "API-SCHEMA-UNIFY": {
-      "commit": "7ba7f46",
-      "status": "done",
-      "updated_at": "2025-11-02T05:33:13.557397+00:00"
-    },
-    "ADAPTER-PROBERESULT-CLEANUP": {
-      "commit": "e82cdb2",
-      "status": "done",
-      "updated_at": "2025-11-02T13:46:46.047218+00:00"
     }
   }
 }

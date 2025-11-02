@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from . import ArchAdapter
+from . import ArchAdapter, Probe
 
 
 @dataclass(slots=True)
@@ -21,7 +21,7 @@ class X86Adapter(ArchAdapter):
 
     def probe_function(
         self, client, ptr: int, code_min: int, code_max: int
-    ) -> tuple[str | None, int | None]:
+    ) -> Probe:
         if not self.in_code_range(ptr, code_min, code_max):
             return None, None
 
