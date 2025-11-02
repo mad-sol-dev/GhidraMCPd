@@ -153,7 +153,18 @@ If you must rely on the legacy shim, expect the warning to point back to this co
 
 The `/sse` endpoint only allows a single active connection. A second `GET /sse` while another client is connected will receive `409 Conflict` with an explanatory JSON payload. This is intentional and prevents multiple OpenWebUI sessions from racing. Check the bridge logs for `sse.reject` (includes `status_code=409` and `reason=sse_already_active`) to identify the rejecting IP/User-Agent, and wait for the matching `sse.disconnect` before retrying. If messages arrive before the MCP session is initialized, the server emits `messages.not_ready` with `status_code=425` and returns `{ "error": "mcp_not_ready" }`.
 
-For quick diagnostics hit `GET /state` to retrieve `{ready, active_sse, connects, last_init_ts}`. This helps confirm whether the current session is established and when it last completed initialization.
+For quick diagnostics hit `GET /state` to review these fields:
+
+| Field | Meaning |
+| ----- | ------- |
+| `bridge_ready` | The Starlette + MCP bridge is configured and able to serve `/api/*` requests (independent of any SSE client). |
+| `session_ready` | The current SSE session has completed initialization. |
+| `ready` | Legacy alias for `session_ready` retained for tooling compatibility. |
+| `active_sse` | The connection identifier for the active SSE client, or `null` when idle. |
+| `connects` | Count of SSE sessions established since start. |
+| `last_init_ts` | ISO-8601 timestamp of the most recent successful initialization, or `null` if none. |
+
+This helps confirm whether the current session is established and when it last completed initialization.
 
 ### Bridge guard smoke walkthrough
 

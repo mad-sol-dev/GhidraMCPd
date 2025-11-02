@@ -320,10 +320,11 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **Tests:** Start → `/sse` kurz öffnen/schließen → Ctrl-C → Logs enthalten keinen Trace.
   - **What changed:** Treat cancelled SSE requests as normal disconnects, cancel internal tasks, and avoid propagating `CancelledError` during shutdown.
 
-- [ ] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren
+- [x] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren _commit:ed073fd_
   - **Problem:** `ready:false` irritiert, obwohl `/api/*` funktioniert.
   - **DoD:** `/state` enthält zusätzliche Felder: `bridge_ready`, `session_ready`, `active_sse` (bestehend), plus Doku-Tabelle im README.
   - **Tests:** `GET /state` zeigt konsistente Flags; README erklärt sie kurz.
+  - **What changed:** `/state` now exposes `bridge_ready` and `session_ready`, keeps `ready` as a legacy alias, and documents the flags in the README.
 
 - [ ] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON
   - **Problem:** Verwechslung mit `jq`; GET erwartet Query-Parameter, POST Form-Body.
