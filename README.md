@@ -149,6 +149,35 @@ uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8081
 
 If you must rely on the legacy shim, expect the warning to point back to this command so migrations remain obvious.
 
+### Jump table request examples
+
+Jump table endpoints expect you to scope requests to the executable code region inside the loaded program. You can derive the
+`CODE_MIN`/`CODE_MAX` pair directly from the legacy plugin’s segment listing before issuing any deterministic MCP calls:
+
+```bash
+# Query the legacy plugin for the .text segment bounds (text output)
+curl -s 'http://127.0.0.1:8080/segments?filter=.text&max=1'
+# Example line: 00100000-0010ffff r-x .text
+
+# Use the inclusive range from the plugin to build the exclusive bounds expected by the MCP API
+CODE_MIN=0x00100000
+CODE_MAX=0x00110000   # add 1 to the last hex value because the bridge treats the upper bound as exclusive
+```
+
+Armed with those bounds you can exercise both jump table endpoints deterministically:
+
+```bash
+# Probe a single jump-table slot for metadata
+curl -s http://127.0.0.1:8081/api/jt_slot_check.json \
+  -H 'content-type: application/json' \
+  -d '{"jt_base":"0x00102000","slot_index":0,"code_min":"0x00100000","code_max":"0x00110000"}' | jq
+
+# Batch-scan multiple slots and receive a stable summary
+curl -s http://127.0.0.1:8081/api/jt_scan.json \
+  -H 'content-type: application/json' \
+  -d '{"jt_base":"0x00102000","slot_indexes":[0,1,2],"code_min":"0x00100000","code_max":"0x00110000"}' | jq
+```
+
 ### SSE Troubleshooting
 
 The `/sse` endpoint only allows a single active connection. A second `GET /sse` while another client is connected will receive `409 Conflict` with an explanatory JSON payload. This is intentional and prevents multiple OpenWebUI sessions from racing. Check the bridge logs for `sse.reject` (includes `status_code=409` and `reason=sse_already_active`) to identify the rejecting IP/User-Agent, and wait for the matching `sse.disconnect` before retrying. If messages arrive before the MCP session is initialized, the server emits `messages.not_ready` with `status_code=425` and returns `{ "error": "mcp_not_ready" }`.
