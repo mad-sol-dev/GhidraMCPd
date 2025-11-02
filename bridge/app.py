@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -15,7 +16,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.server import SseServerTransport
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
 from .api.routes import make_routes
@@ -173,32 +174,65 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
             },
         )
 
+        disconnect_event = asyncio.Event()
+
+        async def receive_with_disconnect() -> dict[str, object]:
+            message = await request.receive()
+            if message.get("type") == "http.disconnect":
+                disconnect_event.set()
+            return message
+
+        async def _watch_disconnect() -> None:
+            while True:
+                if disconnect_event.is_set() or await request.is_disconnected():
+                    return
+                await asyncio.sleep(0.1)
+
         try:
             async with transport.connect_sse(
                 request.scope,
-                request.receive,
+                receive_with_disconnect,
                 request._send,  # type: ignore[arg-type]
             ) as streams:
-                await self._mcp_server.run(
-                    streams[0],
-                    streams[1],
-                    self._mcp_server.create_initialization_options(),
+                run_task = asyncio.create_task(
+                    self._mcp_server.run(
+                        streams[0],
+                        streams[1],
+                        self._mcp_server.create_initialization_options(),
+                    )
                 )
+                watch_task = asyncio.create_task(_watch_disconnect())
+                done, pending = await asyncio.wait(
+                    {run_task, watch_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if watch_task in done and not run_task.done():
+                    run_task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await run_task
+                else:
+                    watch_task.cancel()
+                for task in pending:
+                    task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await asyncio.gather(*pending, return_exceptions=False)
         finally:
             async with _STATE_LOCK:
                 if _BRIDGE_STATE.active_sse_id == connection_id:
                     _BRIDGE_STATE.active_sse_id = None
                 _BRIDGE_STATE.ready.clear()
                 _BRIDGE_STATE.last_init_ts = None
-            _SSE_LOGGER.info(
-                "sse.disconnect",
-                extra={
-                    "client_host": client[0],
-                    "client_port": client[1],
-                    "user_agent": user_agent,
-                    "connection_id": connection_id,
-                },
+        _SSE_LOGGER.info(
+            "sse.disconnect",
+            extra={
+                "client_host": client[0],
+                "client_port": client[1],
+                "user_agent": user_agent,
+                "connection_id": connection_id,
+            },
         )
+
+        return Response(status_code=204)
 
     async def handle_post(request: Request) -> JSONResponse:
         client = request.client or ("unknown", 0)
