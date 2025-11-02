@@ -1,7 +1,5 @@
 """Architecture adapter interfaces and registry helpers."""
 from __future__ import annotations
-
-from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Dict, Mapping, Protocol
 
@@ -25,13 +23,6 @@ class ArchAdapter(Protocol):
     ) -> Probe:
         ...
 
-
-@dataclass(slots=True)
-class ProbeResult:
-    mode: str | None
-    target: int | None
-
-
 # Optional adapters are registered via module paths to keep imports lazy.
 _OPTIONAL_ADAPTERS: Dict[str, str] = {
     "x86": "bridge.adapters.x86:X86Adapter",
@@ -49,7 +40,13 @@ def load_optional_adapter(name: str) -> ArchAdapter:
     """Instantiate an optional adapter by name without eager imports."""
 
     key = name.lower()
-    module_spec = _OPTIONAL_ADAPTERS[key]
+    try:
+        module_spec = _OPTIONAL_ADAPTERS[key]
+    except KeyError as exc:  # pragma: no cover - defensive branch
+        available = ", ".join(sorted(_OPTIONAL_ADAPTERS)) or "<none>"
+        raise ValueError(
+            f"Unknown optional adapter '{name}'. Available adapters: {available}."
+        ) from exc
     module_name, attr = module_spec.split(":", 1)
     module = import_module(module_name)
     adapter_cls = getattr(module, attr)
@@ -59,7 +56,6 @@ def load_optional_adapter(name: str) -> ArchAdapter:
 __all__ = [
     "ArchAdapter",
     "Probe",
-    "ProbeResult",
     "load_optional_adapter",
     "optional_adapter_names",
 ]
