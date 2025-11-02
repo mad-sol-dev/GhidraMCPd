@@ -52,7 +52,7 @@ jobs:
               - 'pom.xml'
               - 'src/**'
 
-  # 3) Maven nur, wenn Java geändert wurde
+  # 3) Maven nur, wenn Java geaendert wurde
   maven:
     name: Maven package (skip tests)
     needs:

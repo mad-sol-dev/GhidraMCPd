@@ -6,9 +6,16 @@ tmp="$mf.tmp"
 add() {
   local id="$1" title="$2" after_csv="$3"
   # baue after-Array aus CSV
-  local after="["; IFS=, read -r -a arr <<< "$after_csv"; for i in "${arr[@]}"; do
-    [ -n "$i" ] && after="$after\"$i\","
-  done; after="${after%,}]"
+  local after
+  after="$(
+    jq -Rc '
+      if length == 0 then []
+      else split(",")
+        | map(gsub("^\\s+|\\s+$"; ""))
+        | map(select(length > 0))
+      end
+    ' <<<"$after_csv"
+  )"
   # jq: wenn id noch nicht vorhanden → anhängen
   jq --arg id "$id" --arg title "$title" --argjson after "$after" '
     if any(.sequence[]; .id==$id) then .
