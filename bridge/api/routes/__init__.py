@@ -10,8 +10,10 @@ from ...ghidra.client import GhidraClient
 from ...utils.config import ENABLE_WRITES
 from ._common import RouteDependencies, build_with_client, validated_json_body
 from .._shared import adapter_for_arch
+from .disasm_routes import create_disasm_routes
 from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
+from .memory_routes import create_memory_routes
 from .mmio_routes import create_mmio_routes
 from .search_routes import create_search_routes
 
@@ -38,6 +40,8 @@ def make_routes(
         create_jt_routes(deps),
         create_search_routes(deps),
         create_mmio_routes(deps),
+        create_disasm_routes(deps),
+        create_memory_routes(deps),
     )
 
     routes: List[Route] = []

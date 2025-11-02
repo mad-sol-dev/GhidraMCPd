@@ -7,11 +7,15 @@ from typing import Callable, Dict
 from mcp.server.fastmcp import FastMCP
 
 from ..features import (
+    disasm,
     exports as export_features,
+    function_range,
     functions,
     imports as import_features,
     jt,
+    memory,
     mmio,
+    scalars,
     strings,
     xrefs,
 )
@@ -485,6 +489,157 @@ def register_tools(
                 "Writes are disabled while dry_run is false.",
             )
         valid, errors = validate_payload("mmio_annotate.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def search_scalars(
+        client,
+        value: str | int,
+        limit: int = 100,
+        page: int = 1,
+    ) -> Dict[str, object]:
+        """Search for scalar values in the binary with pagination support."""
+
+        request_payload = {"value": value, "limit": limit, "page": page}
+        valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        # Normalize value
+        if isinstance(value, str) and value.startswith("0x"):
+            normalized_value = parse_hex(value)
+        else:
+            normalized_value = int(value)
+
+        try:
+            with request_scope(
+                "search_scalars",
+                logger=logger,
+                extra={"tool": "search_scalars"},
+            ):
+                data = scalars.search_scalars(
+                    client,
+                    value=normalized_value,
+                    limit=limit,
+                    page=page,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("search_scalars.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def list_functions_in_range(
+        client,
+        address_min: str,
+        address_max: str,
+        limit: int = 200,
+        page: int = 1,
+    ) -> Dict[str, object]:
+        """List functions within an address range with pagination support."""
+
+        request_payload = {
+            "address_min": address_min,
+            "address_max": address_max,
+            "limit": limit,
+            "page": page,
+        }
+        valid, errors = validate_payload(
+            "list_functions_in_range.request.v1.json", request_payload
+        )
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        try:
+            with request_scope(
+                "list_functions_in_range",
+                logger=logger,
+                extra={"tool": "list_functions_in_range"},
+            ):
+                data = function_range.list_functions_in_range(
+                    client,
+                    address_min=address_min,
+                    address_max=address_max,
+                    limit=limit,
+                    page=page,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("list_functions_in_range.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def disassemble_at(
+        client,
+        address: str,
+        count: int = 16,
+    ) -> Dict[str, object]:
+        """Disassemble instructions at a given address."""
+
+        request_payload = {"address": address, "count": count}
+        valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        try:
+            with request_scope(
+                "disassemble_at",
+                logger=logger,
+                extra={"tool": "disassemble_at"},
+            ):
+                data = disasm.disassemble_at(
+                    client,
+                    address=parse_hex(address),
+                    count=count,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("disassemble_at.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def read_bytes(
+        client,
+        address: str,
+        length: int,
+    ) -> Dict[str, object]:
+        """Read raw bytes from memory at a given address."""
+
+        request_payload = {"address": address, "length": length}
+        valid, errors = validate_payload("read_bytes.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        try:
+            with request_scope(
+                "read_bytes",
+                logger=logger,
+                extra={"tool": "read_bytes"},
+            ):
+                data = memory.read_bytes(
+                    client,
+                    address=parse_hex(address),
+                    length=length,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("read_bytes.v1.json", data)
         if not valid:
             return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
         return envelope_ok(data)

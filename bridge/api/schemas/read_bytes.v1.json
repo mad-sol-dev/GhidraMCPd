@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:read-bytes.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address", "length", "encoding", "data"],
+  "properties": {
+    "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+    "length": {"type": "integer", "minimum": 0},
+    "encoding": {"type": "string", "enum": ["base64"]},
+    "data": {"type": "string"}
+  }
+}

@@ -21,7 +21,8 @@
         "properties": {
           "addr": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
           "op": {"type": "string", "enum": ["READ", "WRITE", "OR", "AND", "TOGGLE"]},
-          "target": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"}
+          "target": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+          "address_abs": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"}
         }
       }
     },

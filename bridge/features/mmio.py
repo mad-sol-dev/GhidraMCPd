@@ -44,10 +44,13 @@ class _Operation:
     target: Optional[int]
 
     def to_sample(self) -> Dict[str, str]:
+        # address_abs is the absolute address: target if available, otherwise addr
+        address_abs = self.target if (self.target is not None and self.target != 0) else self.addr
         return {
             "addr": int_to_hex(self.addr),
             "op": self.op,
             "target": int_to_hex(self.target) if self.target is not None else "0x00000000",
+            "address_abs": int_to_hex(address_abs),
         }
 
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:search-scalars.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["total", "page", "limit", "items"],
+  "properties": {
+    "total": {"type": "integer", "minimum": 0},
+    "page": {"type": "integer", "minimum": 1},
+    "limit": {"type": "integer", "minimum": 1},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["address", "value"],
+        "properties": {
+          "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+          "value": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+          "function": {"type": ["string", "null"]},
+          "context": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}
