@@ -332,10 +332,11 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **DoD:** README-FAQ mit 2–3 Beispielen: `/segments?limit=…`, `/strings?filter=…`, `/renameFunction` (x-www-form-urlencoded).
   - **Tests:** reine Doku-Prüfung.
 
-- [ ] **JT-DOCS-EXAMPLES** — Beispiele für JT-Schema
+- [✅] **JT-DOCS-EXAMPLES** — Beispiele für JT-Schema _commit:1cdb4b5_
   - **Problem:** Häufige `SCHEMA_INVALID` ohne `{jt_base, …, code_min, code_max}`.
   - **DoD:** README-Snippet: `CODE_MIN/MAX` aus Plugin-/segments ableiten und Beispiel-Calls für `jt_slot_check`, `jt_scan`.
   - **Tests:** Beispiele ausführbar (manuell verifiziert).
+  - **What changed:** Dokumentierte, wie man CODE_MIN/MAX über das Segment-Listing ableitet und gab Beispielaufrufe für `jt_slot_check` und `jt_scan`.
 
 - [ ] **STATE-LOG-THROTTLE** — /state-Spam in Diagnose-Loops
   - **Problem:** Poll-Schleifen fluten Log.
