@@ -9,6 +9,7 @@ from starlette.routing import Route
 from ...ghidra.client import GhidraClient
 from ...utils.config import ENABLE_WRITES
 from ._common import RouteDependencies, build_with_client, validated_json_body
+from .._shared import adapter_for_arch
 from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
 from .mmio_routes import create_mmio_routes
@@ -45,4 +46,4 @@ def make_routes(
     return routes
 
 
-__all__ = ["make_routes"]
+__all__ = ["make_routes", "adapter_for_arch"]

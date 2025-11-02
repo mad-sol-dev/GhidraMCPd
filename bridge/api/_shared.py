@@ -1,6 +1,7 @@
 """Shared helpers for tools and HTTP routes."""
 from __future__ import annotations
 
+import inspect
 import os
 from functools import wraps
 from typing import Callable, Dict
@@ -39,7 +40,37 @@ def adapter_for_arch(arch: str) -> ArchAdapter:
     return FallbackAdapter()
 
 
+def inject_client(factory: Callable[[], GhidraClient]):
+    """Inject a :class:`GhidraClient` and hide it from the published signature."""
+
+    def decorator(func):
+        sig = inspect.signature(func)
+        params = list(sig.parameters.values())
+        if not params:
+            raise TypeError("inject_client requires a function that accepts a client parameter")
+
+        public_params = params[1:]
+        public_signature = inspect.Signature(
+            public_params, return_annotation=sig.return_annotation
+        )
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            client = factory()
+            try:
+                return func(client, *args, **kwargs)
+            finally:
+                client.close()
+
+        wrapper.__signature__ = public_signature
+        return wrapper
+
+    return decorator
+
+
 def with_client(factory: Callable[[], GhidraClient]):
+    """Helper used by HTTP routes that need explicit client injection."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
