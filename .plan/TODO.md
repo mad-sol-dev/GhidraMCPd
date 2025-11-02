@@ -300,11 +300,12 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
     - Direkt danach `curl -i …/sse` → `HTTP/1.1 200 OK`.
   - **What changed:** Release SSE lock on disconnect, return 204 on teardown, and add regression test for quick recovery.
 
-- [ ] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
+- [x] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
   - **Problem:** `openapi.json` hat für `/api/search_*.json` kein JSON-Schema.
-  - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/offset` im Schema definiert; `response_model` vorhanden.
+  - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/offset` im Schema definiert; `response_model` vorhanden. _commit:98b8e59_
   - **Tests:**
     - `jq` auf `openapi.json`: `paths["/api/search_strings.json"].post.requestBody.content["application/json"].schema != null`.
+  - **What changed:** OpenAPI now embeds request/response schemas for search endpoints and updates the golden snapshot.
 
 - [ ] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten
   - **Problem:** Mischung aus `total_results` vs. `total`; `page` teils 0-, teils 1-basiert; `strings_compact` nutzt `total`.
