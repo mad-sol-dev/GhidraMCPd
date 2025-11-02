@@ -214,6 +214,11 @@
       "commit": "9ebb00f",
       "status": "done",
       "updated_at": "2025-10-28T22:29:19+00:00"
+    },
+    "SMOKE-MOJIBAKE-FIX": {
+      "commit": "96a1f9c",
+      "status": "done",
+      "updated_at": "2025-11-02T14:12:11.830040+00:00"
     }
   }
 }
