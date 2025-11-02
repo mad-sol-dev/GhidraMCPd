@@ -6,15 +6,22 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
+from ...adapters import ArchAdapter
 from ...features import jt
 from ...ghidra.client import GhidraClient
 from ...utils.config import MAX_WRITES_PER_REQUEST
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import adapter_for_arch, envelope_error, envelope_ok
+from .._shared import envelope_error, envelope_ok
 from ..validators import validate_payload
 from ._common import RouteDependencies
+
+
+def _resolve_adapter(arch: str) -> ArchAdapter:
+    from . import adapter_for_arch
+
+    return adapter_for_arch(arch)
 
 
 def create_jt_routes(deps: RouteDependencies) -> List[Route]:
@@ -30,7 +37,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                 return error
             assert data is not None
             try:
-                adapter = adapter_for_arch(str(data.get("arch", "auto")))
+                adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.slot_check(
                     client,
                     jt_base=parse_hex(str(data["jt_base"])),
@@ -70,7 +77,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                 return error
             assert data is not None
             try:
-                adapter = adapter_for_arch(str(data.get("arch", "auto")))
+                adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.slot_process(
                     client,
                     jt_base=parse_hex(str(data["jt_base"])),
@@ -111,7 +118,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                 return error
             assert data is not None
             try:
-                adapter = adapter_for_arch(str(data.get("arch", "auto")))
+                adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.scan(
                     client,
                     jt_base=parse_hex(str(data["jt_base"])),
