@@ -7,19 +7,27 @@ todo_p = ROOT/".plan"/"TODO.md"
 man_p  = ROOT/".plan"/"tasks.manifest.json"
 st_p   = ROOT/".plan"/"state.json"
 
-def die(msg): print(f"PLAN CHECK ✖ {msg}", file=sys.stderr); sys.exit(1)
-def ok(msg):  print(f"PLAN CHECK ✓ {msg}")
+def die(msg):
+    """Print an error message and exit with failure."""
+    print(f"PLAN CHECK ✖ {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def ok(msg):
+    """Print a success message for informational checks."""
+    print(f"PLAN CHECK ✓ {msg}")
 
 # --- read files
 try:
     todo = todo_p.read_text(encoding="utf-8")
-    man  = json.loads(man_p.read_text(encoding="utf-8"))
+    man_raw = man_p.read_text(encoding="utf-8")
+    man  = json.loads(man_raw)
     st   = json.loads(st_p.read_text(encoding="utf-8"))
 except Exception as e:
     die(f"failed to read plan files: {e}")
 
 # --- UTF-8 sanity (simple mojibake marker)
-if "â†’" in todo or "â†’" in man_p.read_text(encoding="utf-8", errors="ignore"):
+if "â†’" in todo or "â†’" in man_raw:
     die("UTF-8 mojibake detected (e.g., 'â†’'). Fix arrows like 'READ→VERIFY'.")
 
 # --- IDs from TODO headings like: '### 7) ✅ SCHEMA-STRICT — ... (ID: SCHEMA-STRICT)'

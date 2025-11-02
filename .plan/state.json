@@ -18,7 +18,7 @@
     "API-MOUNT": {
       "commit": "3e8f1b2",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "API-SCHEMA-UNIFY": {
       "commit": "7ba7f46",
@@ -38,7 +38,7 @@
     "BRIDGE_GUARD_03_SERIALIZE_PLUGIN": {
       "commit": "3e8f1b2",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "BRIDGE_GUARD_04_DIAGNOSTICS": {
       "commit": "1ee499b",
@@ -58,12 +58,12 @@
     "CI-TESTS": {
       "commit": "c79666e",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "CLIENT-UNIFY": {
       "commit": "2d3b1d0",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "CONTROL-FILES": {
       "commit": "a74a426",
@@ -93,17 +93,17 @@
     "JT-SCAN": {
       "commit": "3e8f1b2",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "JT-SCAN-CONSISTENCY": {
       "commit": "83aedd2",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "JT-VERIFY": {
       "commit": "844252e",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "LEGACY-DEPRECATE-DOC": {
       "commit": "85b75af",
@@ -128,7 +128,7 @@
     "OPENAPI-FREEZE": {
       "commit": "c7027e7",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "OPTIONAL-ADAPTERS": {
       "commit": "deadbee",
@@ -141,9 +141,9 @@
       "updated_at": "2025-10-31T05:15:55+01:00"
     },
     "RANGE-CONTRACT": {
-      "commit": "04381b5",
+      "commit": "dc8c39c",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "README-LEGACY-MAP": {
       "commit": "6ebf303",
@@ -193,7 +193,7 @@
     "SSE-HANDSHAKE": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "STATE-FLAGS-CLARIFY": {
       "commit": "ed073fd",
@@ -203,7 +203,7 @@
     "STRINGS-ASSERTS": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-02T14:00:10+00:00"
+      "updated_at": "2025-11-02T14:20:29+00:00"
     },
     "STRINGS-COMPACT": {
       "commit": "af974cb",
@@ -214,6 +214,11 @@
       "commit": "9ebb00f",
       "status": "done",
       "updated_at": "2025-10-28T22:29:19+00:00"
+    },
+    "PLAN-CHECK-IO-POLISH": {
+      "commit": "6c70538",
+      "status": "done",
+      "updated_at": "2025-11-02T14:30:00+00:00"
     },
     "SMOKE-MOJIBAKE-FIX": {
       "commit": "96a1f9c",

@@ -371,12 +371,12 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 - Replace `â€¦` with `…` or `...` in the health line.
 **What changed:** Replaced the mojibake ellipsis in `bin/smoke.sh` with ASCII dots so the script prints cleanly.
 
-### ⬜️ PLAN-CHECK-IO-POLISH — Single-read IO + docstrings in plan_check.py (ID: PLAN-CHECK-IO-POLISH)
-**DoD:** `bin/plan_check.py` reads manifest once (reuse text for mojibake check); `die()/ok()` have docstrings. Script passes. _commit:_
+### ✅ PLAN-CHECK-IO-POLISH — Single-read IO + docstrings in plan_check.py (ID: PLAN-CHECK-IO-POLISH)
+**DoD:** `bin/plan_check.py` reads manifest once (reuse text for mojibake check); `die()/ok()` have docstrings. Script passes. _commit:6c70538_
 **Run:**
 - `python3 bin/plan_check.py`
 **Steps:**
 - Read `tasks.manifest.json` once into `man_raw`; parse JSON from it; run mojibake check against `man_raw` (no second read).
 - Add short docstrings to `die()` and `ok()`.
-**What changed:** 
+**What changed:** Reused manifest raw text for parsing/mojibake and added helper docstrings.
 
