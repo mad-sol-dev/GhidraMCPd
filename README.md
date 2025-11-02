@@ -236,6 +236,40 @@ You can also step through the same checks manually:
 
 These commands mirror the smoke script and document the expected status codes and heartbeat behaviour for quick regression checks.
 
+## FAQ: Why does port 8080 return plain text?
+
+The Ghidra HTTP plugin listening on `http://127.0.0.1:8080/` predates the structured MCP bridge. Its endpoints still emit text (or HTML-like) responses and expect classic query parameters or form posts. Don’t pipe those responses into `jq`—they are not JSON.
+
+Common examples:
+
+* **Segments listing (GET with query params)**
+
+    ```bash
+    curl -s 'http://127.0.0.1:8080/segments?limit=5'
+    ```
+
+    The response is a newline-delimited text table. Adjust `limit`/`offset` in the query string to paginate.
+
+* **Strings search (GET with filters)**
+
+    ```bash
+    curl -s 'http://127.0.0.1:8080/strings?filter=password&max=20'
+    ```
+
+    Filtering happens via query parameters; the bridge returns a text dump of matches, not JSON.
+
+* **Renaming a function (POST form body)**
+
+    ```bash
+    curl -s -X POST 'http://127.0.0.1:8080/renameFunction' \
+      -H 'content-type: application/x-www-form-urlencoded' \
+      -d 'functionAddress=0x00100000&newName=sub_password_handler'
+    ```
+
+    Write endpoints expect URL-encoded form data (`application/x-www-form-urlencoded`). The response is a short status string confirming the rename.
+
+Use the structured MCP API on port `8081` for machine-readable JSON payloads; the legacy plugin on port `8080` remains text-oriented for compatibility with classic Ghidra tooling.
+
 ## Deterministic API Endpoints
 
 The core of this project is its schema-locked, deterministic API. All endpoints share the same reliable response envelope.
