@@ -344,14 +344,14 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **Tests:** N/A (Doku).
   - **What changed:** README now tells operators to sleep ≥500 ms between `/state` polls to avoid log spam.
 
-### ⬜️ ADAPTER-PROBERESULT-CLEANUP — Remove dead ProbeResult exports/imports (ID: ADAPTER-PROBERESULT-CLEANUP)
-**DoD:** No adapters import/export `ProbeResult`; only tuple return is used. Grep proves removal; adapter tests green. _commit:_
+### ✅ ADAPTER-PROBERESULT-CLEANUP — Remove dead ProbeResult exports/imports (ID: ADAPTER-PROBERESULT-CLEANUP)
+**DoD:** No adapters import/export `ProbeResult`; only tuple return is used. Grep proves removal; adapter tests green. _commit:e82cdb2_
 **Run:**
 - `git grep -n "ProbeResult" bridge/adapters` → no hits in `arm_thumb.py`, `x86.py`, `fallback.py` or their `__all__`.
 - `python -m pytest -q bridge/tests/unit/test_adapters_*.py`
 **Steps:**
 - In `bridge/adapters/arm_thumb.py` and `bridge/adapters/x86.py`, remove `ProbeResult` import and drop it from `__all__`.
-**What changed:** 
+**What changed:** Stopped exporting `ProbeResult` from optional adapters so they rely solely on tuple returns.
 
 ### ⬜️ ADAPTER-PROBE-ALIAS — Introduce Probe typing alias in adapters Protocol (ID: ADAPTER-PROBE-ALIAS)
 **DoD:** `adapters/__init__.py` defines `Probe = tuple[str|None, int|None]`; `ArchAdapter.probe_function` returns `Probe`. Implementations type-hint updated only (no behavior change). Tests green. _commit:_

@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from . import ArchAdapter, ProbeResult
+from . import ArchAdapter
 
 BX_SENTINELS = {0xE12FFF1C, 0xE12FFF33}
 
@@ -55,4 +55,4 @@ class ARMThumbAdapter(ArchAdapter):
         return True
 
 
-__all__ = ["ARMThumbAdapter", "ProbeResult"]
+__all__ = ["ARMThumbAdapter"]
