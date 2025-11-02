@@ -362,14 +362,14 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 - Update implementation annotations accordingly (no logic changes).
 **What changed:** Added a shared `Probe` alias and updated adapter signatures to use it without altering behavior.
 
-### ⬜️ SMOKE-MOJIBAKE-FIX — Fix mojibake in bin/smoke.sh (ID: SMOKE-MOJIBAKE-FIX)
-**DoD:** `bin/smoke.sh` contains no mojibake (`â…`). Output renders as ASCII or UTF-8 ellipsis. _commit:_
+### ✅ SMOKE-MOJIBAKE-FIX — Fix mojibake in bin/smoke.sh (ID: SMOKE-MOJIBAKE-FIX)
+**DoD:** `bin/smoke.sh` contains no mojibake (`â…`). Output renders as ASCII or UTF-8 ellipsis. _commit: 96a1f9c_
 **Run:**
 - `LC_ALL=C grep -n "â" bin/smoke.sh` → no matches
 - (optional) `bash bin/smoke.sh` in a clean locale to eyeball output
 **Steps:**
 - Replace `â€¦` with `…` or `...` in the health line.
-**What changed:** 
+**What changed:** Replaced the mojibake ellipsis in `bin/smoke.sh` with ASCII dots so the script prints cleanly.
 
 ### ⬜️ PLAN-CHECK-IO-POLISH — Single-read IO + docstrings in plan_check.py (ID: PLAN-CHECK-IO-POLISH)
 **DoD:** `bin/plan_check.py` reads manifest once (reuse text for mojibake check); `die()/ok()` have docstrings. Script passes. _commit:_
