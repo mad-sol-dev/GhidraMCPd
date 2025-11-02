@@ -193,7 +193,9 @@ For quick diagnostics hit `GET /state` to review these fields:
 | `connects` | Count of SSE sessions established since start. |
 | `last_init_ts` | ISO-8601 timestamp of the most recent successful initialization, or `null` if none. |
 
-This helps confirm whether the current session is established and when it last completed initialization.
+This helps confirm whether the current session is established and when it last completed initialization. When you build a diag
+nostic loop around `/state`, insert at least a 500 ms sleep between requests; faster polling will flood the bridge logs with re
+petitive `state.fetch` entries and make real warnings harder to spot.
 
 ### Bridge guard smoke walkthrough
 
