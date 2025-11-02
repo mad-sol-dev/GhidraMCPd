@@ -22,6 +22,8 @@ def test_state_endpoint_reports_bridge_status() -> None:
         response = client.get("/state")
         assert response.status_code == 200
         assert response.json() == {
+            "bridge_ready": True,
+            "session_ready": False,
             "ready": False,
             "active_sse": None,
             "connects": 0,
@@ -36,6 +38,8 @@ def test_state_endpoint_reports_bridge_status() -> None:
         response = client.get("/state")
         assert response.status_code == 200
         assert response.json() == {
+            "bridge_ready": True,
+            "session_ready": True,
             "ready": True,
             "active_sse": "abc123",
             "connects": 5,

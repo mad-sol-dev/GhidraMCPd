@@ -367,8 +367,11 @@ def build_api_app() -> Starlette:
     configure()
     async def state(_: Request) -> JSONResponse:
         async with _STATE_LOCK:
+            session_ready = _BRIDGE_STATE.ready.is_set()
             payload = {
-                "ready": _BRIDGE_STATE.ready.is_set(),
+                "bridge_ready": _CONFIGURED,
+                "session_ready": session_ready,
+                "ready": session_ready,
                 "active_sse": _BRIDGE_STATE.active_sse_id,
                 "connects": _BRIDGE_STATE.connects,
                 "last_init_ts": _BRIDGE_STATE.last_init_ts,
