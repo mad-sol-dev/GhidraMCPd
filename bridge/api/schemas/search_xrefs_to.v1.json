@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_xrefs_to.v1.json",
   "type": "object",
-  "required": ["address", "query", "total_results", "page", "limit", "items"],
+  "required": ["address", "query", "total", "page", "limit", "items"],
   "properties": {
     "address": {
       "type": "string",
@@ -11,13 +11,13 @@
     "query": {
       "type": "string"
     },
-    "total_results": {
+    "total": {
       "type": "integer",
       "minimum": 0
     },
     "page": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 1
     },
     "limit": {
       "type": "integer",

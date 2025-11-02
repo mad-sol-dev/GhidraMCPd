@@ -42,7 +42,7 @@ def test_search_strings_success(app_client: tuple[TestClient, StubGhidraClient])
     assert body["ok"] is True
     assert body["errors"] == []
     data = body["data"]
-    assert data["total_results"] == 15
+    assert data["total"] == 15
     assert data["page"] == 2
     assert data["limit"] == 5
     items = data["items"]

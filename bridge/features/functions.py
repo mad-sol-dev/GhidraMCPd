@@ -22,7 +22,7 @@ def search_functions(
         offset: Number of results to skip
         
     Returns:
-        Dictionary with query, total_results, page, limit, and items array
+        Dictionary with query, total count, 1-based page, limit, and items array
     """
     # Fetch all matching functions from Ghidra
     raw_results = client.search_functions(query)
@@ -51,15 +51,17 @@ def search_functions(
         })
     
     # Calculate pagination
-    total_results = len(items)
-    page = offset // limit if limit > 0 else 0
-    
-    # Slice the results according to limit and offset
-    paginated_items = items[offset:offset + limit]
-    
+    total = len(items)
+    if limit <= 0:
+        page = 1
+        paginated_items = items[offset:]
+    else:
+        page = offset // limit + 1
+        paginated_items = items[offset : offset + limit]
+
     return {
         "query": query,
-        "total_results": total_results,
+        "total": total,
         "page": page,
         "limit": limit,
         "items": paginated_items,

@@ -2,18 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_functions.v1.json",
   "type": "object",
-  "required": ["query", "total_results", "page", "limit", "items"],
+  "required": ["query", "total", "page", "limit", "items"],
   "properties": {
     "query": {
       "type": "string"
     },
-    "total_results": {
+    "total": {
       "type": "integer",
       "minimum": 0
     },
     "page": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 1
     },
     "limit": {
       "type": "integer",

@@ -421,7 +421,7 @@ def register_tools(
             offset: Number of results to skip for pagination (default: 0)
             
         Returns:
-            Dictionary with query, total_results, page, limit, and items array.
+            Dictionary with query, total count, page, limit, and items array.
             Each item contains name and address fields.
         """
         request_payload = {"query": query, "limit": limit, "offset": offset}

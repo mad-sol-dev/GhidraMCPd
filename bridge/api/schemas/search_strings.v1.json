@@ -5,14 +5,14 @@
   "additionalProperties": false,
   "required": [
     "query",
-    "total_results",
+    "total",
     "page",
     "limit",
     "items"
   ],
   "properties": {
     "query": {"type": "string"},
-    "total_results": {"type": "integer", "minimum": 0},
+    "total": {"type": "integer", "minimum": 0},
     "page": {"type": "integer", "minimum": 1},
     "limit": {"type": "integer", "minimum": 1},
     "items": {
