@@ -36,14 +36,18 @@ def search_xrefs_to(
             }
         )
 
-    total_results = len(items)
-    page = offset // limit if limit > 0 else 0
-    paginated_items = items[offset : offset + limit]
+    total = len(items)
+    if limit <= 0:
+        page = 1
+        paginated_items = items[offset:]
+    else:
+        page = offset // limit + 1
+        paginated_items = items[offset : offset + limit]
 
     return {
         "address": f"0x{address_value:08x}",
         "query": query,
-        "total_results": total_results,
+        "total": total,
         "page": page,
         "limit": limit,
         "items": paginated_items,

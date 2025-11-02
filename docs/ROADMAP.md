@@ -7,7 +7,7 @@ This document outlines the current architectural limitations of the GhidraMCP br
 The core problem is an architectural anti-pattern—**"Filter after Paginate"**—present in most data listing endpoints. This leads to incomplete search results and forces the controlling LLM to make uninformed, costly decisions.
 
 The solution is a two-phase approach:
-1.  **Immediate Fix:** Implement server-side search capabilities for all relevant endpoints and provide pagination metadata (`total_results`) to enable intelligent, iterative querying by the LLM.
+1.  **Immediate Fix:** Implement server-side search capabilities for all relevant endpoints and provide pagination metadata (`total`) to enable intelligent, iterative querying by the LLM.
 2.  **Long-Term Vision:** Explore server-side relevance scoring to reduce the data sent to the LLM to only the most pertinent information, further minimizing token costs and cognitive load.
 
 ---
@@ -46,7 +46,7 @@ A simple list of results is not enough for an LLM to make strategic decisions. T
 ```json
 {
   "query": "password",
-  "total_results": 1250,  // The total number of matches found
+  "total": 1250,  // The total number of matches found
   "page": 1,              // The current page number
   "limit": 100,           // The number of items per page
   "items": [ /* ... the first 100 results ... */ ]

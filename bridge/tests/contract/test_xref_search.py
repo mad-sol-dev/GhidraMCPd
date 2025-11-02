@@ -19,8 +19,8 @@ def test_search_xrefs_basic(contract_client: TestClient) -> None:
 
     assert data["address"] == "0x00100000"
     assert data["query"] == "call"
-    assert isinstance(data["total_results"], int)
-    assert data["page"] == 0
+    assert isinstance(data["total"], int)
+    assert data["page"] == 1
     assert data["limit"] == 5
     assert isinstance(data["items"], list)
     assert data["items"], "Expected at least one xref match"
@@ -48,11 +48,11 @@ def test_search_xrefs_pagination(contract_client: TestClient) -> None:
     page_one = first.json()["data"]
     page_two = second.json()["data"]
 
-    assert page_one["total_results"] == page_two["total_results"]
-    assert page_one["page"] == 0
-    assert page_two["page"] == 1
+    assert page_one["total"] == page_two["total"]
+    assert page_one["page"] == 1
+    assert page_two["page"] == 2
 
-    if page_one["total_results"] > 1:
+    if page_one["total"] > 1:
         addresses_one = [item["from_address"] for item in page_one["items"]]
         addresses_two = [item["from_address"] for item in page_two["items"]]
         assert addresses_one != addresses_two
