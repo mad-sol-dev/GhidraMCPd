@@ -195,6 +195,13 @@
       ]
     },
     {
+      "id": "RE-ENDPOINTS-CONTRACT-TESTS",
+      "title": "Contract tests for RE workflow endpoints (search_scalars, list_functions_in_range, disassemble_at, read_bytes)",
+      "status": "todo",
+      "labels": ["test", "P2"],
+      "after": ["SEARCH-XREFS-ENDPOINT"]
+    },
+    {
       "id": "BRIDGE_GUARD_01_SINGLE_SSE",
       "title": "Single active SSE connection guard",
       "after": [

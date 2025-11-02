@@ -7,6 +7,10 @@ All endpoints use the envelope `{ok, data|null, errors[]}` and strict JSON schem
 - `POST /api/search_imports.json`
 - `POST /api/search_exports.json`
 - `POST /api/search_xrefs_to.json`
+- `POST /api/search_scalars.json`
+- `POST /api/list_functions_in_range.json`
+- `POST /api/disassemble_at.json`
+- `POST /api/read_bytes.json`
 - `POST /api/jt_slot_check.json`
 - `POST /api/jt_scan.json`
 - `POST /api/strings_compact.json`
