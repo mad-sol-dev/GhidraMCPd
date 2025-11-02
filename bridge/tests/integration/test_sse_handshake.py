@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import logging
 
@@ -285,6 +287,70 @@ async def test_second_sse_request_logs_rejection(caplog: pytest.LogCaptureFixtur
     assert getattr(record, "reason", "") == "sse_already_active"
     assert getattr(record, "active_sse_id", "") == "existing"
     assert getattr(record, "path", "") == "/sse"
+
+    async with bridge_app._STATE_LOCK:  # type: ignore[attr-defined]
+        bridge_app._BRIDGE_STATE.active_sse_id = None  # type: ignore[attr-defined]
+
+
+@pytest.mark.anyio
+async def test_sse_disconnect_releases_lock_quickly() -> None:
+    """An abrupt disconnect should release the SSE lock promptly."""
+
+    configure()
+    app = MCP_SERVER.sse_app()
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/sse",
+        "raw_path": b"/sse",
+        "root_path": "",
+        "query_string": b"",
+        "headers": [(b"accept", b"text/event-stream")],
+        "client": ("testclient", 12345),
+        "server": ("testserver", 80),
+    }
+
+    disconnect_event = anyio.Event()
+    received_request = False
+    disconnect_sent = False
+
+    async def receive() -> dict[str, object]:
+        nonlocal received_request, disconnect_sent
+        if not received_request:
+            received_request = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        await disconnect_event.wait()
+        if not disconnect_sent:
+            disconnect_sent = True
+            return {"type": "http.disconnect"}
+        return {"type": "http.disconnect"}
+
+    async def send(message: dict[str, object]) -> None:
+        # The response stream is ignored for this test; we only care about lock release.
+        return None
+
+    app_task = asyncio.create_task(app(scope, receive, send))
+
+    try:
+        with anyio.fail_after(2):
+            while bridge_app._BRIDGE_STATE.active_sse_id is None:  # type: ignore[attr-defined]
+                await anyio.sleep(0)
+
+        disconnect_event.set()
+
+        with anyio.fail_after(1):
+            while bridge_app._BRIDGE_STATE.active_sse_id is not None:  # type: ignore[attr-defined]
+                await anyio.sleep(0.05)
+
+    finally:
+        if not app_task.done():
+            app_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await app_task
 
     async with bridge_app._STATE_LOCK:  # type: ignore[attr-defined]
         bridge_app._BRIDGE_STATE.active_sse_id = None  # type: ignore[attr-defined]
