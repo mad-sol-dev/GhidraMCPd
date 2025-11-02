@@ -326,7 +326,8 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **Tests:** `GET /state` zeigt konsistente Flags; README erklärt sie kurz.
   - **What changed:** `/state` now exposes `bridge_ready` and `session_ready`, keeps `ready` as a legacy alias, and documents the flags in the README.
 
-- [ ] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON
+- [x] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON _commit:1b31091_
+  - **What changed:** Added README FAQ showing GET/POST examples for the legacy 8080 plugin and clarified that responses are plain text.
   - **Problem:** Verwechslung mit `jq`; GET erwartet Query-Parameter, POST Form-Body.
   - **DoD:** README-FAQ mit 2–3 Beispielen: `/segments?limit=…`, `/strings?filter=…`, `/renameFunction` (x-www-form-urlencoded).
   - **Tests:** reine Doku-Prüfung.
