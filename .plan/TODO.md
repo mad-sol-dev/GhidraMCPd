@@ -286,3 +286,53 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 **Notes:** Commit `docs: deprecate legacy bridge entrypoint and add runtime warning`
 
 **What changed:** Deprecated the legacy shim in README, printed a runtime warning, and retagged references with explicit notices.
+
+## Bugs / Hotfix (neu)
+
+- [ ] **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch
+  - **Problem:** `/sse` bleibt gesperrt (409), `active_sse` bleibt ≫15s gesetzt, auch nach SIGKILL des Clients.
+  - **DoD:**
+    - Server gibt Lock ≤1s nach Client-Disconnect frei.
+    - `GET /sse` nach erzwungenem Client-Ende (kill) liefert wieder `200 OK` binnen ≤1.5s.
+    - Bridge lässt sich nach SSE-Nutzung ohne `CancelledError` sauber beenden.
+  - **Tests (manuell):**
+    - `curl -N …/sse &` → PID killen → `until /state.active_sse==null` (≤1s).
+    - Direkt danach `curl -i …/sse` → `HTTP/1.1 200 OK`.
+
+- [ ] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
+  - **Problem:** `openapi.json` hat für `/api/search_*.json` kein JSON-Schema.
+  - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/offset` im Schema definiert; `response_model` vorhanden.
+  - **Tests:**
+    - `jq` auf `openapi.json`: `paths["/api/search_strings.json"].post.requestBody.content["application/json"].schema != null`.
+
+- [ ] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten
+  - **Problem:** Mischung aus `total_results` vs. `total`; `page` teils 0-, teils 1-basiert; `strings_compact` nutzt `total`.
+  - **DoD:** Alle Search-Antworten nutzen **`total`** und **`page` (1-basiert)**; `strings_compact` bleibt konsistent.
+  - **Tests:**
+    - Vier Calls (`search_*`, `strings_compact`) → `jq` prüft `data.total` und `data.page>=1`, Feld `total_results` existiert nicht mehr.
+
+- [ ] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE
+  - **Problem:** Nach Nutzung von `/sse` erzeugt Ctrl-C noisy Stacktraces.
+  - **DoD:** Graceful Shutdown ohne `CancelledError`-Trace bei Ctrl-C, auch nach vorheriger SSE-Nutzung.
+  - **Tests:** Start → `/sse` kurz öffnen/schließen → Ctrl-C → Logs enthalten keinen Trace.
+
+- [ ] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren
+  - **Problem:** `ready:false` irritiert, obwohl `/api/*` funktioniert.
+  - **DoD:** `/state` enthält zusätzliche Felder: `bridge_ready`, `session_ready`, `active_sse` (bestehend), plus Doku-Tabelle im README.
+  - **Tests:** `GET /state` zeigt konsistente Flags; README erklärt sie kurz.
+
+- [ ] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON
+  - **Problem:** Verwechslung mit `jq`; GET erwartet Query-Parameter, POST Form-Body.
+  - **DoD:** README-FAQ mit 2–3 Beispielen: `/segments?limit=…`, `/strings?filter=…`, `/renameFunction` (x-www-form-urlencoded).
+  - **Tests:** reine Doku-Prüfung.
+
+- [ ] **JT-DOCS-EXAMPLES** — Beispiele für JT-Schema
+  - **Problem:** Häufige `SCHEMA_INVALID` ohne `{jt_base, …, code_min, code_max}`.
+  - **DoD:** README-Snippet: `CODE_MIN/MAX` aus Plugin-/segments ableiten und Beispiel-Calls für `jt_slot_check`, `jt_scan`.
+  - **Tests:** Beispiele ausführbar (manuell verifiziert).
+
+- [ ] **STATE-LOG-THROTTLE** — /state-Spam in Diagnose-Loops
+  - **Problem:** Poll-Schleifen fluten Log.
+  - **DoD:** README-Hinweis (Sleep ≥500 ms) + optional serverseitiger Throttle (Falls implementiert: kurze Notiz).
+  - **Tests:** N/A (Doku).
+
