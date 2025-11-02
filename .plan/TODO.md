@@ -338,8 +338,9 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **Tests:** Beispiele ausführbar (manuell verifiziert).
   - **What changed:** Dokumentierte, wie man CODE_MIN/MAX über das Segment-Listing ableitet und gab Beispielaufrufe für `jt_slot_check` und `jt_scan`.
 
-- [ ] **STATE-LOG-THROTTLE** — /state-Spam in Diagnose-Loops
+- [✅] **STATE-LOG-THROTTLE** — /state-Spam in Diagnose-Loops
   - **Problem:** Poll-Schleifen fluten Log.
-  - **DoD:** README-Hinweis (Sleep ≥500 ms) + optional serverseitiger Throttle (Falls implementiert: kurze Notiz).
+  - **DoD:** README-Hinweis (Sleep ≥500 ms) + optional serverseitiger Throttle (Falls implementiert: kurze Notiz). _commit:37dd4df_
   - **Tests:** N/A (Doku).
+  - **What changed:** README now tells operators to sleep ≥500 ms between `/state` polls to avoid log spam.
 
