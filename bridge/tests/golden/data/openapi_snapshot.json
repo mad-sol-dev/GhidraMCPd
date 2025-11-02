@@ -102,20 +102,20 @@
                       "type": "integer"
                     },
                     "page": {
-                      "minimum": 0,
+                      "minimum": 1,
                       "type": "integer"
                     },
                     "query": {
                       "type": "string"
                     },
-                    "total_results": {
+                    "total": {
                       "minimum": 0,
                       "type": "integer"
                     }
                   },
                   "required": [
                     "query",
-                    "total_results",
+                    "total",
                     "page",
                     "limit",
                     "items"
@@ -200,20 +200,20 @@
                       "type": "integer"
                     },
                     "page": {
-                      "minimum": 0,
+                      "minimum": 1,
                       "type": "integer"
                     },
                     "query": {
                       "type": "string"
                     },
-                    "total_results": {
+                    "total": {
                       "minimum": 0,
                       "type": "integer"
                     }
                   },
                   "required": [
                     "query",
-                    "total_results",
+                    "total",
                     "page",
                     "limit",
                     "items"
@@ -298,20 +298,20 @@
                       "type": "integer"
                     },
                     "page": {
-                      "minimum": 0,
+                      "minimum": 1,
                       "type": "integer"
                     },
                     "query": {
                       "type": "string"
                     },
-                    "total_results": {
+                    "total": {
                       "minimum": 0,
                       "type": "integer"
                     }
                   },
                   "required": [
                     "query",
-                    "total_results",
+                    "total",
                     "page",
                     "limit",
                     "items"
@@ -385,14 +385,14 @@
                     "query": {
                       "type": "string"
                     },
-                    "total_results": {
+                    "total": {
                       "minimum": 0,
                       "type": "integer"
                     }
                   },
                   "required": [
                     "query",
-                    "total_results",
+                    "total",
                     "page",
                     "limit",
                     "items"

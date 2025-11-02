@@ -16,8 +16,8 @@ def test_search_imports_basic(contract_client: TestClient) -> None:
     data = payload["data"]
 
     assert data["query"] == "import"
-    assert isinstance(data["total_results"], int)
-    assert data["page"] == 0
+    assert isinstance(data["total"], int)
+    assert data["page"] == 1
     assert data["limit"] == 10
     assert isinstance(data["items"], list)
     assert data["items"], "Expected at least one import match"
@@ -46,11 +46,11 @@ def test_search_imports_pagination(contract_client: TestClient) -> None:
     page_one = first.json()["data"]
     page_two = second.json()["data"]
 
-    assert page_one["total_results"] == page_two["total_results"]
-    assert page_one["page"] == 0
-    assert page_two["page"] == 1
+    assert page_one["total"] == page_two["total"]
+    assert page_one["page"] == 1
+    assert page_two["page"] == 2
 
-    if page_one["total_results"] > 5:
+    if page_one["total"] > 5:
         names_one = [item["name"] for item in page_one["items"]]
         names_two = [item["name"] for item in page_two["items"]]
         assert names_one != names_two

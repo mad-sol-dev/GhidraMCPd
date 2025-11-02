@@ -307,11 +307,12 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
     - `jq` auf `openapi.json`: `paths["/api/search_strings.json"].post.requestBody.content["application/json"].schema != null`.
   - **What changed:** OpenAPI now embeds request/response schemas for search endpoints and updates the golden snapshot.
 
-- [ ] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten
+- [x] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten _commit:7ba7f46_
   - **Problem:** Mischung aus `total_results` vs. `total`; `page` teils 0-, teils 1-basiert; `strings_compact` nutzt `total`.
   - **DoD:** Alle Search-Antworten nutzen **`total`** und **`page` (1-basiert)**; `strings_compact` bleibt konsistent.
   - **Tests:**
     - Vier Calls (`search_*`, `strings_compact`) → `jq` prüft `data.total` und `data.page>=1`, Feld `total_results` existiert nicht mehr.
+  - **What changed:** Search-Endpunkte liefern `total` mit 1-basiger `page`, Schemas/Tests/OpenAPI spiegeln das wider.
 
 - [ ] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE
   - **Problem:** Nach Nutzung von `/sse` erzeugt Ctrl-C noisy Stacktraces.
