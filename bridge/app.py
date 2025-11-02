@@ -100,7 +100,7 @@ def _build_openapi_schema(routes: list[Route]) -> dict[str, object]:
                     }
             response_schema_name = _RESPONSE_SCHEMA_MAP.get(route.path)
             if response_schema_name is not None:
-                operation["response_model"] = response_schema_name
+                operation["x-response-model"] = response_schema_name
                 operation.setdefault("responses", {})["200"] = {
                     "description": "Successful Response",
                     "content": {
