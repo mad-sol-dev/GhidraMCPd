@@ -190,15 +190,20 @@ def search_strings(
     limit: int,
     offset: int,
 ) -> Dict[str, Any]:
-    window = limit + offset
-    if window > MAX_ITEMS_PER_BATCH:
-        raise SafetyLimitExceeded("strings.search.window", MAX_ITEMS_PER_BATCH, window)
-
     all_entries = client.search_strings(query)
     normalized = strings_compact_view(all_entries)
     normalized_entries = normalized.get("items", [])
 
     total = len(normalized_entries)
+    if limit <= 0:
+        remaining = max(total - offset, 0)
+        window = offset + remaining
+    else:
+        window = limit + offset
+
+    if window > MAX_ITEMS_PER_BATCH:
+        raise SafetyLimitExceeded("strings.search.window", MAX_ITEMS_PER_BATCH, window)
+
     if limit <= 0:
         page = 1
     else:
