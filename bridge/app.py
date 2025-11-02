@@ -10,6 +10,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from types import MethodType
+from importlib import resources
+from functools import lru_cache
 
 from mcp import types
 from mcp.server.fastmcp import FastMCP
@@ -48,6 +50,27 @@ _STATE_LOCK = asyncio.Lock()
 _SSE_LOGGER = logging.getLogger("bridge.sse")
 
 
+_REQUEST_SCHEMA_MAP = {
+    "/api/search_strings.json": "search_strings.request.v1.json",
+    "/api/search_functions.json": "search_functions.request.v1.json",
+    "/api/search_imports.json": "search_imports.request.v1.json",
+    "/api/search_exports.json": "search_exports.request.v1.json",
+}
+
+_RESPONSE_SCHEMA_MAP = {
+    "/api/search_strings.json": "search_strings.v1.json",
+    "/api/search_functions.json": "search_functions.v1.json",
+    "/api/search_imports.json": "search_imports.v1.json",
+    "/api/search_exports.json": "search_exports.v1.json",
+}
+
+
+@lru_cache(maxsize=None)
+def _load_schema(name: str) -> dict[str, object]:
+    with resources.files("bridge.api.schemas").joinpath(name).open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def _build_openapi_schema(routes: list[Route]) -> dict[str, object]:
     paths: dict[str, dict[str, object]] = {}
     for route in routes:
@@ -61,9 +84,32 @@ def _build_openapi_schema(routes: list[Route]) -> dict[str, object]:
             continue
         operations = paths.setdefault(route.path, {})
         for method in methods:
-            operations[method.lower()] = {
+            operation: dict[str, object] = {
                 "summary": route.name or getattr(route.endpoint, "__name__", "handler"),
             }
+            if method == "POST":
+                request_schema_name = _REQUEST_SCHEMA_MAP.get(route.path)
+                if request_schema_name is not None:
+                    operation["requestBody"] = {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": _load_schema(request_schema_name)
+                            }
+                        },
+                    }
+            response_schema_name = _RESPONSE_SCHEMA_MAP.get(route.path)
+            if response_schema_name is not None:
+                operation["x-response-model"] = response_schema_name
+                operation.setdefault("responses", {})["200"] = {
+                    "description": "Successful Response",
+                    "content": {
+                        "application/json": {
+                            "schema": _load_schema(response_schema_name)
+                        }
+                    },
+                }
+            operations[method.lower()] = operation
     return {
         "openapi": "3.1.0",
         "info": {
