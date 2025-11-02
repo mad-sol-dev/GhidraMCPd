@@ -234,6 +234,11 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                     return
                 await asyncio.sleep(0.1)
 
+        cancelled = False
+        run_task: asyncio.Task[None] | None = None
+        watch_task: asyncio.Task[None] | None = None
+        pending: set[asyncio.Task[object]] = set()
+
         try:
             async with transport.connect_sse(
                 request.scope,
@@ -262,6 +267,21 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                     task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await asyncio.gather(*pending, return_exceptions=False)
+        except asyncio.CancelledError:
+            cancelled = True
+            disconnect_event.set()
+            tasks_to_cleanup: list[asyncio.Task[object]] = []
+            for task in (run_task, watch_task):
+                if task is None:
+                    continue
+                task.cancel()
+                tasks_to_cleanup.append(task)
+            for task in pending:
+                task.cancel()
+                tasks_to_cleanup.append(task)
+            if tasks_to_cleanup:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await asyncio.gather(*tasks_to_cleanup, return_exceptions=False)
         finally:
             async with _STATE_LOCK:
                 if _BRIDGE_STATE.active_sse_id == connection_id:
@@ -275,6 +295,7 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 "client_port": client[1],
                 "user_agent": user_agent,
                 "connection_id": connection_id,
+                "cancelled": cancelled,
             },
         )
 
