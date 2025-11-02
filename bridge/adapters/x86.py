@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from . import ArchAdapter, ProbeResult
+from . import ArchAdapter
 
 
 @dataclass(slots=True)
@@ -37,4 +37,4 @@ class X86Adapter(ArchAdapter):
         return None, None
 
 
-__all__ = ["X86Adapter", "ProbeResult"]
+__all__ = ["X86Adapter"]
