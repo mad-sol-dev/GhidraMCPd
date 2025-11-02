@@ -4,10 +4,12 @@ import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
+import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryBlock;
 import ghidra.program.model.mem.MemoryAccessException;
+import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.Reference;
@@ -59,6 +61,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Arrays;
+import java.util.Base64;
 
 @PluginInfo(
     status = PluginStatus.RELEASED,
@@ -142,7 +146,7 @@ public class GhidraMCPPlugin extends Plugin {
             Map<String, String> qparams = parseQueryParams(exchange);
             String address = qparams.get("address");
             int length = parseIntOrDefault(qparams.get("length"), 16);
-            sendResponse(exchange, readBytes(address, length));
+            sendResponse(exchange, readBytesHexdump(address, length));
         });
 
         server.createContext("/read_cstring", exchange -> {
@@ -399,6 +403,43 @@ public class GhidraMCPPlugin extends Plugin {
             sendResponse(exchange, listDefinedStrings(offset, limit, filter));
         });
 
+        server.createContext("/searchScalars", exchange -> {
+            Map<String, String> qparams = parseQueryParams(exchange);
+            String value = qparams.get("value");
+            int limit = parseIntOrDefault(qparams.get("limit"), 500);
+            sendResponse(exchange, handleSearchScalars(value, limit));
+        });
+
+        server.createContext("/functionsInRange", exchange -> {
+            Map<String, String> qparams = parseQueryParams(exchange);
+            String min = qparams.get("min");
+            String max = qparams.get("max");
+            sendResponse(exchange, handleFunctionsInRange(min, max));
+        });
+
+        server.createContext("/disassembleAt", exchange -> {
+            Map<String, String> qparams = parseQueryParams(exchange);
+            String address = qparams.get("address");
+            int count = parseIntOrDefault(qparams.get("count"), 16);
+            sendResponse(exchange, handleDisassembleAt(address, count));
+        });
+
+        server.createContext("/readBytes", exchange -> {
+            Map<String, String> qparams = parseQueryParams(exchange);
+            String address = qparams.get("address");
+            String lengthStr = qparams.get("length");
+            if (lengthStr == null) {
+                sendResponse(exchange, "ERROR: length parameter is required");
+                return;
+            }
+            int length = parseIntOrDefault(lengthStr, -1);
+            if (length < 0) {
+                sendResponse(exchange, "ERROR: invalid length parameter");
+                return;
+            }
+            sendResponse(exchange, readBytesBase64(address, length));
+        });
+
         server.setExecutor(null);
         new Thread(() -> {
             try {
@@ -541,13 +582,15 @@ public class GhidraMCPPlugin extends Plugin {
     private String searchFunctionsByName(String searchTerm, int offset, int limit) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (searchTerm == null || searchTerm.isEmpty()) return "Search term is required";
+        
+        // Wildcard support: empty or "*" means return all functions
+        boolean matchAll = (searchTerm == null || searchTerm.isEmpty() || searchTerm.equals("*"));
     
         List<String> matches = new ArrayList<>();
         for (Function func : program.getFunctionManager().getFunctions(true)) {
             String name = func.getName();
             // simple substring match
-            if (name.toLowerCase().contains(searchTerm.toLowerCase())) {
+            if (matchAll || name.toLowerCase().contains(searchTerm.toLowerCase())) {
                 matches.add(String.format("%s @ %s", name, func.getEntryPoint()));
             }
         }
@@ -809,7 +852,7 @@ public class GhidraMCPPlugin extends Plugin {
     /**
      * Read raw bytes from memory with a hexdump style formatting.
      */
-    private String readBytes(String addressStr, int length) {
+    private String readBytesHexdump(String addressStr, int length) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
         if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
@@ -1913,6 +1956,201 @@ public class GhidraMCPPlugin extends Plugin {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Search for scalar values (immediates/constants) in instructions
+     */
+    private String handleSearchScalars(String valueStr, int limit) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+        if (valueStr == null || valueStr.isEmpty()) return "ERROR: value parameter is required";
+
+        // Cap limit at 500
+        int effectiveLimit = Math.min(limit, 500);
+
+        try {
+            // Parse value as hex or decimal
+            long searchValue;
+            if (valueStr.startsWith("0x") || valueStr.startsWith("0X")) {
+                searchValue = Long.parseLong(valueStr.substring(2), 16);
+            } else {
+                searchValue = Long.parseLong(valueStr);
+            }
+
+            List<String> matches = new ArrayList<>();
+            InstructionIterator instructions = program.getListing().getInstructions(true);
+
+            while (instructions.hasNext() && matches.size() < effectiveLimit) {
+                Instruction instr = instructions.next();
+                
+                // Check all operands for scalar values
+                int numOperands = instr.getNumOperands();
+                for (int i = 0; i < numOperands; i++) {
+                    Object[] opObjects = instr.getOpObjects(i);
+                    for (Object obj : opObjects) {
+                        if (obj instanceof Scalar) {
+                            Scalar scalar = (Scalar) obj;
+                            // Compare unsigned values
+                            long scalarValue = scalar.getUnsignedValue();
+                            if (scalarValue == searchValue) {
+                                matches.add(String.format("%s: %s", 
+                                    instr.getAddress(), 
+                                    instr.toString()));
+                                break; // Found match in this instruction, move to next
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sort by address ascending
+            matches.sort((a, b) -> {
+                String addrA = a.substring(0, a.indexOf(':'));
+                String addrB = b.substring(0, b.indexOf(':'));
+                return addrA.compareTo(addrB);
+            });
+
+            return matches.isEmpty() ? "" : String.join("\n", matches);
+
+        } catch (NumberFormatException e) {
+            return "ERROR: invalid value format";
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /**
+     * List functions in a given address range
+     */
+    private String handleFunctionsInRange(String minStr, String maxStr) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+        if (minStr == null || minStr.isEmpty()) return "ERROR: min parameter is required";
+        if (maxStr == null || maxStr.isEmpty()) return "ERROR: max parameter is required";
+
+        try {
+            Address minAddr = program.getAddressFactory().getAddress(minStr);
+            Address maxAddr = program.getAddressFactory().getAddress(maxStr);
+
+            if (minAddr == null || maxAddr == null) {
+                return "ERROR: invalid address range";
+            }
+
+            if (minAddr.compareTo(maxAddr) > 0) {
+                return "ERROR: min must be less than or equal to max";
+            }
+
+            AddressSet addressSet = new AddressSet(minAddr, maxAddr);
+            FunctionIterator functions = program.getFunctionManager().getFunctions(addressSet, true);
+
+            List<String> results = new ArrayList<>();
+            while (functions.hasNext()) {
+                Function func = functions.next();
+                String name = func.getName();
+                Address entryPoint = func.getEntryPoint();
+                
+                // Try to get body size
+                long size = func.getBody().getNumAddresses();
+                
+                if (size > 0) {
+                    results.add(String.format("%s @ %s %d", name, entryPoint, size));
+                } else {
+                    results.add(String.format("%s @ %s", name, entryPoint));
+                }
+            }
+
+            // Already sorted by address (forward iteration)
+            return results.isEmpty() ? "" : String.join("\n", results);
+
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Disassemble instructions starting at a given address
+     */
+    private String handleDisassembleAt(String addressStr, int count) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address parameter is required";
+
+        // Cap count at 128
+        int effectiveCount = Math.min(Math.max(count, 1), 128);
+
+        try {
+            Address addr = program.getAddressFactory().getAddress(addressStr);
+            if (addr == null) {
+                return "ERROR: invalid address";
+            }
+
+            List<String> lines = new ArrayList<>();
+            InstructionIterator instructions = program.getListing().getInstructions(addr, true);
+
+            int collected = 0;
+            while (instructions.hasNext() && collected < effectiveCount) {
+                Instruction instr = instructions.next();
+                
+                // Get instruction bytes as uppercase hex string
+                byte[] bytes = instr.getBytes();
+                StringBuilder hexBytes = new StringBuilder();
+                for (byte b : bytes) {
+                    hexBytes.append(String.format("%02X", b & 0xFF));
+                }
+
+                lines.add(String.format("%s: %s %s", 
+                    instr.getAddress(), 
+                    hexBytes.toString(),
+                    instr.toString()));
+                
+                collected++;
+            }
+
+            return lines.isEmpty() ? "" : String.join("\n", lines);
+
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Read raw bytes from memory and return as Base64
+     */
+    private String readBytesBase64(String addressStr, int length) {
+        Program program = getCurrentProgram();
+        if (program == null) return "No program loaded";
+        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address parameter is required";
+
+        // Cap length at 4096
+        int effectiveLength = Math.min(Math.max(length, 1), 4096);
+
+        try {
+            Address addr = program.getAddressFactory().getAddress(addressStr);
+            if (addr == null) {
+                return "ERROR: invalid address";
+            }
+
+            byte[] buffer = new byte[effectiveLength];
+            int bytesRead = program.getMemory().getBytes(addr, buffer);
+
+            if (bytesRead <= 0) {
+                return "ERROR: unable to read memory at address";
+            }
+
+            // If we read fewer bytes than requested, trim the buffer
+            byte[] actualData = (bytesRead < effectiveLength) 
+                ? Arrays.copyOf(buffer, bytesRead) 
+                : buffer;
+
+            // Encode as Base64 (single line, no newline)
+            return Base64.getEncoder().encodeToString(actualData);
+
+        } catch (MemoryAccessException e) {
+            return "ERROR: memory access failed: " + e.getMessage();
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
     }
 
     public Program getCurrentProgram() {
