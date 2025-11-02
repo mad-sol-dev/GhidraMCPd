@@ -25,7 +25,7 @@ from ..utils.logging import (
     request_scope,
 )
 from ..utils.hex import parse_hex
-from ._shared import adapter_for_arch, envelope_error, envelope_ok, with_client
+from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
 from .validators import validate_payload
 
 
@@ -35,7 +35,7 @@ def register_tools(
     client_factory: Callable[[], GhidraClient],
     enable_writes: bool = ENABLE_WRITES,
 ) -> None:
-    tool_client = with_client(client_factory)
+    tool_client = inject_client(client_factory)
     logger = logging.getLogger("bridge.mcp.tools")
 
     @server.tool()

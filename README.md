@@ -20,6 +20,11 @@ uvicorn bridge.app:create_app --factory --port 8081
 bash bin/smoke.sh
 ```
 
+## MCP Tools
+
+> The MCP tool implementations create and close their own `GhidraClient` instances. Tool
+> signatures never expose a `client` parameter.
+
 ## Documentation
 
 * [Overview](docs/overview.md)
