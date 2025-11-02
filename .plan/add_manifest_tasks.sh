@@ -17,12 +17,11 @@ add() {
   ' "$mf" > "$tmp" && mv "$tmp" "$mf"
 }
 
-add WRITE-GUARDS          "Write guards on endpoints"        "SCHEMA-STRICT"
-add SSE-HANDSHAKE         "SSE handshake test"                "API-MOUNT"
-add JT-SCAN-CONSISTENCY   "JT summary invariants"             "JT-SCAN"
-add STRINGS-ASSERTS       "Strings feature asserts"           "CLIENT-UNIFY"
-add SNAPSHOT-SAFEGUARD    "Non-golden safeguards"             "SCHEMA-STRICT"
-add PLAN-CHECK            "Plan consistency script + CI"      "SCHEMA-STRICT"
+# --- New maintenance tasks (analysis → actionable) ---
+add ADAPTER-PROBERESULT-CLEANUP "Remove dead ProbeResult exports/imports" "OPTIONAL-ADAPTERS"
+add ADAPTER-PROBE-ALIAS          "Introduce Probe typing alias in adapters Protocol" "OPTIONAL-ADAPTERS"
+add SMOKE-MOJIBAKE-FIX           "Fix mojibake in bin/smoke.sh" "DOCS-BOOTSTRAP"
+add PLAN-CHECK-IO-POLISH         "Single-read IO + docstrings in plan_check.py" "PLAN-CHECK"
 
 jq . "$mf" >/dev/null   # JSON quick-validate
 echo "Updated: $mf"

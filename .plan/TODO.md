@@ -289,7 +289,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 
 ## Bugs / Hotfix (neu)
 
-- [x] **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch _commit:6343362_
+- [✅] **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch _commit:6343362_
   - **Problem:** `/sse` bleibt gesperrt (409), `active_sse` bleibt ≫15s gesetzt, auch nach SIGKILL des Clients.
   - **DoD:**
     - Server gibt Lock ≤1s nach Client-Disconnect frei.
@@ -300,33 +300,33 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
     - Direkt danach `curl -i …/sse` → `HTTP/1.1 200 OK`.
   - **What changed:** Release SSE lock on disconnect, return 204 on teardown, and add regression test for quick recovery.
 
-- [x] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
+- [✅] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
   - **Problem:** `openapi.json` hat für `/api/search_*.json` kein JSON-Schema.
   - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/offset` im Schema definiert; `response_model` vorhanden. _commit:98b8e59_
   - **Tests:**
     - `jq` auf `openapi.json`: `paths["/api/search_strings.json"].post.requestBody.content["application/json"].schema != null`.
   - **What changed:** OpenAPI now embeds request/response schemas for search endpoints and updates the golden snapshot.
 
-- [x] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten _commit:7ba7f46_
+- [✅] **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten _commit:7ba7f46_
   - **Problem:** Mischung aus `total_results` vs. `total`; `page` teils 0-, teils 1-basiert; `strings_compact` nutzt `total`.
   - **DoD:** Alle Search-Antworten nutzen **`total`** und **`page` (1-basiert)**; `strings_compact` bleibt konsistent.
   - **Tests:**
     - Vier Calls (`search_*`, `strings_compact`) → `jq` prüft `data.total` und `data.page>=1`, Feld `total_results` existiert nicht mehr.
   - **What changed:** Search-Endpunkte liefern `total` mit 1-basiger `page`, Schemas/Tests/OpenAPI spiegeln das wider.
 
-- [x] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE _commit:44b649c_
+- [✅] **SHUTDOWN-CLEANUP** — `CancelledError` bei Ctrl-C nach SSE _commit:44b649c_
   - **Problem:** Nach Nutzung von `/sse` erzeugt Ctrl-C noisy Stacktraces.
   - **DoD:** Graceful Shutdown ohne `CancelledError`-Trace bei Ctrl-C, auch nach vorheriger SSE-Nutzung.
   - **Tests:** Start → `/sse` kurz öffnen/schließen → Ctrl-C → Logs enthalten keinen Trace.
   - **What changed:** Treat cancelled SSE requests as normal disconnects, cancel internal tasks, and avoid propagating `CancelledError` during shutdown.
 
-- [x] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren _commit:ed073fd_
+- [✅] **STATE-FLAGS-CLARIFY** — Readiness besser exponieren _commit:ed073fd_
   - **Problem:** `ready:false` irritiert, obwohl `/api/*` funktioniert.
   - **DoD:** `/state` enthält zusätzliche Felder: `bridge_ready`, `session_ready`, `active_sse` (bestehend), plus Doku-Tabelle im README.
   - **Tests:** `GET /state` zeigt konsistente Flags; README erklärt sie kurz.
   - **What changed:** `/state` now exposes `bridge_ready` and `session_ready`, keeps `ready` as a legacy alias, and documents the flags in the README.
 
-- [x] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON _commit:1b31091_
+- [✅] **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON _commit:1b31091_
   - **What changed:** Added README FAQ showing GET/POST examples for the legacy 8080 plugin and clarified that responses are plain text.
   - **Problem:** Verwechslung mit `jq`; GET erwartet Query-Parameter, POST Form-Body.
   - **DoD:** README-FAQ mit 2–3 Beispielen: `/segments?limit=…`, `/strings?filter=…`, `/renameFunction` (x-www-form-urlencoded).
@@ -343,4 +343,40 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
   - **DoD:** README-Hinweis (Sleep ≥500 ms) + optional serverseitiger Throttle (Falls implementiert: kurze Notiz). _commit:37dd4df_
   - **Tests:** N/A (Doku).
   - **What changed:** README now tells operators to sleep ≥500 ms between `/state` polls to avoid log spam.
+
+### ⬜️ ADAPTER-PROBERESULT-CLEANUP — Remove dead ProbeResult exports/imports (ID: ADAPTER-PROBERESULT-CLEANUP)
+**DoD:** No adapters import/export `ProbeResult`; only tuple return is used. Grep proves removal; adapter tests green. _commit:_
+**Run:**
+- `git grep -n "ProbeResult" bridge/adapters` → no hits in `arm_thumb.py`, `x86.py`, `fallback.py` or their `__all__`.
+- `python -m pytest -q bridge/tests/unit/test_adapters_*.py`
+**Steps:**
+- In `bridge/adapters/arm_thumb.py` and `bridge/adapters/x86.py`, remove `ProbeResult` import and drop it from `__all__`.
+**What changed:** 
+
+### ⬜️ ADAPTER-PROBE-ALIAS — Introduce Probe typing alias in adapters Protocol (ID: ADAPTER-PROBE-ALIAS)
+**DoD:** `adapters/__init__.py` defines `Probe = tuple[str|None, int|None]`; `ArchAdapter.probe_function` returns `Probe`. Implementations type-hint updated only (no behavior change). Tests green. _commit:_
+**Run:**
+- `python -m pytest -q bridge/tests/unit/test_adapters_*.py`
+**Steps:**
+- In `bridge/adapters/__init__.py`: add `Probe` alias; switch Protocol signature to `-> Probe`.
+- Update implementation annotations accordingly (no logic changes).
+**What changed:** 
+
+### ⬜️ SMOKE-MOJIBAKE-FIX — Fix mojibake in bin/smoke.sh (ID: SMOKE-MOJIBAKE-FIX)
+**DoD:** `bin/smoke.sh` contains no mojibake (`â…`). Output renders as ASCII or UTF-8 ellipsis. _commit:_
+**Run:**
+- `LC_ALL=C grep -n "â" bin/smoke.sh` → no matches
+- (optional) `bash bin/smoke.sh` in a clean locale to eyeball output
+**Steps:**
+- Replace `â€¦` with `…` or `...` in the health line.
+**What changed:** 
+
+### ⬜️ PLAN-CHECK-IO-POLISH — Single-read IO + docstrings in plan_check.py (ID: PLAN-CHECK-IO-POLISH)
+**DoD:** `bin/plan_check.py` reads manifest once (reuse text for mojibake check); `die()/ok()` have docstrings. Script passes. _commit:_
+**Run:**
+- `python3 bin/plan_check.py`
+**Steps:**
+- Read `tasks.manifest.json` once into `man_raw`; parse JSON from it; run mojibake check against `man_raw` (no second read).
+- Add short docstrings to `die()` and `ok()`.
+**What changed:** 
 

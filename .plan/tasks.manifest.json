@@ -255,23 +255,30 @@
       "id": "SSE-DISCONNECT-FIX",
       "title": "SSE disconnect releases lock promptly",
       "status": "todo",
-      "labels": ["bug", "P1"],
-      "after": [
-      ]
+      "labels": [
+        "bug",
+        "P1"
+      ],
+      "after": []
     },
     {
       "id": "OPENAPI-REQUESTBODY",
       "title": "Add requestBody schemas for search_*",
       "status": "todo",
-      "labels": ["bug", "P2"],
-      "after": [
-      ]
+      "labels": [
+        "bug",
+        "P2"
+      ],
+      "after": []
     },
     {
       "id": "API-SCHEMA-UNIFY",
       "title": "Unify API response fields (total/page)",
       "status": "todo",
-      "labels": ["bug", "P2"],
+      "labels": [
+        "bug",
+        "P2"
+      ],
       "after": [
         "OPENAPI-REQUESTBODY"
       ]
@@ -280,7 +287,10 @@
       "id": "SHUTDOWN-CLEANUP",
       "title": "Graceful shutdown without CancelledError",
       "status": "todo",
-      "labels": ["bug", "P2"],
+      "labels": [
+        "bug",
+        "P2"
+      ],
       "after": [
         "SSE-DISCONNECT-FIX"
       ]
@@ -289,32 +299,68 @@
       "id": "STATE-FLAGS-CLARIFY",
       "title": "Clarify /state flags & docs",
       "status": "todo",
-      "labels": ["docs", "P2"],
-      "after": [
-      ]
+      "labels": [
+        "docs",
+        "P2"
+      ],
+      "after": []
     },
     {
       "id": "DOC-8080-TEXT-FAQ",
       "title": "README: 8080 is text (not JSON) + examples",
       "status": "todo",
-      "labels": ["docs", "P3"],
-      "after": [
-      ]
+      "labels": [
+        "docs",
+        "P3"
+      ],
+      "after": []
     },
     {
       "id": "JT-DOCS-EXAMPLES",
       "title": "README: JT endpoints example with real ranges",
       "status": "todo",
-      "labels": ["docs", "P3"],
-      "after": [
-      ]
+      "labels": [
+        "docs",
+        "P3"
+      ],
+      "after": []
     },
     {
       "id": "STATE-LOG-THROTTLE",
       "title": "Docs: throttle /state polling",
       "status": "todo",
-      "labels": ["docs", "P3"],
+      "labels": [
+        "docs",
+        "P3"
+      ],
+      "after": []
+    },
+    {
+      "id": "ADAPTER-PROBERESULT-CLEANUP",
+      "title": "Remove dead ProbeResult exports/imports",
       "after": [
+        "OPTIONAL-ADAPTERS"
+      ]
+    },
+    {
+      "id": "ADAPTER-PROBE-ALIAS",
+      "title": "Introduce Probe typing alias in adapters Protocol",
+      "after": [
+        "OPTIONAL-ADAPTERS"
+      ]
+    },
+    {
+      "id": "SMOKE-MOJIBAKE-FIX",
+      "title": "Fix mojibake in bin/smoke.sh",
+      "after": [
+        "DOCS-BOOTSTRAP"
+      ]
+    },
+    {
+      "id": "PLAN-CHECK-IO-POLISH",
+      "title": "Single-read IO + docstrings in plan_check.py",
+      "after": [
+        "PLAN-CHECK"
       ]
     }
   ]
