@@ -6,12 +6,12 @@
   "properties": {
     "query": {
       "type": "string",
-      "minLength": 1
+      "minLength": 0
     },
     "limit": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 1000,
+      "maximum": 500,
       "default": 100
     },
     "offset": {

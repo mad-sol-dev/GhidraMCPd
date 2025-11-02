@@ -73,4 +73,4 @@ def create_health_routes(
         finally:
             client.close()
 
-    return [Route("/api/health.json", health_route, methods=["GET"])]
+    return [Route("/api/health.json", health_route, methods=["GET", "HEAD"])]

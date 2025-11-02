@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:list-functions-in-range.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address_min", "address_max"],
+  "properties": {
+    "address_min": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+    "address_max": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 200},
+    "page": {"type": "integer", "minimum": 1, "default": 1}
+  }
+}

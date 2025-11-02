@@ -8,8 +8,10 @@ from starlette.routing import Route
 
 from ...features import (
     exports as export_features,
+    function_range,
     functions,
     imports as import_features,
+    scalars,
     strings,
     xrefs,
 )
@@ -372,6 +374,104 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             )
             return JSONResponse(response)
 
+    @deps.with_client
+    async def search_scalars_route(request: Request, client: GhidraClient) -> JSONResponse:
+        with request_scope(
+            "search_scalars",
+            logger=deps.logger,
+            extra={"path": "/api/search_scalars.json"},
+        ):
+            data, error = await deps.validated_json_body(
+                request, "search_scalars.request.v1.json"
+            )
+            if error is not None:
+                return error
+            assert data is not None
+            try:
+                value = data["value"]
+                if isinstance(value, str) and value.startswith("0x"):
+                    normalized_value = parse_hex(value)
+                else:
+                    normalized_value = int(value)
+                limit = int(data.get("limit", 100))
+                page = int(data.get("page", 1))
+            except (KeyError, TypeError, ValueError) as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
+                    status_code=400,
+                )
+            try:
+                payload = scalars.search_scalars(
+                    client,
+                    value=normalized_value,
+                    limit=limit,
+                    page=page,
+                )
+            except SafetyLimitExceeded as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
+                )
+            except (ValueError, TypeError) as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
+                    status_code=400,
+                )
+            valid, errors = validate_payload("search_scalars.v1.json", payload)
+            response = (
+                envelope_ok(payload)
+                if valid
+                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            )
+            return JSONResponse(response)
+
+    @deps.with_client
+    async def list_functions_in_range_route(request: Request, client: GhidraClient) -> JSONResponse:
+        with request_scope(
+            "list_functions_in_range",
+            logger=deps.logger,
+            extra={"path": "/api/list_functions_in_range.json"},
+        ):
+            data, error = await deps.validated_json_body(
+                request, "list_functions_in_range.request.v1.json"
+            )
+            if error is not None:
+                return error
+            assert data is not None
+            try:
+                address_min = str(data["address_min"])
+                address_max = str(data["address_max"])
+                limit = int(data.get("limit", 200))
+                page = int(data.get("page", 1))
+            except (KeyError, TypeError, ValueError) as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
+                    status_code=400,
+                )
+            try:
+                payload = function_range.list_functions_in_range(
+                    client,
+                    address_min=address_min,
+                    address_max=address_max,
+                    limit=limit,
+                    page=page,
+                )
+            except SafetyLimitExceeded as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
+                )
+            except (ValueError, TypeError) as exc:
+                return JSONResponse(
+                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
+                    status_code=400,
+                )
+            valid, errors = validate_payload("list_functions_in_range.v1.json", payload)
+            response = (
+                envelope_ok(payload)
+                if valid
+                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            )
+            return JSONResponse(response)
+
     return [
         Route("/api/string_xrefs.json", string_xrefs_route, methods=["POST"]),
         Route("/api/search_strings.json", search_strings_route, methods=["POST"]),
@@ -380,4 +480,6 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
         Route("/api/search_exports.json", search_exports_route, methods=["POST"]),
         Route("/api/search_xrefs_to.json", search_xrefs_to_route, methods=["POST"]),
         Route("/api/search_functions.json", search_functions_route, methods=["POST"]),
+        Route("/api/search_scalars.json", search_scalars_route, methods=["POST"]),
+        Route("/api/list_functions_in_range.json", list_functions_in_range_route, methods=["POST"]),
     ]

@@ -104,21 +104,25 @@
       "samples": [
         {
           "addr": "0x00007000",
+          "address_abs": "0x00007000",
           "op": "READ",
           "target": "0x00000000"
         },
         {
           "addr": "0x00007004",
+          "address_abs": "0x00000004",
           "op": "WRITE",
           "target": "0x00000004"
         },
         {
           "addr": "0x00007008",
+          "address_abs": "0x00000002",
           "op": "OR",
           "target": "0x00000002"
         },
         {
           "addr": "0x0000700c",
+          "address_abs": "0xfffffffd",
           "op": "AND",
           "target": "0xfffffffd"
         }

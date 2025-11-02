@@ -394,6 +394,162 @@ class GhidraClient:
             return []
         return [line.strip() for line in lines if line.strip()]
 
+    def search_scalars(self, value: int) -> List[Dict[str, Any]]:
+        """
+        Search for scalar values in the binary.
+        
+        Args:
+            value: Integer value to search for
+            
+        Returns:
+            List of dicts with address, value, function, and context
+        """
+        increment_counter("ghidra.search_scalars")
+        lines = self._request_lines(
+            "GET",
+            "searchScalars",
+            key="SEARCH_SCALARS",
+            params={"value": f"0x{value:x}", "limit": 999999},
+        )
+        if _is_error(lines):
+            return []
+        results: List[Dict[str, Any]] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Expected format: "address: value [function] context"
+            parts = stripped.split(None, 1)
+            if not parts:
+                continue
+            address = parts[0].rstrip(":")
+            rest = parts[1] if len(parts) > 1 else ""
+            results.append({
+                "address": address,
+                "value": f"0x{value:x}",
+                "function": None,
+                "context": rest,
+            })
+        return results
+
+    def list_functions_in_range(self, address_min: int, address_max: int) -> List[Dict[str, Any]]:
+        """
+        List all functions within an address range.
+        
+        Args:
+            address_min: Start address (inclusive)
+            address_max: End address (inclusive)
+            
+        Returns:
+            List of dicts with name, address, and size
+        """
+        increment_counter("ghidra.list_functions_in_range")
+        lines = self._request_lines(
+            "GET",
+            "functionsInRange",
+            key="FUNCTIONS_IN_RANGE",
+            params={
+                "min": f"0x{address_min:08x}",
+                "max": f"0x{address_max:08x}",
+            },
+        )
+        if _is_error(lines):
+            return []
+        results: List[Dict[str, Any]] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Expected format: "name @ address [size]"
+            if " @ " not in stripped:
+                continue
+            name_part, addr_part = stripped.split(" @ ", 1)
+            name = name_part.strip()
+            addr_and_size = addr_part.split(None, 1)
+            address = addr_and_size[0].strip()
+            size = None
+            if len(addr_and_size) > 1:
+                try:
+                    size = int(addr_and_size[1].strip())
+                except ValueError:
+                    pass
+            results.append({
+                "name": name,
+                "address": address,
+                "size": size,
+            })
+        return results
+
+    def disassemble_at(self, address: int, count: int) -> List[Dict[str, Any]]:
+        """
+        Disassemble instructions starting at address.
+        
+        Args:
+            address: Starting address
+            count: Number of instructions to disassemble
+            
+        Returns:
+            List of dicts with address, bytes, and text
+        """
+        increment_counter("ghidra.disassemble_at")
+        lines = self._request_lines(
+            "GET",
+            "disassembleAt",
+            key="DISASSEMBLE_AT",
+            params={"address": f"0x{address:08x}", "count": count},
+        )
+        if _is_error(lines):
+            return []
+        results: List[Dict[str, Any]] = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Expected format: "address: bytes text"
+            if ":" not in stripped:
+                continue
+            addr_part, rest = stripped.split(":", 1)
+            address_str = addr_part.strip()
+            rest = rest.strip()
+            # Split bytes and text (bytes are typically hex separated by spaces)
+            parts = rest.split(None, 1)
+            bytes_str = parts[0] if parts else ""
+            text = parts[1] if len(parts) > 1 else ""
+            results.append({
+                "address": address_str if address_str.startswith("0x") else f"0x{address_str}",
+                "bytes": bytes_str,
+                "text": text,
+            })
+        return results
+
+    def read_bytes(self, address: int, length: int) -> Optional[bytes]:
+        """
+        Read raw bytes from memory.
+        
+        Args:
+            address: Starting address
+            length: Number of bytes to read
+            
+        Returns:
+            Bytes object or None on error
+        """
+        increment_counter("ghidra.read_bytes")
+        lines = self._request_lines(
+            "GET",
+            "readBytes",
+            key="READ_BYTES",
+            params={"address": f"0x{address:08x}", "length": length},
+        )
+        if _is_error(lines) or not lines:
+            return None
+        # Expected format: base64 encoded data on first line
+        try:
+            import base64
+            return base64.b64decode(lines[0].strip())
+        except Exception as exc:
+            logger.warning("Failed to decode bytes: %s", exc)
+            return None
+
     def rename_function(self, address: int, new_name: str) -> bool:
         increment_counter("ghidra.rename")
         requester = EndpointRequester(

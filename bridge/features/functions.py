@@ -17,15 +17,20 @@ def search_functions(
     
     Args:
         client: Ghidra client instance
-        query: Search query string
-        limit: Maximum number of results per page
+        query: Search query string (use "*" or "" for all functions)
+        limit: Maximum number of results per page (capped at 500)
         offset: Number of results to skip
         
     Returns:
         Dictionary with query, total count, 1-based page, limit, and items array
     """
+    # Cap limit at 500 maximum
+    limit = min(limit, 500) if limit > 0 else 500
+    
     # Fetch all matching functions from Ghidra
-    raw_results = client.search_functions(query)
+    # Use empty query for wildcard searches
+    search_query = "" if query in ("*", "") else query
+    raw_results = client.search_functions(search_query)
     
     # Parse the raw results into structured objects
     items = []

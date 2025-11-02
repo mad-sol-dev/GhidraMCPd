@@ -13,14 +13,27 @@ def search_xrefs_to(
     limit: int = 100,
     offset: int = 0,
 ) -> Dict[str, object]:
-    """Search cross-references to ``address`` and return a paginated response."""
+    """Search cross-references to ``address`` and return a paginated response.
+    
+    Args:
+        client: Ghidra client instance
+        address: Target address as hex string
+        query: Search query string (use "*" or "" for all xrefs)
+        limit: Maximum number of results per page
+        offset: Number of results to skip
+        
+    Returns:
+        Dictionary with address, query, total count, page, limit, and items array
+    """
 
     try:
         address_value = int(address, 16)
     except ValueError as exc:  # pragma: no cover - validated earlier
         raise ValueError(f"Invalid address: {address}") from exc
 
-    raw_results = client.search_xrefs_to(address_value, query)
+    # Use empty query for wildcard searches
+    search_query = "" if query in ("*", "") else query
+    raw_results = client.search_xrefs_to(address_value, search_query)
 
     items: List[Dict[str, str]] = []
     for entry in raw_results:
