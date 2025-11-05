@@ -1,43 +1,81 @@
-# Ghidra MCP – Deterministic Bridge
+# Ghidra MCPd — token-efficient MCP server for Ghidra
 
-Deterministic, testable HTTP+MCP layer over the Ghidra plugin with strict schemas, batching, and write guards.
+Deterministic MCP server for the Ghidra plugin focused on lowering token spend while keeping schemas stable and auditable.
 
-- 🚦 **Deterministic** JSON envelopes for all endpoints
-- 🔍 **Rich search** across strings, functions, imports/exports, xrefs
-- 🧪 **Contract & golden** tests for stability
-- 🔐 **Write guards** (`ENABLE_WRITES`, `dry_run`) + observability
+## Motivation
+
+Bridging Ghidra through MCP can be API-expensive when clients emit many small calls. Ghidra MCPd batches high-volume tasks and adds server-side context windows so typical reverse-engineering sessions drop from roughly 80k tokens to ~25k (scenario-dependent), reducing latency and cost while preserving deterministic envelopes.
+
+## Highlights
+
+- Batch ops: `disassemble_batch`, `read_words`
+- Context search: `search_scalars_with_context` (server-side windowing)
+- Deterministic envelopes & schemas (`{ok,data,errors[]}`, `additionalProperties:false`)
+- Guard rails: write-guards (`ENABLE_WRITES`, `dry_run`), safety limits, observability via `/state`
+- Tested: contract, golden (OpenAPI/HTTP parity), unit
 
 ## Quickstart
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements.txt -r requirements-dev.txt
-
-# Run (factory app)
-uvicorn bridge.app:create_app --factory --port 8081
-
-# Smoke
-bash bin/smoke.sh
+uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-## MCP Tools
+## Advanced start
 
-> The MCP tool implementations create and close their own `GhidraClient` instances. Tool
-> signatures never expose a `client` parameter.
+Run the server and verify deterministic behavior:
+
+```bash
+curl -sS http://localhost:8000/openapi.json | jq '.info.title'
+# → 200 JSON ("Ghidra MCP Bridge API")
+
+curl -iN http://localhost:8000/sse
+# keep this stream open (HTTP/1.1 200)
+
+curl -i http://localhost:8000/sse
+# → HTTP/1.1 409 Conflict (single active SSE)
+
+curl -i -X POST http://localhost:8000/sse
+# → HTTP/1.1 405 Method Not Allowed + {"allow":"GET"}
+
+curl -i http://localhost:8000/messages
+# before readiness → HTTP/1.1 425 Too Early + {"error":"mcp_not_ready"}
+```
+
+## API index
+
+- `/api/search_strings.json`
+- `/api/strings_compact.json`
+- `/api/string_xrefs.json`
+- `/api/search_imports.json`
+- `/api/search_exports.json`
+- `/api/search_functions.json`
+- `/api/search_xrefs_to.json`
+- `/api/search_scalars.json`
+- `/api/list_functions_in_range.json`
+- `/api/disassemble_at.json`
+- `/api/read_bytes.json`
+- `/api/jt_slot_check.json`
+- `/api/jt_slot_process.json`
+- `/api/jt_scan.json`
+- `/api/mmio_annotate.json`
+- `/api/health.json`
+
+See the generated reference in [docs/api.md](docs/api.md).
 
 ## Documentation
 
-* [Overview](docs/overview.md)
-* [Quickstart](docs/quickstart.md)
-* [Configuration](docs/configuration.md)
-* [API Reference (Index)](docs/api/index.md)
-* [SSE Behavior](docs/sse.md)
-* [Observability](docs/observability.md)
-* [Development](docs/development.md)
-* [Troubleshooting](docs/troubleshooting.md)
-
-> OpenAPI: `GET /openapi.json` (served by the app)
+- [Getting started](docs/getting-started.md)
+- [Server operations](docs/server.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development workflow](docs/development.md)
 
 ## Status
 
 This repo is maintained with a deterministic plan. See [Development](docs/development.md) for the `.plan/` workflow.
+
+---
+
+Parts authored with an AI coding assistant (Codex).
