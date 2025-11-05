@@ -1,89 +1,87 @@
 # Troubleshooting
 
-- **409 on `/sse`**: by design; only one active client.
-- **425 on `/messages`**: session not ready; connect SSE and wait for readiness.
-- **Noisy `CancelledError` on shutdown**: ensure you are on a recent build; the bridge suppresses expected cancellations.
-- **Adapter error**: unknown optional adapter → check `BRIDGE_OPTIONAL_ADAPTERS` names.
+## Quick checks
 
-## SSE Connection Error (409 Conflict) - Detailed Guide
+- **409 on `/sse`**: By design there is only one active SSE stream. See [SSE readiness guidance](server.md#streaming--readiness) and ensure the previous stream has closed before reconnecting.
+- **425 on `/messages`**: The bridge or session is still initialising. Wait for the readiness event on `/sse` or poll `/state` until `bridge_ready` and `session_ready` are true.
+- **Noisy `CancelledError` on shutdown**: Benign cancellation traces may appear while the server closes background tasks. They are filtered in current builds but can surface if an ASGI server terminates abruptly.
+- **Adapter error**: Unknown optional adapter values raise fast failures. Verify `BRIDGE_OPTIONAL_ADAPTERS` names against supported architectures.
+
+## SSE Connection Error (409 Conflict) — detailed guide
 
 ### Symptom
-Error messages in MCP clients like AiderDesk:
-- "SSE error: Non-200 status code (409)"
-- "Error invoking remote method 'load-mcp-server-tools'"
 
-### Root Cause
-The Ghidra Java plugin does not support parallel operations. The GhidraMCP bridge enforces a single active SSE connection to prevent concurrent access that could cause data corruption or crashes in Ghidra.
+MCP clients (e.g., AiderDesk) log messages such as:
 
-### Common Scenarios
+- `SSE error: Non-200 status code (409)`
+- `Error invoking remote method 'load-mcp-server-tools'`
 
-#### AiderDesk Task Switching
-When switching between tasks or projects, AiderDesk may attempt to reconnect before the previous connection is fully closed.
+### Root cause
 
-Server logs show:
+The Ghidra Java plugin does not support parallel operations. Ghidra MCPd enforces a single active SSE connection to prevent concurrent access that could corrupt state. A second `GET /sse` request therefore returns 409 while the first stream remains active.
+
+### Common scenarios
+
+#### Task switching in clients
+
+Switching contexts rapidly can leave the old SSE stream closing while a new one starts.
+
+Server logs typically show:
+
 ```
-INFO: 127.0.0.1:44026 - "GET /sse HTTP/1.1" 200 OK          # First connection
-INFO: 127.0.0.1:48446 - "GET /sse HTTP/1.1" 409 Conflict   # Second rejected
-INFO: 127.0.0.1:57816 - "GET /sse HTTP/1.1" 200 OK          # After disconnect
+INFO: 127.0.0.1:44026 - "GET /sse HTTP/1.1" 200 OK
+INFO: 127.0.0.1:48446 - "GET /sse HTTP/1.1" 409 Conflict
+INFO: 127.0.0.1:57816 - "GET /sse HTTP/1.1" 200 OK
 ```
 
-#### MCP Server Reload
-Reloading MCP servers can trigger reconnection attempts while the old connection is still active.
+#### MCP server reloads
 
-### Solution
+Restarting a client-side MCP manager can trigger reconnect attempts before the bridge cleans up the earlier connection.
 
-**Wait 5-10 seconds** for the old connection to close automatically. The server accepts new connections once the previous one disconnects.
+### Resolution
 
-Check server logs for disconnect confirmation:
-```
-INFO: sse.disconnect {"connection_id": "...", "cancelled": false}
-```
+1. Allow 500–1000 ms backoff before retrying and wait for the prior connection to close. Streaming best practices are detailed in [Server operations](server.md#streaming--readiness).
+2. Confirm idle state:
+   ```bash
+   curl http://127.0.0.1:8000/state | jq '.active_sse'
+   ```
+   A null value indicates the bridge is ready for a new stream.
+3. Reconnect once `/state.active_sse` is `null` or readiness events arrive on the SSE stream.
 
 ### Prevention
 
-**For MCP clients**:
-- Ensure old SSE connections are fully closed before opening new ones
-- Implement proper connection lifecycle management
-- Wait for HTTP disconnect to complete before reconnecting
+- Ensure clients close SSE connections gracefully before spinning up a new one.
+- Space reconnection attempts to avoid overlapping `GET /sse` calls.
+- Monitor `/state.limit_hits` for repeated connection churn.
 
-**For AiderDesk users**:
-- Avoid rapidly switching between tasks
-- Wait for previous task to fully close before opening new one
-- If error persists, restart the GhidraMCP server
+### Manual recovery
 
-### Manual Recovery
+If a client remains stuck, restart the server:
 
-1. Check active connections:
-   ```bash
-   curl http://127.0.0.1:8081/state
-   ```
-   Look for `"active_sse": "<connection_id>"` (should be null when idle)
-
-2. Restart the server if needed:
-   ```bash
-   python -m uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8081
-   ```
-
-### Technical Details
-
-The protection mechanism in bridge/app.py (lines 186-206) checks for active connections:
-```python
-if _BRIDGE_STATE.active_sse_id is not None:
-    return JSONResponse(
-        {"error": "sse_already_active", "detail": "Another client is connected."},
-        status_code=409,
-    )
+```bash
+python -m uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-This is intentional and necessary to protect the Ghidra plugin from concurrent access.
+## `425 Too Early` on `/messages`
 
-### FAQ
+### Symptom
 
-**Q: Why not allow multiple connections?**  
-A: The Ghidra Java plugin doesn't support parallel operations. Multiple connections could cause data corruption.
+Requests to `/messages` return HTTP 425 with body `{"error":"mcp_not_ready"}`.
 
-**Q: Is this a bug?**  
-A: No, this is intentional protection. The issue is clients reconnecting too quickly.
+### Root cause
 
-**Q: Will this be fixed?**  
-A: The server behavior is correct. MCP clients should implement proper connection lifecycle management.
+The SSE stream has not finished initialising or the Ghidra bridge is still loading. Until both readiness flags are true, the server gates message traffic.
+
+### Resolution
+
+1. Establish the SSE connection and wait for the readiness event.
+2. Alternatively poll `/state` and confirm:
+   ```bash
+   curl http://127.0.0.1:8000/state | jq '{bridge_ready, session_ready}'
+   ```
+   Both values must be `true` before `/messages` accepts requests.
+3. After readiness, resume normal MCP messaging.
+
+## Handling shutdown `CancelledError`
+
+The server cancels background tasks when stopping. Uvicorn may still log `asyncio.CancelledError` traces during shutdown, especially if the process receives `SIGINT` or `SIGTERM`. These messages are expected and safe to ignore unless accompanied by stack traces indicating failed cleanup.
