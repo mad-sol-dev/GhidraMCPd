@@ -4,7 +4,7 @@
 
 Ghidra MCPd exposes a single server-sent events stream at `GET /sse`. Exactly one connection is permitted at a time. A second `GET /sse` while an active stream is open returns **HTTP 409 Conflict** and logs the existing connection identifier. Attempting to `POST /sse` responds with **HTTP 405 Method Not Allowed** and `{"allow":"GET"}`.
 
-Clients must establish the SSE stream before using `/messages`. Until both the bridge and session are ready, `/messages` responds with **HTTP 425 Too Early** and `{"error":"mcp_not_ready"}`. After receiving the initial readiness event, resume message traffic. When reconnecting, allow the previous stream to close and back off at least 500–1000 ms between retries to avoid immediate 409 responses.
+Clients must establish the SSE stream before using `/messages`. Until both the bridge and session are ready, `/messages` responds with **HTTP 425 Too Early** and `{"error":"mcp_not_ready"}`. After receiving the initial readiness event, resume message traffic. When reconnecting, allow the previous stream to close and back off at least 500-1000 ms between retries to avoid immediate 409 responses.
 
 ## Observability
 
