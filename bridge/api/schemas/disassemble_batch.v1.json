@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:disassemble-batch.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["addresses", "count", "results"],
+  "properties": {
+    "addresses": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "count": {"type": "integer"},
+    "results": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["address", "bytes", "text"],
+          "properties": {
+            "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+            "bytes": {"type": "string"},
+            "text": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@ from typing import Callable, Dict
 from mcp.server.fastmcp import FastMCP
 
 from ..features import (
+    batch_ops,
     disasm,
     exports as export_features,
     function_range,
@@ -640,6 +641,155 @@ def register_tools(
             return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
 
         valid, errors = validate_payload("read_bytes.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def disassemble_batch(
+        client,
+        addresses: list[str],
+        count: int = 16,
+    ) -> Dict[str, object]:
+        """
+        Disassemble multiple addresses in one call for efficient batch processing.
+        
+        Useful when you need to examine several functions or code locations at once
+        without making separate calls for each address.
+        
+        Args:
+            addresses: List of hex strings like ['0x1000', '0x2000']
+            count: Number of instructions per address (default: 16)
+            
+        Returns:
+            Dictionary with results keyed by address string.
+        """
+        request_payload = {"addresses": addresses, "count": count}
+        valid, errors = validate_payload("disassemble_batch.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        try:
+            with request_scope(
+                "disassemble_batch",
+                logger=logger,
+                extra={"tool": "disassemble_batch", "batch_size": len(addresses)},
+            ):
+                data = batch_ops.disassemble_batch(
+                    client,
+                    addresses=addresses,
+                    count=count,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("disassemble_batch.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def read_words(
+        client,
+        address: str,
+        count: int = 1,
+    ) -> Dict[str, object]:
+        """
+        Read multiple 32-bit words from memory at once.
+        
+        More efficient than calling read_bytes repeatedly. Returns decoded integer
+        values (little-endian) instead of base64.
+        
+        Args:
+            address: Starting hex address like '0x1000'
+            count: Number of 32-bit words (default: 1, max: 256)
+            
+        Returns:
+            Dictionary with address, count, and array of word values (integers or
+            None for unreadable).
+        """
+        request_payload = {"address": address, "count": count}
+        valid, errors = validate_payload("read_words.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        try:
+            with request_scope(
+                "read_words",
+                logger=logger,
+                extra={"tool": "read_words"},
+            ):
+                data = batch_ops.read_words(
+                    client,
+                    address=parse_hex(address),
+                    count=count,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("read_words.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tool_client
+    def search_scalars_with_context(
+        client,
+        value: str | int,
+        context_lines: int = 4,
+        limit: int = 100,
+    ) -> Dict[str, object]:
+        """
+        Search for scalar values and include surrounding disassembly context.
+        
+        Combines scalar search with automatic disassembly of surrounding code,
+        reducing the need for follow-up disassemble_at calls.
+        
+        Args:
+            value: Hex string like '0xB8000000' or integer
+            context_lines: Instructions before/after (default: 4)
+            limit: Max results (default: 100)
+            
+        Returns:
+            Dictionary with matches array including address, value, function name,
+            context text, and disassembly.
+        """
+        request_payload = {
+            "value": value,
+            "context_lines": context_lines,
+            "limit": limit,
+        }
+        valid, errors = validate_payload(
+            "search_scalars_with_context.request.v1.json", request_payload
+        )
+        if not valid:
+            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+
+        # Normalize value
+        if isinstance(value, str) and value.startswith("0x"):
+            normalized_value = parse_hex(value)
+        else:
+            normalized_value = int(value)
+
+        try:
+            with request_scope(
+                "search_scalars_with_context",
+                logger=logger,
+                extra={"tool": "search_scalars_with_context"},
+            ):
+                data = batch_ops.search_scalars_with_context(
+                    client,
+                    value=normalized_value,
+                    context_lines=context_lines,
+                    limit=limit,
+                )
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+
+        valid, errors = validate_payload("search_scalars_with_context.v1.json", data)
         if not valid:
             return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
         return envelope_ok(data)

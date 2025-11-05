@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:disassemble-batch.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["addresses"],
+  "properties": {
+    "addresses": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+      "minItems": 1,
+      "maxItems": 50
+    },
+    "count": {"type": "integer", "minimum": 1, "maximum": 128, "default": 16}
+  }
+}

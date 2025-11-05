@@ -5,3 +5,7 @@
 - `/messages` gates on readiness; premature calls return **425** `{ "error":"mcp_not_ready" }`.
 
 Use `/state` to observe `active_sse`, readiness, and counters. See also `observability.md`.
+
+---
+
+**For detailed troubleshooting of 409 errors**, see [Troubleshooting Guide](troubleshooting.md#sse-connection-error-409-conflict---detailed-guide).

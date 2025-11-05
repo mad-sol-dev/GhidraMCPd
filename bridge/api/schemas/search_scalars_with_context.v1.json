@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:search-scalars-with-context.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["value", "total", "matches"],
+  "properties": {
+    "value": {"type": "string", "pattern": "^0x[0-9A-Fa-f]+$"},
+    "total": {"type": "integer"},
+    "matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["address", "value", "disassembly"],
+        "properties": {
+          "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+          "value": {"type": "string", "pattern": "^0x[0-9A-Fa-f]+$"},
+          "function": {"type": ["string", "null"]},
+          "context_text": {"type": "string"},
+          "disassembly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["address", "bytes", "text"],
+              "properties": {
+                "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+                "bytes": {"type": "string"},
+                "text": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
