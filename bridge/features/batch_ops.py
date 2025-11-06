@@ -120,7 +120,13 @@ def search_scalars_with_context(
     increment_counter("batch_ops.search_scalars_with_context")
     
     # Get scalar search results
-    results = scalars.search_scalars(client, value=value, limit=limit, page=1)
+    results = scalars.search_scalars(
+        client,
+        value=value,
+        query=int_to_hex(value),
+        limit=limit,
+        page=1,
+    )
     
     matches = []
     items = results.get("items", [])

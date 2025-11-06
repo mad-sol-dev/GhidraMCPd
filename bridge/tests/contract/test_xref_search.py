@@ -17,17 +17,18 @@ def test_search_xrefs_basic(contract_client: TestClient) -> None:
     assert payload["ok"] is True
     data = payload["data"]
 
-    assert data["address"] == "0x00100000"
     assert data["query"] == "call"
     assert isinstance(data["total"], int)
     assert data["page"] == 1
     assert data["limit"] == 5
     assert isinstance(data["items"], list)
+    assert isinstance(data["has_more"], bool)
     assert data["items"], "Expected at least one xref match"
 
     for item in data["items"]:
         assert item["from_address"].startswith("0x")
         assert isinstance(item["context"], str)
+        assert item["target_address"] == "0x00100000"
 
 
 def test_search_xrefs_pagination(contract_client: TestClient) -> None:
@@ -56,6 +57,10 @@ def test_search_xrefs_pagination(contract_client: TestClient) -> None:
         addresses_one = [item["from_address"] for item in page_one["items"]]
         addresses_two = [item["from_address"] for item in page_two["items"]]
         assert addresses_one != addresses_two
+        assert page_one["has_more"] is True
+        assert isinstance(page_two["has_more"], bool)
+    else:
+        assert page_one["has_more"] is False
 
 
 def test_search_xrefs_validates_schema(contract_client: TestClient) -> None:

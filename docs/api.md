@@ -85,6 +85,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
 | `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
@@ -93,6 +94,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
+  "has_more": false,
   "items": [
     {
       "address": "0x0",
@@ -137,6 +139,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
 | `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
@@ -145,6 +148,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
+  "has_more": false,
   "items": [
     {
       "address": "0x0",
@@ -189,6 +193,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
 | `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
@@ -197,6 +202,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
+  "has_more": false,
   "items": [
     {
       "address": "0x0",
@@ -247,6 +253,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
 | `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
@@ -255,6 +262,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
+  "has_more": false,
   "items": [
     "\u2026"
   ],

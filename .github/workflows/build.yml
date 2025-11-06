@@ -37,6 +37,25 @@ jobs:
           python -m pip install -r requirements-dev.txt
       - run: python -m pytest -q bridge/tests/unit bridge/tests/contract bridge/tests/golden
 
+  api-docs:
+    name: API docs up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Render OpenAPI markdown
+        run: python scripts/gen_api_md.py bridge/tests/golden/data/openapi_snapshot.json > docs/api.generated.md
+      - name: Detect drift in docs/api.md
+        run: |
+          if ! diff -u docs/api.md docs/api.generated.md; then
+            echo "::error::docs/api.md is out of date. Run: python scripts/gen_api_md.py bridge/tests/golden/data/openapi_snapshot.json > docs/api.md"
+            exit 1
+          fi
+      - name: Clean up
+        run: rm docs/api.generated.md
+
   # 2) Dateifilter bestimmen, ob Java gebaut wird
   changes:
     runs-on: ubuntu-latest

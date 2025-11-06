@@ -29,7 +29,7 @@ from ..utils.logging import (
     increment_counter,
     request_scope,
 )
-from ..utils.hex import parse_hex
+from ..utils.hex import int_to_hex, parse_hex
 from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
 from .validators import validate_payload
 
@@ -510,10 +510,15 @@ def register_tools(
             return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
 
         # Normalize value
-        if isinstance(value, str) and value.startswith("0x"):
-            normalized_value = parse_hex(value)
+        if isinstance(value, str):
+            query_value = value
+            if value.startswith("0x"):
+                normalized_value = parse_hex(value)
+            else:
+                normalized_value = int(value)
         else:
             normalized_value = int(value)
+            query_value = int_to_hex(normalized_value)
 
         try:
             with request_scope(
@@ -524,6 +529,7 @@ def register_tools(
                 data = scalars.search_scalars(
                     client,
                     value=normalized_value,
+                    query=query_value,
                     limit=limit,
                     page=page,
                 )

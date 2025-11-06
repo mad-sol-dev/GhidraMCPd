@@ -2,9 +2,44 @@
 
 ## Streaming & readiness
 
-Ghidra MCPd exposes a single server-sent events stream at `GET /sse`. Exactly one connection is permitted at a time. A second `GET /sse` while an active stream is open returns **HTTP 409 Conflict** and logs the existing connection identifier. Attempting to `POST /sse` responds with **HTTP 405 Method Not Allowed** and `{"allow":"GET"}`.
+Ghidra MCPd exposes a single server-sent events stream at `GET /sse`. Exactly one connection is permitted at a time. A second `GET /sse` while an active stream is open returns **HTTP 409 Conflict** and logs the existing connection identifier. Attempting to `POST /sse` responds with **HTTP 405 Method Not Allowed** and `{"allow":"GET"}`. See the [error reference](troubleshooting.md#error-reference) for a quick matrix of the relevant status codes.
 
 Clients must establish the SSE stream before using `/messages`. Until both the bridge and session are ready, `/messages` responds with **HTTP 425 Too Early** and `{"error":"mcp_not_ready"}`. After receiving the initial readiness event, resume message traffic. When reconnecting, allow the previous stream to close and back off at least 500-1000 ms between retries to avoid immediate 409 responses.
+
+### Reconnect backoff example
+
+The snippet below shows one way to retry the SSE stream with backoff and jitter. The loop tolerates transient `409`/`405` responses while the previous stream winds down and caps retries at five seconds.
+
+```python
+import random
+import time
+
+import requests
+
+SSE_URL = "http://127.0.0.1:8000/sse"
+
+backoff = 0.5  # seconds
+max_backoff = 5.0
+
+while True:
+    response = requests.get(SSE_URL, stream=True, timeout=30)
+    if response.status_code == 200:
+        break  # stream established
+
+    if response.status_code in {405, 409}:
+        jitter = random.uniform(0.0, 0.5)
+        sleep_for = min(max_backoff, backoff + jitter)
+        time.sleep(sleep_for)
+        backoff = min(max_backoff, backoff * 1.5)
+        continue
+
+    response.raise_for_status()
+
+for line in response.iter_lines():
+    print(line)
+```
+
+The server continues delivering exactly one SSE stream at a time; clients should only run a single copy of the loop.
 
 ## Observability
 

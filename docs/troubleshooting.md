@@ -1,8 +1,26 @@
 # Troubleshooting
 
+## Error reference
+
+| Name | When it appears | Example payload / status |
+| --- | --- | --- |
+| `mcp_not_ready` | `POST /messages` before the SSE stream and session finish initialising | `425 Too Early` with `{"error":"mcp_not_ready"}` |
+| SSE single-stream guard | Second `GET /sse` while another stream is open, or non-GET method | `409 Conflict` (duplicate stream) or `405 Method Not Allowed` with `{"allow":"GET"}` |
+| `SAFETY_LIMIT` | Batch/search window or write count exceeds configured caps (`GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`) | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"SAFETY_LIMIT","message":"strings.search.window limit exceeded: attempted 400 > allowed 256"}]}` |
+| `INVALID_ARGUMENT` | Request parameters fail validation (negative offsets, non-integer limits, malformed hex) | `400 Bad Request` envelope with `code="INVALID_ARGUMENT"` |
+| `SCHEMA_INVALID` | JSON body violates schema (missing required fields, unexpected keys) | `400 Bad Request` envelope with `code="SCHEMA_INVALID"` |
+| `WRITE_DISABLED_DRY_RUN` | Write attempted while writes are disabled or `dry_run=false` without permission | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"WRITE_DISABLED_DRY_RUN","message":"Writes are disabled while dry_run is false."}]}` |
+| `WRITE_VERIFY_FAILED` | Ghidra could not confirm a rename/comment during jump-table processing | `200 OK` with `data.errors` containing `"WRITE_VERIFY_FAILED"` |
+| `TOOL_BINDING_MISSING` | Jump-table slot read failed (adapter missing backing data) | `200 OK` with `data.errors` containing `"TOOL_BINDING_MISSING"` |
+| `ARM_INSTRUCTION` | Jump-table slot contains instruction sentinel (no branch target) | `200 OK` with `data.errors` containing `"ARM_INSTRUCTION"` |
+| `OUT_OF_RANGE` | Jump-table target falls outside `code_min`/`code_max` bounds | `200 OK` with `data.errors` containing `"OUT_OF_RANGE"` |
+| `NO_FUNCTION_AT_TARGET` | Jump-table target lacks a defined function symbol | `200 OK` with `data.errors` containing `"NO_FUNCTION_AT_TARGET"` |
+
+Refer back to this table when interpreting the examples below or cross-checking logs.
+
 ## Quick checks
 
-- **409 on `/sse`**: By design there is only one active SSE stream. See [SSE readiness guidance](server.md#streaming--readiness) and ensure the previous stream has closed before reconnecting.
+- **409 on `/sse`**: By design there is only one active SSE stream. See [SSE readiness guidance](server.md#streaming--readiness) and the [error reference](#error-reference) before reconnecting.
 - **425 on `/messages`**: The bridge or session is still initialising. Wait for the readiness event on `/sse` or poll `/state` until `bridge_ready` and `session_ready` are true.
 - **Noisy `CancelledError` on shutdown**: Benign cancellation traces may appear while the server closes background tasks. They are filtered in current builds but can surface if an ASGI server terminates abruptly.
 - **Adapter error**: Unknown optional adapter values raise fast failures. Verify `BRIDGE_OPTIONAL_ADAPTERS` names against supported architectures.

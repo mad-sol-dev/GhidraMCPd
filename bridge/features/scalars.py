@@ -10,6 +10,7 @@ def search_scalars(
     client: GhidraClient,
     *,
     value: Union[int, str],
+    query: str,
     limit: int,
     page: int,
 ) -> Dict[str, object]:
@@ -23,7 +24,7 @@ def search_scalars(
         page: Page number (1-based)
         
     Returns:
-        Dictionary with total count, page, limit, and items array
+        Dictionary with query, total count, page, limit, items array, and has_more flag
     """
     increment_counter("scalars.search.calls")
     
@@ -58,20 +59,24 @@ def search_scalars(
     if page < 1:
         page = 1
     if limit <= 0:
-        limit = total
-    
+        limit = total if total > 0 else 1
+
     start = (page - 1) * limit
     end = start + limit
-    
+
     paginated_items = items[start:end]
-    
+
     increment_counter("scalars.search.results", len(paginated_items))
-    
+
+    has_more = (page * limit) < total
+
     return {
+        "query": query,
         "total": total,
         "page": page,
         "limit": limit,
         "items": paginated_items,
+        "has_more": has_more,
     }
 
 

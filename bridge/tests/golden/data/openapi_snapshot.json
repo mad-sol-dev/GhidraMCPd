@@ -1,6 +1,6 @@
 {
   "info": {
-    "title": "GhidraMCPd API",
+    "title": "Ghidra MCP Bridge API",
     "version": "1.0.0"
   },
   "openapi": "3.1.0",
@@ -92,6 +92,9 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
                     "items": {
                       "items": {
                         "additionalProperties": false,
@@ -133,7 +136,8 @@
                     "total",
                     "page",
                     "limit",
-                    "items"
+                    "items",
+                    "has_more"
                   ],
                   "type": "object"
                 }
@@ -190,6 +194,9 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
                     "items": {
                       "items": {
                         "additionalProperties": false,
@@ -231,7 +238,8 @@
                     "total",
                     "page",
                     "limit",
-                    "items"
+                    "items",
+                    "has_more"
                   ],
                   "type": "object"
                 }
@@ -288,6 +296,9 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
                     "items": {
                       "items": {
                         "additionalProperties": false,
@@ -329,7 +340,8 @@
                     "total",
                     "page",
                     "limit",
-                    "items"
+                    "items",
+                    "has_more"
                   ],
                   "type": "object"
                 }
@@ -388,6 +400,9 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
                     "items": {
                       "items": {
                         "$ref": "urn:schema:strings-compact.v1#/properties/items/items"
@@ -415,7 +430,8 @@
                     "total",
                     "page",
                     "limit",
-                    "items"
+                    "items",
+                    "has_more"
                   ],
                   "type": "object"
                 }

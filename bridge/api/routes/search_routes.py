@@ -17,7 +17,7 @@ from ...features import (
 )
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
-from ...utils.hex import parse_hex
+from ...utils.hex import int_to_hex, parse_hex
 from ...utils.logging import (
     SafetyLimitExceeded,
     enforce_batch_limit,
@@ -388,11 +388,16 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 return error
             assert data is not None
             try:
-                value = data["value"]
-                if isinstance(value, str) and value.startswith("0x"):
-                    normalized_value = parse_hex(value)
+                raw_value = data["value"]
+                if isinstance(raw_value, str):
+                    query_value = raw_value
+                    if raw_value.startswith("0x"):
+                        normalized_value = parse_hex(raw_value)
+                    else:
+                        normalized_value = int(raw_value)
                 else:
-                    normalized_value = int(value)
+                    normalized_value = int(raw_value)
+                    query_value = int_to_hex(normalized_value)
                 limit = int(data.get("limit", 100))
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
@@ -400,10 +405,19 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
                     status_code=400,
                 )
+            if limit <= 0 or page <= 0:
+                return JSONResponse(
+                    envelope_error(
+                        ErrorCode.INVALID_ARGUMENT,
+                        "limit and page must be positive integers.",
+                    ),
+                    status_code=400,
+                )
             try:
                 payload = scalars.search_scalars(
                     client,
                     value=normalized_value,
+                    query=query_value,
                     limit=limit,
                     page=page,
                 )

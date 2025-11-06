@@ -23,7 +23,7 @@ def search_xrefs_to(
         offset: Number of results to skip
         
     Returns:
-        Dictionary with address, query, total count, page, limit, and items array
+        Dictionary with query, total count, page, limit, items array, and has_more flag
     """
 
     try:
@@ -35,6 +35,7 @@ def search_xrefs_to(
     search_query = "" if query in ("*", "") else query
     raw_results = client.search_xrefs_to(address_value, search_query)
 
+    target_address = f"0x{address_value:08x}"
     items: List[Dict[str, str]] = []
     for entry in raw_results:
         addr_val = entry.get("addr")
@@ -46,22 +47,26 @@ def search_xrefs_to(
             {
                 "from_address": f"0x{addr_val:08x}",
                 "context": context_text,
+                "target_address": target_address,
             }
         )
 
     total = len(items)
     if limit <= 0:
+        limit = total if total > 0 else 1
         page = 1
         paginated_items = items[offset:]
     else:
         page = offset // limit + 1
         paginated_items = items[offset : offset + limit]
 
+    has_more = (page * limit) < total
+
     return {
-        "address": f"0x{address_value:08x}",
         "query": query,
         "total": total,
         "page": page,
         "limit": limit,
         "items": paginated_items,
+        "has_more": has_more,
     }

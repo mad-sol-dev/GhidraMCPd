@@ -205,15 +205,16 @@ def search_strings(
         raise SafetyLimitExceeded("strings.search.window", MAX_ITEMS_PER_BATCH, window)
 
     if limit <= 0:
+        limit = total if total > 0 else 1
         page = 1
+        paginated_items = normalized_entries[offset:]
     else:
         page = offset // limit + 1
-    start_index = offset
-    end_index = offset + limit
-    if limit <= 0:
-        paginated_items = normalized_entries[start_index:]
-    else:
+        start_index = offset
+        end_index = offset + limit
         paginated_items = normalized_entries[start_index:end_index]
+
+    has_more = (page * limit) < total
 
     return {
         "query": query,
@@ -221,6 +222,7 @@ def search_strings(
         "page": page,
         "limit": limit,
         "items": paginated_items,
+        "has_more": has_more,
     }
 
 

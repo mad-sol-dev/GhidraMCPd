@@ -43,6 +43,25 @@ Set environment variables before starting the server to adjust safety limits and
 
 For reproducibility, copy `.env.sample` to `.env`, edit values, and load via `export $(cat .env | xargs)` (or a shell equivalent) prior to launching Uvicorn.
 
+### Batch limits (defaults)
+
+The bridge enforces deterministic caps on batch-style operations to keep token usage predictable. All of the following limits default to `GHIDRA_MCP_MAX_ITEMS_PER_BATCH = 256` and raise `SafetyLimitExceeded` when exceeded (see the [error reference](troubleshooting.md#error-reference) for envelope details):
+
+| Operation | Capped dimension | Default | Override |
+| --- | --- | --- | --- |
+| `disassemble_batch` | Addresses per request | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
+| `read_words` | Words per request | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
+| `search_strings`, `search_imports`, `search_exports`, `search_xrefs_to`, `strings_compact` | Window size (`offset + limit`) | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
+| `search_scalars_with_context` | Matches returned | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
+
+Set the environment variable before starting the server to raise the ceiling, for example:
+
+```bash
+GHIDRA_MCP_MAX_ITEMS_PER_BATCH=512 uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+Keep an eye on `/state.limit_hits` to confirm the new cap is sufficient for your workload.
+
 ## Token efficiency notes
 
 Ghidra MCPd keeps responses compact by enforcing deterministic schema envelopes (`{"ok":bool,"data":object|null,"errors":[]}`) and predictable limits. In typical analysis sessions, combining `disassemble_batch` with contextual search reduces total request tokens by roughly 70% (example: ~80k tokens before batching → ~25k after). Actual savings depend on program size and client prompting, but the enforced caps above protect against unbounded payloads.
