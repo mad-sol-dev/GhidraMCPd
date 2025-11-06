@@ -1,53 +1,152 @@
-# Roadmap: Evolving from a Data Bridge to an Analysis Engine
+# Roadmap: from data bridge to a token‑efficient analysis server
 
-## Executive Summary
+This document tracks where Ghidra MCPd is today and what comes next. The original problem statement (filter after paginate, high token spend, unclear readiness) has been addressed in Phase 1. The next phases focus on ranking, payload reduction, and developer ergonomics.
 
-This document outlines the current architectural limitations of the GhidraMCP bridge and proposes a strategic roadmap to evolve it from a simple data provider into a truly efficient engine for AI-driven reverse engineering.
+## Executive summary
 
-The core problem is an architectural anti-pattern—**"Filter after Paginate"**—present in most data listing endpoints. This leads to incomplete search results and forces the controlling LLM to make uninformed, costly decisions.
-
-The solution is a two-phase approach:
-1.  **Immediate Fix:** Implement server-side search capabilities for all relevant endpoints and provide pagination metadata (`total`) to enable intelligent, iterative querying by the LLM.
-2.  **Long-Term Vision:** Explore server-side relevance scoring to reduce the data sent to the LLM to only the most pertinent information, further minimizing token costs and cognitive load.
+* Historical issue: many list endpoints filtered after pagination. That produced incomplete searches and pushed cost to the LLM.
+* Current state: search‑before‑paginate exists for the major entities, batch operations and context‑aware tools are available, and streaming/readiness semantics are explicit. API docs can be generated from the live OpenAPI.
+* Next steps: unify response metadata across all search endpoints, add optional relevance scoring, and harden performance and DX.
 
 ---
 
-## The Core Problem: The "Filter After Paginate" Anti-Pattern
+## Status snapshot
 
-Currently, most endpoints that return lists of items (like strings, functions, or xrefs) operate as follows:
+* [x] Server‑side search endpoints for major entities
 
-1.  The Java backend retrieves the **entire list** of items from Ghidra (potentially thousands).
-2.  It then **slices** this list based on `limit` and `offset` parameters (e.g., gets the first 100 items).
-3.  Only this small, paginated slice is sent back to the Python bridge and ultimately to the LLM.
+  * strings, functions, imports, exports, xrefs, scalars
+* [x] Batch operations
 
-This leads to a critical flaw: **any search or filter operation can only see the small slice of data, not the complete dataset.** If an LLM searches for the string "password" but that string is the 500th entry in the binary, a request for the first 100 strings will never find it. The system falsely reports "not found," leading to incorrect analysis.
+  * `disassemble_batch`, `read_words`
+* [x] Context‑aware search
 
-This forces the LLM into a naive and expensive workflow: either blindly paginating through thousands of results or giving up.
+  * `search_scalars_with_context` with server‑side windowing
+* [x] Deterministic envelopes and strict schemas
+
+  * `{ok, data, errors[]}`, JSON Schema with `additionalProperties: false`
+* [x] Streaming and readiness semantics
+
+  * single active `GET /sse` (second returns 409), `POST /sse` returns 405, early calls may return 425 until session is ready
+* [x] Observability and guard rails
+
+  * `/state` readiness and counters, safety limits, write guards (`ENABLE_WRITES`, `dry_run`)
+* [x] API documentation generator
+
+  * `scripts/gen_api_md.py` renders `docs/api.md` from `/openapi.json`
+* [ ] Response‑level metadata
+
+  * ensure consistent `total` and introduce `has_more` across all search endpoints
+* [ ] Lightweight relevance scoring
+
+  * optional `score` field and stable ordering, with an `explain` toggle for debugging
 
 ---
 
-## Phase 1: The Immediate Solution — Server-Side Search & Informed Pagination
+## Phase 1 – complete and to be finalized
 
-To fix this fundamental issue, all listing endpoints must be refactored to follow a **"Search/Filter Before Paginate"** model.
+Goal: make server responses correct, discoverable, and cheap without changing the plugin fundamentals.
 
-### 1.1. Implement Server-Side Search
+1. Search‑before‑paginate model
 
-For each relevant entity type (strings, functions, imports, etc.), a dedicated search endpoint will be created (e.g., `/api/search_strings.json`).
+* Implemented for key entities (strings, functions, imports, exports, xrefs, scalars).
+* Follow ups:
 
-*   **Responsibility:** The Java backend will be responsible for filtering the *entire dataset* based on a `query` parameter.
-*   **Pagination:** The `limit` and `offset` parameters will be applied *only to the filtered result set*.
+  * Normalize response metadata across all search endpoints: `query`, `total`, `page` (1‑based), `limit`, `items`.
+  * Add `has_more` for simple forward pagination and document the contract in `docs/api.md`.
 
-This ensures that a search query always operates on the complete ground truth available within Ghidra.
+2. Batch and windowing
 
-### 1.2. Provide Pagination Metadata
+* Implemented (`disassemble_batch`, `read_words`, windowed scalar search).
+* Follow ups:
 
-A simple list of results is not enough for an LLM to make strategic decisions. The response payload for all search endpoints must be enhanced to include crucial metadata:
+  * Enforce clear batch caps in configuration and document defaults in `docs/getting-started.md`.
 
-```json
-{
-  "query": "password",
-  "total": 1250,  // The total number of matches found
-  "page": 1,              // The current page number
-  "limit": 100,           // The number of items per page
-  "items": [ /* ... the first 100 results ... */ ]
-}
+3. Deterministic contracts and limits
+
+* Implemented (envelopes, safety limits).
+* Follow ups:
+
+  * Consolidate error type documentation and link from troubleshooting and server docs.
+
+4. Streaming and readiness
+
+* Implemented (single SSE, readiness gate).
+* Follow ups:
+
+  * Add a short client example for reconnect backoff to `docs/server.md`.
+
+---
+
+## Phase 2 – relevance and payload reduction
+
+Goal: return only what a client likely needs, in a ranked and auditable form.
+
+* Relevance scoring (optional)
+
+  * Add `score` when a query is present. Provide `rank` options: `none` (default), `simple` (term frequency and proximity), `strict` (deterministic tie‑breaking).
+  * Keep off by default to preserve baseline determinism.
+
+* Explain mode (optional)
+
+  * `explain=true` adds a minimal `why` object per item for debugging and tests.
+  * Hard size caps so explain cannot grow payloads unbounded.
+
+* Sampling and caps
+
+  * `top_k` and `tail_k` for large match sets.
+  * Document interaction with `limit`, `offset`, `total`, and `has_more`.
+
+---
+
+## Phase 3 – performance and ops
+
+Goal: keep latency and cost low at scale while staying predictable.
+
+* Cache common lookups (LRU or TTL) with explicit invalidation hooks.
+* Expose metrics counters for batch sizes, skipped items, and limit hits in `/state`.
+* Backpressure and rate limits for chatty clients, with clear error messages.
+
+---
+
+## Phase 4 – developer experience
+
+Goal: make integration and debugging straightforward.
+
+* Thin client helpers
+
+  * Minimal CLI or Python helper that opens SSE, waits for readiness, and calls tools.
+* Examples
+
+  * 2 to 3 short end‑to‑end examples under `examples/` showing search -> batch read -> disassemble window.
+* Docs automation
+
+  * CI step that regenerates `docs/api.md` from `/openapi.json` and fails on drift.
+
+---
+
+## Compatibility and versioning
+
+* OpenAPI for core fields is currently frozen to avoid churn. Additive changes are allowed. Removing or renaming fields requires a minor version bump.
+* If relevance scoring is enabled by default in the future, ship a minor bump and provide a `rank=none` escape hatch.
+
+---
+
+## Appendix – endpoint coverage checklist
+
+This table tracks search metadata and future relevance hooks.
+
+| Endpoint                          | Search before paginate | `total` field | `has_more` field | scoring/explain |
+| --------------------------------- | ---------------------- | ------------- | ---------------- | --------------- |
+| /api/search_strings.json          | yes                    | yes           | planned          | planned         |
+| /api/search_functions.json        | yes                    | yes           | planned          | planned         |
+| /api/search_imports.json          | yes                    | yes           | planned          | planned         |
+| /api/search_exports.json          | yes                    | yes           | planned          | planned         |
+| /api/search_xrefs_to.json         | yes                    | yes           | planned          | planned         |
+| /api/search_scalars.json          | yes                    | yes           | planned          | planned         |
+| /api/list_functions_in_range.json | partial                | n/a           | n/a              | n/a             |
+
+Notes:
+
+* `total` and `page` already appear in responses for the search endpoints above; add `has_more` for clarity and consistency.
+* Non‑search endpoints like `disassemble_at.json` are not applicable for these fields.
+
