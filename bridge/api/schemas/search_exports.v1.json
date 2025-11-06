@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_exports.v1.json",
   "type": "object",
-  "required": ["query", "total", "page", "limit", "items"],
+  "required": ["query", "total", "page", "limit", "items", "has_more"],
   "properties": {
     "query": {
       "type": "string"
@@ -35,7 +35,8 @@
         },
         "additionalProperties": false
       }
-    }
+    },
+    "has_more": {"type": "boolean"}
   },
   "additionalProperties": false
 }

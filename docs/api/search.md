@@ -3,7 +3,7 @@
 ## Common semantics
 
 - **Server-side filtering first** (no information loss), then pagination.
-- Responses unify on: `query`, `total`, `page` (1-based), `limit`, `items`.
+- Responses unify on: `query`, `total`, `page` (1-based), `limit`, `items`, `has_more`.
 
 ## Strings
 
@@ -33,6 +33,7 @@ Search for immediate/constant values in code.
 {
   "ok": true,
   "data": {
+    "query": "0xB0000084",
     "total": 42,
     "page": 1,
     "limit": 100,
@@ -43,7 +44,8 @@ Search for immediate/constant values in code.
         "function": "init_board",
         "context": "LDR R0, =0xB0000084"
       }
-    ]
+    ],
+    "has_more": false
   },
   "errors": []
 }
@@ -52,6 +54,7 @@ Search for immediate/constant values in code.
 - `value`: hex string (0x...) or integer
 - `limit`: max 500
 - `page`: 1-based pagination
+- `has_more`: true when another page exists (`page * limit < total`)
 
 ## Functions in Range
 

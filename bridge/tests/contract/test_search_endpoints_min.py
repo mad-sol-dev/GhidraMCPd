@@ -27,6 +27,7 @@ def test_strings_basic_contract():
     assert payload["errors"] == []
     data = payload["data"]
     assert "items" in data and isinstance(data["items"], list)
+    assert isinstance(data.get("has_more"), bool)
     for item in data["items"]:
         literal = _string_from_item(item)
         # Falls Treffer vorhanden: sicherstellen, dass 'http' tatsächlich vorkommt (case-insensitiv)
@@ -86,6 +87,7 @@ def test_functions_basic_contract_and_section_bounds():
     )
     assert data["ok"] is True
     items = data["data"]["items"]
+    assert isinstance(data["data"].get("has_more"), bool)
     for it in items:
         kind = it.get("kind")
         if kind is not None:
@@ -118,3 +120,4 @@ def test_xrefs_roundtrip_symmetry_sample():
     for it in to_list[:10]:
         assert it.get("from_address", "").startswith("0x")
         assert it.get("context") is not None
+        assert it.get("target_address") == faddr

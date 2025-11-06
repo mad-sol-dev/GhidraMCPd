@@ -29,11 +29,14 @@ def search_exports(
 
     total = len(items)
     if limit <= 0:
+        limit = total if total > 0 else 1
         page = 1
         paginated_items = items[offset:]
     else:
         page = offset // limit + 1
         paginated_items = items[offset : offset + limit]
+
+    has_more = (page * limit) < total
 
     return {
         "query": query,
@@ -41,4 +44,5 @@ def search_exports(
         "page": page,
         "limit": limit,
         "items": paginated_items,
+        "has_more": has_more,
     }

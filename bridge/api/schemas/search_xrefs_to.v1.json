@@ -2,12 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_xrefs_to.v1.json",
   "type": "object",
-  "required": ["address", "query", "total", "page", "limit", "items"],
+  "required": ["query", "total", "page", "limit", "items", "has_more"],
   "properties": {
-    "address": {
-      "type": "string",
-      "pattern": "^0x[0-9a-fA-F]+$"
-    },
     "query": {
       "type": "string"
     },
@@ -27,7 +23,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["from_address", "context"],
+        "required": ["from_address", "context", "target_address"],
         "properties": {
           "from_address": {
             "type": "string",
@@ -35,11 +31,16 @@
           },
           "context": {
             "type": "string"
+          },
+          "target_address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
           }
         },
         "additionalProperties": false
       }
-    }
+    },
+    "has_more": {"type": "boolean"}
   },
   "additionalProperties": false
 }

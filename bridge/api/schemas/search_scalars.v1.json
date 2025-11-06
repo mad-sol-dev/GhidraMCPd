@@ -3,8 +3,9 @@
   "$id": "urn:schema:search-scalars.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["total", "page", "limit", "items"],
+  "required": ["query", "total", "page", "limit", "items", "has_more"],
   "properties": {
+    "query": {"type": "string"},
     "total": {"type": "integer", "minimum": 0},
     "page": {"type": "integer", "minimum": 1},
     "limit": {"type": "integer", "minimum": 1},
@@ -21,6 +22,7 @@
           "context": {"type": ["string", "null"]}
         }
       }
-    }
+    },
+    "has_more": {"type": "boolean"}
   }
 }
