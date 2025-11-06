@@ -1,374 +1,128 @@
-{
-  "version": 1,
-  "sequence": [
-    {
-      "id": "OPENAPI-FREEZE",
-      "title": "Guard OpenAPI snapshot",
-      "after": []
-    },
-    {
-      "id": "API-MOUNT",
-      "title": "Mount deterministic routes & register MCP tools",
-      "after": []
-    },
-    {
-      "id": "CLIENT-UNIFY",
-      "title": "Unify Ghidra client + whitelist",
-      "after": [
-        "API-MOUNT"
-      ]
-    },
-    {
-      "id": "RANGE-CONTRACT",
-      "title": "[min,max) range enforcement",
-      "after": [
-        "CLIENT-UNIFY"
-      ]
-    },
-    {
-      "id": "JT-VERIFY",
-      "title": "Strict ARM/Thumb READ→VERIFY",
-      "after": [
-        "RANGE-CONTRACT"
-      ]
-    },
-    {
-      "id": "JT-SCAN",
-      "title": "Read-only batch scan",
-      "after": [
-        "JT-VERIFY"
-      ]
-    },
-    {
-      "id": "MMIO-HEUR",
-      "title": "Precise MMIO heuristics",
-      "after": [
-        "JT-VERIFY"
-      ]
-    },
-    {
-      "id": "SCHEMA-STRICT",
-      "title": "Strict schemas + envelope",
-      "after": [
-        "JT-SCAN",
-        "MMIO-HEUR"
-      ]
-    },
-    {
-      "id": "OBS-LIMITS",
-      "title": "Observability & limits",
-      "after": [
-        "SCHEMA-STRICT"
-      ]
-    },
-    {
-      "id": "LEGACY-PARITY",
-      "title": "Prove old APIs unchanged",
-      "after": [
-        "OBS-LIMITS"
-      ]
-    },
-    {
-      "id": "CI-TESTS",
-      "title": "Run tests before packaging",
-      "after": [
-        "LEGACY-PARITY"
-      ]
-    },
-    {
-      "id": "DOCS-BOOTSTRAP",
-      "title": "Developer docs & artifacts",
-      "after": [
-        "CI-TESTS"
-      ]
-    },
-    {
-      "id": "CONTROL-FILES",
-      "title": "Repo control files for Codex sessions",
-      "after": [
-        "DOCS-BOOTSTRAP"
-      ]
-    },
-    {
-      "id": "OPTIONAL-ADAPTERS",
-      "title": "Additional ArchAdapters",
-      "after": [
-        "CONTROL-FILES"
-      ]
-    },
-    {
-      "id": "WRITE-GUARDS",
-      "title": "Write guards on endpoints",
-      "after": [
-        "SCHEMA-STRICT"
-      ]
-    },
-    {
-      "id": "SSE-HANDSHAKE",
-      "title": "SSE handshake test",
-      "after": [
-        "API-MOUNT"
-      ]
-    },
-    {
-      "id": "JT-SCAN-CONSISTENCY",
-      "title": "JT summary invariants",
-      "after": [
-        "JT-SCAN"
-      ]
-    },
-    {
-      "id": "STRINGS-ASSERTS",
-      "title": "Strings feature asserts",
-      "after": [
-        "CLIENT-UNIFY"
-      ]
-    },
-    {
-      "id": "SNAPSHOT-SAFEGUARD",
-      "title": "Non-golden safeguards",
-      "after": [
-        "SCHEMA-STRICT"
-      ]
-    },
-    {
-      "id": "PLAN-CHECK",
-      "title": "Plan consistency script + CI",
-      "after": [
-        "SCHEMA-STRICT"
-      ]
-    },
-    {
-      "id": "DEVSERVER-ENTRYPOINT",
-      "title": "Provide uvicorn entrypoint",
-      "after": [
-        "API-MOUNT"
-      ]
-    },
-    {
-      "id": "README-LEGACY-MAP",
-      "title": "Legacy map & quickstart",
-      "after": [
-        "DOCS-BOOTSTRAP"
-      ]
-    },
-    {
-      "id": "STRINGS-COMPACT",
-      "title": "Compact strings/xrefs view",
-      "after": [
-        "STRINGS-ASSERTS"
-      ]
-    },
-    {
-      "id": "SEARCH-STRINGS-ENDPOINT",
-      "title": "Dedicated endpoint for searching all strings",
-      "after": [
-        "STRINGS-COMPACT"
-      ]
-    },
-    {
-      "id": "SEARCH-FUNCTIONS-ENDPOINT",
-      "title": "Dedicated endpoint for searching functions",
-      "after": [
-        "SEARCH-STRINGS-ENDPOINT"
-      ]
-    },
-    {
-      "id": "SEARCH-IMPORTS-ENDPOINT",
-      "title": "Dedicated endpoint for searching imports",
-      "after": [
-        "SEARCH-FUNCTIONS-ENDPOINT"
-      ]
-    },
-    {
-      "id": "SEARCH-EXPORTS-ENDPOINT",
-      "title": "Dedicated endpoint for searching exports",
-      "after": [
-        "SEARCH-IMPORTS-ENDPOINT"
-      ]
-    },
-    {
-      "id": "SEARCH-XREFS-ENDPOINT",
-      "title": "Dedicated endpoint for searching cross-references",
-      "after": [
-        "SEARCH-EXPORTS-ENDPOINT"
-      ]
-    },
-    {
-      "id": "RE-ENDPOINTS-CONTRACT-TESTS",
-      "title": "Contract tests for RE workflow endpoints (search_scalars, list_functions_in_range, disassemble_at, read_bytes)",
-      "status": "todo",
-      "labels": ["test", "P2"],
-      "after": ["SEARCH-XREFS-ENDPOINT"]
-    },
-    {
-      "id": "BRIDGE_GUARD_01_SINGLE_SSE",
-      "title": "Single active SSE connection guard",
-      "after": [
-        "SSE-HANDSHAKE"
-      ]
-    },
-    {
-      "id": "BRIDGE_GUARD_02_INIT_BARRIER",
-      "title": "Initialization barrier for /messages",
-      "after": [
-        "BRIDGE_GUARD_01_SINGLE_SSE"
-      ]
-    },
-    {
-      "id": "BRIDGE_GUARD_03_SERIALIZE_PLUGIN",
-      "title": "Serialize Ghidra plugin calls",
-      "after": [
-        "BRIDGE_GUARD_02_INIT_BARRIER"
-      ]
-    },
-    {
-      "id": "BRIDGE_GUARD_04_DIAGNOSTICS",
-      "title": "Diagnostics endpoint and log polish",
-      "after": [
-        "BRIDGE_GUARD_03_SERIALIZE_PLUGIN"
-      ]
-    },
-    {
-      "id": "BRIDGE_GUARD_05_SMOKE_TESTS",
-      "title": "Bridge smoke tests and docs",
-      "after": [
-        "BRIDGE_GUARD_04_DIAGNOSTICS"
-      ]
-    },
-    {
-      "id": "BRIDGE_GUARD_06_CLOSE_EPIC",
-      "title": "Close out bridge guard epic",
-      "after": [
-        "BRIDGE_GUARD_05_SMOKE_TESTS"
-      ]
-    },
-    {
-      "id": "DEVSERVER-SSE-MOUNT",
-      "title": "Expose /sse on factory devserver",
-      "after": [
-        "DEVSERVER-ENTRYPOINT",
-        "BRIDGE_GUARD_06_CLOSE_EPIC"
-      ]
-    },
-    {
-      "id": "LEGACY-DEPRECATE-DOC",
-      "title": "Deprecate legacy entrypoint",
-      "after": [
-        "DEVSERVER-SSE-MOUNT"
-      ]
-    },
-    {
-      "id": "SSE-DISCONNECT-FIX",
-      "title": "SSE disconnect releases lock promptly",
-      "status": "todo",
-      "labels": [
-        "bug",
-        "P1"
-      ],
-      "after": []
-    },
-    {
-      "id": "OPENAPI-REQUESTBODY",
-      "title": "Add requestBody schemas for search_*",
-      "status": "todo",
-      "labels": [
-        "bug",
-        "P2"
-      ],
-      "after": []
-    },
-    {
-      "id": "API-SCHEMA-UNIFY",
-      "title": "Unify API response fields (total/page)",
-      "status": "todo",
-      "labels": [
-        "bug",
-        "P2"
-      ],
-      "after": [
-        "OPENAPI-REQUESTBODY"
-      ]
-    },
-    {
-      "id": "SHUTDOWN-CLEANUP",
-      "title": "Graceful shutdown without CancelledError",
-      "status": "todo",
-      "labels": [
-        "bug",
-        "P2"
-      ],
-      "after": [
-        "SSE-DISCONNECT-FIX"
-      ]
-    },
-    {
-      "id": "STATE-FLAGS-CLARIFY",
-      "title": "Clarify /state flags & docs",
-      "status": "todo",
-      "labels": [
-        "docs",
-        "P2"
-      ],
-      "after": []
-    },
-    {
-      "id": "DOC-8080-TEXT-FAQ",
-      "title": "README: 8080 is text (not JSON) + examples",
-      "status": "todo",
-      "labels": [
-        "docs",
-        "P3"
-      ],
-      "after": []
-    },
-    {
-      "id": "JT-DOCS-EXAMPLES",
-      "title": "README: JT endpoints example with real ranges",
-      "status": "todo",
-      "labels": [
-        "docs",
-        "P3"
-      ],
-      "after": []
-    },
-    {
-      "id": "STATE-LOG-THROTTLE",
-      "title": "Docs: throttle /state polling",
-      "status": "todo",
-      "labels": [
-        "docs",
-        "P3"
-      ],
-      "after": []
-    },
-    {
-      "id": "ADAPTER-PROBERESULT-CLEANUP",
-      "title": "Remove dead ProbeResult exports/imports",
-      "after": [
-        "OPTIONAL-ADAPTERS"
-      ]
-    },
-    {
-      "id": "ADAPTER-PROBE-ALIAS",
-      "title": "Introduce Probe typing alias in adapters Protocol",
-      "after": [
-        "OPTIONAL-ADAPTERS"
-      ]
-    },
-    {
-      "id": "SMOKE-MOJIBAKE-FIX",
-      "title": "Fix mojibake in bin/smoke.sh",
-      "after": [
-        "DOCS-BOOTSTRAP"
-      ]
-    },
-    {
-      "id": "PLAN-CHECK-IO-POLISH",
-      "title": "Single-read IO + docstrings in plan_check.py",
-      "after": [
-        "PLAN-CHECK"
-      ]
-    }
-  ]
-}
+[
+  {
+    "id": "T-202511-001",
+    "title": "Normalize search metadata across search endpoints",
+    "prio": "P1",
+    "area": "api",
+    "status": "open",
+    "origin": "roadmap: Phase 1 follow-ups",
+    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
+  },
+  {
+    "id": "T-202511-002",
+    "title": "Add has_more pagination hints to search responses",
+    "prio": "P1",
+    "area": "api",
+    "status": "open",
+    "origin": "roadmap: Phase 1 follow-ups",
+    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
+  },
+  {
+    "id": "T-202511-003",
+    "title": "Document batch limit defaults for windowed operations",
+    "prio": "P2",
+    "area": "docs",
+    "status": "open",
+    "origin": "roadmap: Phase 1 follow-ups",
+    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
+  },
+  {
+    "id": "T-202511-004",
+    "title": "Consolidate error type documentation across guides",
+    "prio": "P2",
+    "area": "docs",
+    "status": "open",
+    "origin": "roadmap: Phase 1 follow-ups",
+    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
+  },
+  {
+    "id": "T-202511-005",
+    "title": "Add SSE reconnect backoff example to docs/server.md",
+    "prio": "P2",
+    "area": "docs",
+    "status": "open",
+    "origin": "roadmap: Phase 1 follow-ups",
+    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
+  },
+  {
+    "id": "T-202511-006",
+    "title": "Implement optional relevance scoring modes",
+    "prio": "P3",
+    "area": "api",
+    "status": "open",
+    "origin": "roadmap: Phase 2",
+    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+  },
+  {
+    "id": "T-202511-007",
+    "title": "Add explain mode with bounded payloads",
+    "prio": "P3",
+    "area": "api",
+    "status": "open",
+    "origin": "roadmap: Phase 2",
+    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+  },
+  {
+    "id": "T-202511-008",
+    "title": "Document sampling controls for top_k and tail_k",
+    "prio": "P3",
+    "area": "docs",
+    "status": "open",
+    "origin": "roadmap: Phase 2",
+    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+  },
+  {
+    "id": "T-202511-009",
+    "title": "Cache common lookups with explicit invalidation",
+    "prio": "P3",
+    "area": "server",
+    "status": "open",
+    "origin": "roadmap: Phase 3",
+    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+  },
+  {
+    "id": "T-202511-010",
+    "title": "Expose extended metrics for batches and skips",
+    "prio": "P3",
+    "area": "ops",
+    "status": "open",
+    "origin": "roadmap: Phase 3",
+    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+  },
+  {
+    "id": "T-202511-011",
+    "title": "Add backpressure and rate limits for chatty clients",
+    "prio": "P3",
+    "area": "ops",
+    "status": "open",
+    "origin": "roadmap: Phase 3",
+    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+  },
+  {
+    "id": "T-202511-012",
+    "title": "Publish thin client helper for readiness and calls",
+    "prio": "P3",
+    "area": "dx",
+    "status": "open",
+    "origin": "roadmap: Phase 4",
+    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+  },
+  {
+    "id": "T-202511-013",
+    "title": "Write end-to-end examples under examples/",
+    "prio": "P3",
+    "area": "dx",
+    "status": "open",
+    "origin": "roadmap: Phase 4",
+    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+  },
+  {
+    "id": "T-202511-014",
+    "title": "Automate docs/api.md regeneration in CI",
+    "prio": "P3",
+    "area": "dx",
+    "status": "open",
+    "origin": "roadmap: Phase 4",
+    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+  }
+]
