@@ -30,17 +30,34 @@ except Exception as e:
 if "â†’" in todo or "â†’" in man_raw:
     die("UTF-8 mojibake detected (e.g., 'â†’'). Fix arrows like 'READ→VERIFY'.")
 
-# --- IDs from TODO headings like: '### 7) ✅ SCHEMA-STRICT — ... (ID: SCHEMA-STRICT)'
+# --- IDs from TODO lists like '- {TASK-ID} Summary'
 todo_items = []
-pat = re.compile(r"^###\s*\d+\)\s*([✅⬜⛔])\s.*?\(ID:\s*([A-Z0-9\-]+)\)", re.M)
-for m in pat.finditer(todo):
-    status_emoji, tid = m.group(1), m.group(2)
-    todo_items.append((tid, status_emoji))
+section = None
+pat = re.compile(r"^-\s*\{([^}]+)\}\s*(.*)$")
+for line in todo.splitlines():
+    if line.startswith("## "):
+        section = line[3:].strip()
+        continue
+    m = pat.match(line.strip())
+    if not m:
+        continue
+    tid = m.group(1).strip()
+    if tid.lower() == "none":
+        continue
+    todo_items.append((tid, section))
+
 todo_ids = {tid for tid,_ in todo_items}
 if not todo_ids:
-    die("no tasks parsed from TODO.md headings (check format '### n) ✅ NAME (ID: XXX)')")
+    die("no tasks parsed from TODO.md bullet list (expected '- {TASK-ID} Summary')")
 
-man_ids = {e["id"] for e in man.get("sequence", [])}
+if isinstance(man, dict):
+    man_entries = man.get("sequence", [])
+else:
+    man_entries = man
+try:
+    man_ids = {e["id"] for e in man_entries}
+except Exception:
+    die("tasks.manifest.json must contain objects with an 'id' field")
 state_ids = set(st.get("tasks", {}).keys())
 
 # --- ID set checks
@@ -57,20 +74,30 @@ if extra_in_state:
     ok(f"note: extra IDs in state.json (not in TODO): {sorted(extra_in_state)}")
 
 # --- status mapping
-map_ = {"✅": "done", "⬜": ("todo","in-progress"), "⛔": "blocked"}
+# Determine expected state based on TODO sections.
+def expected_status(section_name: str):
+    if not section_name:
+        return ("todo", "in-progress")
+    section_upper = section_name.upper()
+    if "BLOCKED" in section_upper:
+        return "blocked"
+    if "DONE" in section_upper:
+        return "done"
+    return ("todo", "in-progress")
+
 problems = []
-for tid, emoji in todo_items:
+for tid, section_name in todo_items:
     s = st["tasks"].get(tid, {})
-    want = map_[emoji]
+    want = expected_status(section_name)
     got  = s.get("status")
     if isinstance(want, tuple):
         if got not in want:
-            problems.append(f"{tid}: TODO={emoji} expects {want}, state.json has '{got}'")
+            problems.append(f"{tid}: section '{section_name}' expects {want}, state.json has '{got}'")
     else:
         if got != want:
-            problems.append(f"{tid}: TODO={emoji} expects '{want}', state.json has '{got}'")
-        if emoji == "✅" and not s.get("commit"):
-            problems.append(f"{tid}: marked ✅ but state.json.commit is missing")
+            problems.append(f"{tid}: section '{section_name}' expects '{want}', state.json has '{got}'")
+        if want == "done" and not s.get("commit"):
+            problems.append(f"{tid}: marked done but state.json.commit is missing")
 if problems:
     die("status/commit mismatch:\n  - " + "\n  - ".join(problems))
 

@@ -224,6 +224,76 @@
       "commit": "96a1f9c",
       "status": "done",
       "updated_at": "2025-11-02T14:12:11.830040+00:00"
+    },
+    "T-202511-001": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-002": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-003": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-004": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-005": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-006": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-007": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-008": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-009": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-010": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-011": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-012": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-013": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "T-202511-014": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
     }
   }
 }
