@@ -7,6 +7,18 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
+from bridge.tests._env import env_flag, in_ci
+
+
+_RUN_CONTRACT_TESTS = env_flag("RUN_CONTRACT_TESTS", default=not in_ci())
+
+if not _RUN_CONTRACT_TESTS:
+    _SKIP_REASON = "Contract tests disabled. Set RUN_CONTRACT_TESTS=1 to enable."
+
+    def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+        skip_marker = pytest.mark.skip(reason=_SKIP_REASON)
+        for item in items:
+            item.add_marker(skip_marker)
 
 
 class StubGhidraClient:

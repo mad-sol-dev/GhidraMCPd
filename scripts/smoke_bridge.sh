@@ -11,16 +11,16 @@
 #
 # Usage:
 #   GHIDRA_SERVER_URL=http://127.0.0.1:8080/ \
-#   MCP_SHIM=http://127.0.0.1:8081 \
+#   MCP_SHIM=http://127.0.0.1:8000 \
 #   bash scripts/smoke_bridge.sh
 #
 # Environment variables:
-#   MCP_SHIM – Base URL for the Starlette shim (default http://127.0.0.1:8081)
+#   MCP_SHIM – Base URL for the Starlette shim (default http://127.0.0.1:8000)
 #
 set -euo pipefail
 IFS=$'\n\t'
 
-BASE=${MCP_SHIM:-http://127.0.0.1:8081}
+BASE=${MCP_SHIM:-http://127.0.0.1:8000}
 BASE=${BASE%/}
 SSE_URL="$BASE/sse"
 
