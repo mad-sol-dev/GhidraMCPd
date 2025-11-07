@@ -56,8 +56,8 @@ def build_parser(default_ghidra_server: str) -> argparse.ArgumentParser:
     parser.add_argument(
         "--shim-port",
         type=int,
-        default=8081,
-        help="Port für Shim/Proxy (für Open WebUI), default: 8081",
+        default=8000,
+        help="Port für Shim/Proxy (für Open WebUI), default: 8000",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     return parser

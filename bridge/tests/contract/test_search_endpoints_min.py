@@ -1,7 +1,19 @@
 # bridge/tests/contract/test_search_endpoints_min.py
-import os, requests, re, json, time
+import json
+import os
+import re
 
-BASE = os.environ.get("GHIDRA_MCP_URL", "http://127.0.0.1:8081")
+import pytest
+import requests
+
+from bridge.tests._env import env_flag
+
+pytestmark = pytest.mark.skipif(
+    not env_flag("RUN_LIVE_TESTS"),
+    reason="Live tests disabled. Set RUN_LIVE_TESTS=1 to enable.",
+)
+
+BASE = os.environ.get("GHIDRA_MCP_URL", "http://127.0.0.1:8000")
 
 def post(path, body):
     r = requests.post(f"{BASE}{path}", json=body, timeout=30)
