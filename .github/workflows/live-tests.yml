@@ -1,0 +1,62 @@
+name: Live & Contract Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      ghidra-url:
+        description: "Base URL of the Ghidra HTTP bridge (must be reachable from the runner)."
+        default: "http://127.0.0.1:8080/"
+        required: true
+
+jobs:
+  live-tests:
+    runs-on: ubuntu-latest
+    env:
+      GHIDRA_MCP_URL: http://127.0.0.1:8000
+      RUN_CONTRACT_TESTS: "1"
+      RUN_GOLDEN_TESTS: "1"
+      RUN_LIVE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
+      - name: Start MCP server
+        env:
+          GHIDRA_SERVER_URL: ${{ inputs.ghidra-url }}
+        run: |
+          uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000 > server.log 2>&1 &
+          echo $! > server.pid
+      - name: Wait for MCP server
+        run: |
+          for attempt in {1..30}; do
+            if curl -sSf http://127.0.0.1:8000/api/health.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MCP server did not become ready" >&2
+          echo '--- server.log ---'
+          cat server.log >&2 || true
+          exit 1
+      - name: Run golden and contract tests
+        run: python -m pytest -q bridge/tests/contract bridge/tests/golden
+      - name: Stop MCP server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) 2>/dev/null || true
+            wait $(cat server.pid) 2>/dev/null || true
+          fi
+          if [ -f server.log ]; then
+            echo '--- server.log (tail) ---'
+            tail -n 200 server.log || true
+          fi

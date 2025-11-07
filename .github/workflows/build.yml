@@ -35,7 +35,7 @@ jobs:
       - run: |
           python -m pip install -r requirements.txt
           python -m pip install -r requirements-dev.txt
-      - run: python -m pytest -q bridge/tests/unit bridge/tests/contract bridge/tests/golden
+      - run: python -m pytest -q bridge/tests/unit
 
   api-docs:
     name: API docs up-to-date

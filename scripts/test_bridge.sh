@@ -11,7 +11,7 @@ IFS=$'\n\t'
 #
 # Usage:
 #   GHIDRA_SERVER=http://127.0.0.1:8080 \
-#   MCP_SHIM=http://127.0.0.1:8081 \
+#   MCP_SHIM=http://127.0.0.1:8000 \
 #   ADDR=0x00200060 \
 #   bash scripts/test_bridge.sh
 #
@@ -19,7 +19,7 @@ IFS=$'\n\t'
 # ============================================================================
 
 BASE=${GHIDRA_SERVER:-http://127.0.0.1:8080}
-SHIM=${MCP_SHIM:-http://127.0.0.1:8081}
+SHIM=${MCP_SHIM:-http://127.0.0.1:8000}
 ADDR=${ADDR:-0x00200060}
 
 PASS=0
