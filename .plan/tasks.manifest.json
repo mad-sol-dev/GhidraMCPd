@@ -1,78 +1,114 @@
 {
-  "updated": "2025-11-09",
-  "review": "READ→VERIFY",
   "sequence": [
     {
-      "id": "T-202511-006",
-      "title": "Implement optional relevance scoring modes",
-      "prio": "P3",
-      "area": "api",
-      "status": "open",
-      "origin": "roadmap: Phase 2",
-      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+      "id": "D.1",
+      "title": "GET /api/project_info.json",
+      "area": "bridge, plugin",
+      "depends_on": [],
+      "dod": [
+        "Fields: program_name, language_id, compiler_spec, image_base, entry_point, memory_blocks[name,start,end,loaded,initialized,rwx], imports_count, exports_count",
+        "Deterministic sorting of memory_blocks by start",
+        "Unit + Contract + Golden tests",
+        "OpenAPI + docs updated"
+      ]
     },
     {
-      "id": "T-202511-007",
-      "title": "Add explain mode with bounded payloads",
-      "prio": "P3",
-      "area": "api",
-      "status": "open",
-      "origin": "roadmap: Phase 2",
-      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+      "id": "D.2",
+      "title": "POST /api/analyze_function_complete.json",
+      "area": "analyzer",
+      "depends_on": [
+        "D.1"
+      ],
+      "dod": [
+        "Aggregates disasm(±N), strings(xN), xrefs in/out, callers/callees(r1), feature sketch",
+        "`fields`, `fmt`, `max_result_tokens` supported",
+        "Deterministic ordering, server timeout enforced",
+        "Unit + Contract + Golden; docs"
+      ]
     },
     {
-      "id": "T-202511-008",
-      "title": "Document sampling controls for top_k and tail_k",
-      "prio": "P3",
-      "area": "docs",
-      "status": "open",
-      "origin": "roadmap: Phase 2",
-      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+      "id": "D.3",
+      "title": "Search metadata unify",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "All search endpoints return {query,total,page,limit,has_more,items}",
+        "page is 1-based; has_more rule enforced",
+        "Edge-case tests (0/limit/last), Golden samples"
+      ]
     },
     {
-      "id": "T-202511-009",
-      "title": "Cache common lookups with explicit invalidation",
-      "prio": "P3",
-      "area": "server",
-      "status": "open",
-      "origin": "roadmap: Phase 3",
-      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+      "id": "D.4",
+      "title": "POST /api/collect.json",
+      "area": "bridge",
+      "depends_on": [
+        "D.1",
+        "D.3"
+      ],
+      "dod": [
+        "`queries[]` executes multiple read-only sub-ops in one call",
+        "Budget-aware shortening; per-subop envelope",
+        "Unit + Contract + Golden; docs"
+      ]
     },
     {
-      "id": "T-202511-010",
-      "title": "Expose extended metrics for batches and skips",
-      "prio": "P3",
-      "area": "ops",
-      "status": "open",
-      "origin": "roadmap: Phase 3",
-      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+      "id": "D.5",
+      "title": "Unified error schema + enums",
+      "area": "platform",
+      "depends_on": [],
+      "dod": [
+        "errors[] entries = {status, code, message, recovery[]}",
+        "Enum implemented + documented",
+        "Golden examples for each code"
+      ]
     },
     {
-      "id": "T-202511-011",
-      "title": "Add backpressure and rate limits for chatty clients",
-      "prio": "P3",
-      "area": "ops",
-      "status": "open",
-      "origin": "roadmap: Phase 3",
-      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+      "id": "D.6",
+      "title": "Server-side result budgeting",
+      "area": "platform",
+      "depends_on": [
+        "D.2",
+        "D.4"
+      ],
+      "dod": [
+        "`max_result_tokens` param; `result_budget.mode=auto_trim|strict`",
+        "Response carries estimate_tokens, truncated, resume_cursor?",
+        "Contract tests for strict (413) and auto_trim (200, truncated=true)"
+      ]
     },
     {
-      "id": "T-202511-012",
-      "title": "Publish thin client helper for readiness and calls",
-      "prio": "P3",
-      "area": "dx",
-      "status": "open",
-      "origin": "roadmap: Phase 4",
-      "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+      "id": "D.7",
+      "title": "rank=simple & k (heuristic prefilter, opt-in)",
+      "area": "analyzer",
+      "depends_on": [
+        "D.3"
+      ],
+      "dod": [
+        "Heuristics applied before pagination; stable ordering",
+        "Opt-in only; docs + tests"
+      ]
     },
     {
-      "id": "T-202511-013",
-      "title": "Write end-to-end examples under examples/",
-      "prio": "P3",
-      "area": "dx",
-      "status": "open",
-      "origin": "roadmap: Phase 4",
-      "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+      "id": "D.8",
+      "title": "Cursor streaming for large sets",
+      "area": "bridge",
+      "depends_on": [
+        "D.3"
+      ],
+      "dod": [
+        "Cursor-based paging + early partial responses",
+        "Resume handles documented; tests"
+      ]
+    },
+    {
+      "id": "D.9",
+      "title": "5-min short cache per {digest,query}",
+      "area": "platform",
+      "depends_on": [],
+      "dod": [
+        "Cache layer with TTL=300s",
+        "Cache key schema documented; hit/miss metrics"
+      ]
     }
   ]
 }
