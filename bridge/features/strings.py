@@ -214,6 +214,8 @@ def search_strings(
         end_index = offset + limit
         paginated_items = normalized_entries[start_index:end_index]
 
+    page = max(page, 1)
+    limit = max(limit, 1)
     has_more = (page * limit) < total
 
     return {

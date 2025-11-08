@@ -15,3 +15,6 @@
 - 2025-11-08 **T-202511-004** — Consolidate error type documentation across guides
 - 2025-11-08 **T-202511-005** — Add SSE reconnect backoff example to docs/server.md
 - 2025-11-08 **T-202511-014** — Automate docs/api.md regeneration in CI
+- 2025-11-09 **T-202511-015** — Enforce `has_more` pagination across search_* responses
+- 2025-11-09 **T-202511-016** — Extend contract coverage for search pagination hints
+- 2025-11-09 **T-202511-017** — Sync .plan manifest and API docs drift gate checks
