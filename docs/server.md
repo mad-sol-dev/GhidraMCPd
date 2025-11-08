@@ -10,6 +10,24 @@ Clients must establish the SSE stream before using `/messages`. Until both the b
 
 The snippet below shows one way to retry the SSE stream with backoff and jitter. The loop tolerates transient `409`/`405` responses while the previous stream winds down and caps retries at five seconds.
 
+```bash
+SSE_URL="http://127.0.0.1:8000/sse"
+STATE_URL="http://127.0.0.1:8000/state"
+backoff=0.5
+max_backoff=5
+while true; do
+  if curl -sf "$STATE_URL" | jq -e '.active_sse == null' >/dev/null; then
+    curl -sfN "$SSE_URL" && break
+  fi
+  jitter=$(awk -v seed=$RANDOM 'BEGIN{srand(seed); printf("%.2f", rand()/2)}')
+  sleep_for=$(awk -v base=$backoff -v jitter="$jitter" -v max="$max_backoff" 'BEGIN{val=base+jitter; if (val>max) val=max; printf("%.2f", val)}')
+  sleep "$sleep_for"
+  backoff=$(awk -v base=$backoff -v max="$max_backoff" 'BEGIN{val=base*1.5; if (val>max) val=max; printf("%.2f", val)}')
+done
+```
+
+The guard polls `/state.active_sse` so a queued reconnect waits for the previous stream to close before attempting `GET /sse` again.
+
 ```python
 import random
 import time

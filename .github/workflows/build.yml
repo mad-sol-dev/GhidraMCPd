@@ -46,15 +46,14 @@ jobs:
         with:
           python-version: '3.11'
       - name: Render OpenAPI markdown
-        run: python scripts/gen_api_md.py bridge/tests/golden/data/openapi_snapshot.json > docs/api.generated.md
+        run: |
+          python scripts/gen_api_md.py "${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}" > docs/api.md
       - name: Detect drift in docs/api.md
         run: |
-          if ! diff -u docs/api.md docs/api.generated.md; then
-            echo "::error::docs/api.md is out of date. Run: python scripts/gen_api_md.py bridge/tests/golden/data/openapi_snapshot.json > docs/api.md"
+          if ! git diff --exit-code -- docs/api.md; then
+            echo "::error::docs/api.md is out of date. Run: python scripts/gen_api_md.py \"${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}\" > docs/api.md"
             exit 1
           fi
-      - name: Clean up
-        run: rm docs/api.generated.md
 
   # 2) Dateifilter bestimmen, ob Java gebaut wird
   changes:

@@ -9,3 +9,9 @@
 - 2025-11-06 **DOC-8080-TEXT-FAQ** — 8080 liefert Text, kein JSON _commit:1b31091_
 - 2025-11-06 **JT-DOCS-EXAMPLES** — Beispiele für JT-Schema _commit:1cdb4b5_
 - 2025-11-06 **STATE-LOG-THROTTLE** — /state-Spam in Diagnose-Loops
+- 2025-11-08 **T-202511-001** — Normalize search metadata across search endpoints
+- 2025-11-08 **T-202511-002** — Add has_more pagination hints to search responses
+- 2025-11-08 **T-202511-003** — Document batch limit defaults for windowed operations
+- 2025-11-08 **T-202511-004** — Consolidate error type documentation across guides
+- 2025-11-08 **T-202511-005** — Add SSE reconnect backoff example to docs/server.md
+- 2025-11-08 **T-202511-014** — Automate docs/api.md regeneration in CI
