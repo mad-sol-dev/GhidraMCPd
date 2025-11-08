@@ -136,33 +136,32 @@ def test_xrefs_roundtrip_symmetry_sample():
 
 def test_search_strings_has_more_contract():
     """
-    Contract: search_strings returns a boolean `has_more` and its value equals
-    (page * limit) < total. Page is 1-based by server contract.
+    Contract: /api/search_strings.json returns boolean `has_more`.
+    Value must equal (page * limit) < total. `page` is 1-based.
+    Schema requires a non-empty `query`.
     """
     body = {
-        "q": "",                 # empty query should be valid and return some items
-        "regex": False,
-        "case_sensitive": False,
-        "limit": 1,              # keep tiny so expectation is deterministic
+        "query": "http",  # non-empty per schema; any non-empty token works
+        "limit": 1,       # tiny for deterministic expectation
         "offset": 0
     }
     envelope = post("/api/search_strings.json", body)
 
-    # envelope shape
+    # standard envelope
     assert isinstance(envelope, dict), "expected standard envelope"
     assert envelope.get("ok") is True, f"unexpected envelope: {envelope}"
     assert "data" in envelope, "envelope must include data"
     data = envelope["data"]
 
-    # fields present
-    for k in ("total", "page", "limit", "items"):
+    # shape
+    for k in ("total", "page", "limit", "items", "has_more"):
         assert k in data, f"missing `{k}` in data: {data}"
-    assert "has_more" in data, f"missing `has_more` in data: {data}"
     assert isinstance(data["has_more"], bool), "`has_more` must be a boolean"
 
-    # boolean must match the arithmetic rule
+    # rule
     expected = (data["page"] * data["limit"]) < data["total"]
     assert data["has_more"] == expected, (
         f"has_more mismatch: got {data['has_more']} but expected {expected} "
         f"for page={data['page']} limit={data['limit']} total={data['total']}"
     )
+
