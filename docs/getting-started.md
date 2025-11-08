@@ -43,6 +43,11 @@ Set environment variables before starting the server to adjust safety limits and
 
 For reproducibility, copy `.env.sample` to `.env`, edit values, and load via `export $(cat .env | xargs)` (or a shell equivalent) prior to launching Uvicorn.
 
+> **Batch caps**
+> - Search windows, compact string listings, and disassembly batches default to **256** items via `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`.
+> - Write operations default to **2** mutations per request via `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`.
+> - Override the limits by setting the environment variables (or updating your `.env`) before starting the server.
+
 ### Batch limits (defaults)
 
 The bridge enforces deterministic caps on batch-style operations to keep token usage predictable. All of the following limits default to `GHIDRA_MCP_MAX_ITEMS_PER_BATCH = 256` and raise `SafetyLimitExceeded` when exceeded (see the [error reference](troubleshooting.md#error-reference) for envelope details):

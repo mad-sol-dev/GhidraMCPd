@@ -1,50 +1,5 @@
 [
   {
-    "id": "T-202511-001",
-    "title": "Normalize search metadata across search endpoints",
-    "prio": "P1",
-    "area": "api",
-    "status": "open",
-    "origin": "roadmap: Phase 1 follow-ups",
-    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
-  },
-  {
-    "id": "T-202511-002",
-    "title": "Add has_more pagination hints to search responses",
-    "prio": "P1",
-    "area": "api",
-    "status": "open",
-    "origin": "roadmap: Phase 1 follow-ups",
-    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
-  },
-  {
-    "id": "T-202511-003",
-    "title": "Document batch limit defaults for windowed operations",
-    "prio": "P2",
-    "area": "docs",
-    "status": "open",
-    "origin": "roadmap: Phase 1 follow-ups",
-    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
-  },
-  {
-    "id": "T-202511-004",
-    "title": "Consolidate error type documentation across guides",
-    "prio": "P2",
-    "area": "docs",
-    "status": "open",
-    "origin": "roadmap: Phase 1 follow-ups",
-    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
-  },
-  {
-    "id": "T-202511-005",
-    "title": "Add SSE reconnect backoff example to docs/server.md",
-    "prio": "P2",
-    "area": "docs",
-    "status": "open",
-    "origin": "roadmap: Phase 1 follow-ups",
-    "link": "docs/ROADMAP.md#phase-1-–-complete-and-to-be-finalized"
-  },
-  {
     "id": "T-202511-006",
     "title": "Implement optional relevance scoring modes",
     "prio": "P3",
@@ -110,15 +65,6 @@
   {
     "id": "T-202511-013",
     "title": "Write end-to-end examples under examples/",
-    "prio": "P3",
-    "area": "dx",
-    "status": "open",
-    "origin": "roadmap: Phase 4",
-    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
-  },
-  {
-    "id": "T-202511-014",
-    "title": "Automate docs/api.md regeneration in CI",
     "prio": "P3",
     "area": "dx",
     "status": "open",
