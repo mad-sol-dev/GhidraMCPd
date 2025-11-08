@@ -225,6 +225,51 @@
       "status": "done",
       "updated_at": "2025-11-02T14:12:11.830040+00:00"
     },
+    "D.1": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.2": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.3": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.4": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.5": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.6": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.7": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.8": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "D.9": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
     "T-202511-001": {
       "commit": null,
       "status": "todo",

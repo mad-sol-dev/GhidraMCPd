@@ -1,19 +1,7 @@
 {
-  "version": 1,
   "sequence": [
-    "D.1-project-info",
-    "D.3-search-metadata",
-    "D.2-analyze-function-complete",
-    "D.4-collector",
-    "D.5-errors",
-    "D.6-result-budget",
-    "D.7-ranking",
-    "D.8-cursor-stream",
-    "D.9-cache"
-  ],
-  "tasks": [
     {
-      "id": "D.1-project-info",
+      "id": "D.1",
       "title": "GET /api/project_info.json",
       "area": "bridge, plugin",
       "depends_on": [],
@@ -25,7 +13,21 @@
       ]
     },
     {
-      "id": "D.3-search-metadata",
+      "id": "D.2",
+      "title": "POST /api/analyze_function_complete.json",
+      "area": "analyzer",
+      "depends_on": [
+        "D.1"
+      ],
+      "dod": [
+        "Aggregates disasm(±N), strings(xN), xrefs in/out, callers/callees(r1), feature sketch",
+        "`fields`, `fmt`, `max_result_tokens` supported",
+        "Deterministic ordering, server timeout enforced",
+        "Unit + Contract + Golden; docs"
+      ]
+    },
+    {
+      "id": "D.3",
       "title": "Search metadata unify",
       "area": "bridge",
       "depends_on": [],
@@ -36,26 +38,12 @@
       ]
     },
     {
-      "id": "D.2-analyze-function-complete",
-      "title": "POST /api/analyze_function_complete.json",
-      "area": "analyzer",
-      "depends_on": [
-        "D.1-project-info"
-      ],
-      "dod": [
-        "Aggregates disasm(±N), strings(xN), xrefs in/out, callers/callees(r1), feature sketch",
-        "`fields`, `fmt`, `max_result_tokens` supported",
-        "Deterministic ordering, server timeout enforced",
-        "Unit + Contract + Golden; docs"
-      ]
-    },
-    {
-      "id": "D.4-collector",
+      "id": "D.4",
       "title": "POST /api/collect.json",
       "area": "bridge",
       "depends_on": [
-        "D.1-project-info",
-        "D.3-search-metadata"
+        "D.1",
+        "D.3"
       ],
       "dod": [
         "`queries[]` executes multiple read-only sub-ops in one call",
@@ -64,7 +52,7 @@
       ]
     },
     {
-      "id": "D.5-errors",
+      "id": "D.5",
       "title": "Unified error schema + enums",
       "area": "platform",
       "depends_on": [],
@@ -75,12 +63,12 @@
       ]
     },
     {
-      "id": "D.6-result-budget",
+      "id": "D.6",
       "title": "Server-side result budgeting",
       "area": "platform",
       "depends_on": [
-        "D.2-analyze-function-complete",
-        "D.4-collector"
+        "D.2",
+        "D.4"
       ],
       "dod": [
         "`max_result_tokens` param; `result_budget.mode=auto_trim|strict`",
@@ -89,11 +77,11 @@
       ]
     },
     {
-      "id": "D.7-ranking",
+      "id": "D.7",
       "title": "rank=simple & k (heuristic prefilter, opt-in)",
       "area": "analyzer",
       "depends_on": [
-        "D.3-search-metadata"
+        "D.3"
       ],
       "dod": [
         "Heuristics applied before pagination; stable ordering",
@@ -101,11 +89,11 @@
       ]
     },
     {
-      "id": "D.8-cursor-stream",
+      "id": "D.8",
       "title": "Cursor streaming for large sets",
       "area": "bridge",
       "depends_on": [
-        "D.3-search-metadata"
+        "D.3"
       ],
       "dod": [
         "Cursor-based paging + early partial responses",
@@ -113,7 +101,7 @@
       ]
     },
     {
-      "id": "D.9-cache",
+      "id": "D.9",
       "title": "5-min short cache per {digest,query}",
       "area": "platform",
       "depends_on": [],
