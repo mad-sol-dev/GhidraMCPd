@@ -2,6 +2,23 @@
 
 ## Error reference
 
+All REST responses share the deterministic envelope shown below. Successful calls set `ok=true` and populate `data`, while errors populate `errors[]` with `code` and `message` entries for downstream tooling.
+
+```json
+{
+  "ok": false,
+  "data": null,
+  "errors": [
+    {
+      "code": "SAFETY_LIMIT",
+      "message": "strings.search.window limit exceeded: attempted 400 > allowed 256"
+    }
+  ]
+}
+```
+
+See the table below for concrete error codes and HTTP status guidance.
+
 | Name | When it appears | Example payload / status |
 | --- | --- | --- |
 | `mcp_not_ready` | `POST /messages` before the SSE stream and session finish initialising | `425 Too Early` with `{"error":"mcp_not_ready"}` |
