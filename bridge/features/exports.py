@@ -36,6 +36,8 @@ def search_exports(
         page = offset // limit + 1
         paginated_items = items[offset : offset + limit]
 
+    page = max(page, 1)
+    limit = max(limit, 1)
     has_more = (page * limit) < total
 
     return {

@@ -61,6 +61,9 @@ def search_scalars(
     if limit <= 0:
         limit = total if total > 0 else 1
 
+    page = max(page, 1)
+    limit = max(limit, 1)
+
     start = (page - 1) * limit
     end = start + limit
 
