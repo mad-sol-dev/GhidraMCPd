@@ -1,7 +1,7 @@
 # TODO (curated)
 
 ## NOW (P1)
-- None
+- None _(archived {T-202511-015}, {T-202511-016}, {T-202511-017} on 2025-11-09)_
 
 ## NEXT (P2)
 - None

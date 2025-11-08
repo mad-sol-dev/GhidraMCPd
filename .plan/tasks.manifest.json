@@ -1,74 +1,78 @@
-[
-  {
-    "id": "T-202511-006",
-    "title": "Implement optional relevance scoring modes",
-    "prio": "P3",
-    "area": "api",
-    "status": "open",
-    "origin": "roadmap: Phase 2",
-    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
-  },
-  {
-    "id": "T-202511-007",
-    "title": "Add explain mode with bounded payloads",
-    "prio": "P3",
-    "area": "api",
-    "status": "open",
-    "origin": "roadmap: Phase 2",
-    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
-  },
-  {
-    "id": "T-202511-008",
-    "title": "Document sampling controls for top_k and tail_k",
-    "prio": "P3",
-    "area": "docs",
-    "status": "open",
-    "origin": "roadmap: Phase 2",
-    "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
-  },
-  {
-    "id": "T-202511-009",
-    "title": "Cache common lookups with explicit invalidation",
-    "prio": "P3",
-    "area": "server",
-    "status": "open",
-    "origin": "roadmap: Phase 3",
-    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
-  },
-  {
-    "id": "T-202511-010",
-    "title": "Expose extended metrics for batches and skips",
-    "prio": "P3",
-    "area": "ops",
-    "status": "open",
-    "origin": "roadmap: Phase 3",
-    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
-  },
-  {
-    "id": "T-202511-011",
-    "title": "Add backpressure and rate limits for chatty clients",
-    "prio": "P3",
-    "area": "ops",
-    "status": "open",
-    "origin": "roadmap: Phase 3",
-    "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
-  },
-  {
-    "id": "T-202511-012",
-    "title": "Publish thin client helper for readiness and calls",
-    "prio": "P3",
-    "area": "dx",
-    "status": "open",
-    "origin": "roadmap: Phase 4",
-    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
-  },
-  {
-    "id": "T-202511-013",
-    "title": "Write end-to-end examples under examples/",
-    "prio": "P3",
-    "area": "dx",
-    "status": "open",
-    "origin": "roadmap: Phase 4",
-    "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
-  }
-]
+{
+  "updated": "2025-11-09",
+  "review": "READ→VERIFY",
+  "sequence": [
+    {
+      "id": "T-202511-006",
+      "title": "Implement optional relevance scoring modes",
+      "prio": "P3",
+      "area": "api",
+      "status": "open",
+      "origin": "roadmap: Phase 2",
+      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+    },
+    {
+      "id": "T-202511-007",
+      "title": "Add explain mode with bounded payloads",
+      "prio": "P3",
+      "area": "api",
+      "status": "open",
+      "origin": "roadmap: Phase 2",
+      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+    },
+    {
+      "id": "T-202511-008",
+      "title": "Document sampling controls for top_k and tail_k",
+      "prio": "P3",
+      "area": "docs",
+      "status": "open",
+      "origin": "roadmap: Phase 2",
+      "link": "docs/ROADMAP.md#phase-2-–-relevance-and-payload-reduction"
+    },
+    {
+      "id": "T-202511-009",
+      "title": "Cache common lookups with explicit invalidation",
+      "prio": "P3",
+      "area": "server",
+      "status": "open",
+      "origin": "roadmap: Phase 3",
+      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+    },
+    {
+      "id": "T-202511-010",
+      "title": "Expose extended metrics for batches and skips",
+      "prio": "P3",
+      "area": "ops",
+      "status": "open",
+      "origin": "roadmap: Phase 3",
+      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+    },
+    {
+      "id": "T-202511-011",
+      "title": "Add backpressure and rate limits for chatty clients",
+      "prio": "P3",
+      "area": "ops",
+      "status": "open",
+      "origin": "roadmap: Phase 3",
+      "link": "docs/ROADMAP.md#phase-3-–-performance-and-ops"
+    },
+    {
+      "id": "T-202511-012",
+      "title": "Publish thin client helper for readiness and calls",
+      "prio": "P3",
+      "area": "dx",
+      "status": "open",
+      "origin": "roadmap: Phase 4",
+      "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+    },
+    {
+      "id": "T-202511-013",
+      "title": "Write end-to-end examples under examples/",
+      "prio": "P3",
+      "area": "dx",
+      "status": "open",
+      "origin": "roadmap: Phase 4",
+      "link": "docs/ROADMAP.md#phase-4-–-developer-experience"
+    }
+  ]
+}
