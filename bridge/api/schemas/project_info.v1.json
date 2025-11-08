@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "project_info.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "program_name",
+    "image_base",
+    "language_id",
+    "compiler_spec_id",
+    "entry_points",
+    "memory_blocks",
+    "imports_count",
+    "exports_count"
+  ],
+  "properties": {
+    "program_name": {"type": "string"},
+    "executable_path": {"type": ["string", "null"]},
+    "executable_md5": {"type": ["string", "null"]},
+    "executable_sha256": {"type": ["string", "null"]},
+    "executable_format": {"type": ["string", "null"]},
+    "image_base": {"type": ["string", "null"]},
+    "language_id": {"type": "string"},
+    "compiler_spec_id": {"type": ["string", "null"]},
+    "entry_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "memory_blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "start",
+          "end",
+          "length",
+          "rwx",
+          "loaded",
+          "initialized"
+        ],
+        "properties": {
+          "name": {"type": ["string", "null"]},
+          "start": {"type": ["string", "null"]},
+          "end": {"type": ["string", "null"]},
+          "length": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rwx": {
+            "type": "string",
+            "pattern": "^[r-][w-][x-]$"
+          },
+          "loaded": {"type": "boolean"},
+          "initialized": {"type": "boolean"}
+        }
+      }
+    },
+    "imports_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "exports_count": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    }
+  }
+}

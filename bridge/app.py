@@ -62,6 +62,7 @@ _RESPONSE_SCHEMA_MAP = {
     "/api/search_functions.json": "search_functions.v1.json",
     "/api/search_imports.json": "search_imports.v1.json",
     "/api/search_exports.json": "search_exports.v1.json",
+    "/api/project_info.json": "project_info.v1.json",
 }
 
 
