@@ -105,6 +105,41 @@ class GoldenStubGhidraClient:
             f"export_symbol_{i:04d} -> 0x{0x30000000 + i:08x}"
             for i in range(16)
         ]
+        self._project_info: Dict[str, object] = {
+            "program_name": "golden_stub.bin",
+            "executable_path": "/opt/golden_stub.bin",
+            "executable_md5": "0123456789abcdef0123456789abcdef",
+            "executable_sha256": (
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            ),
+            "executable_format": "ELF",
+            "image_base": "0x00100000",
+            "language_id": "ARM:LE:32:v7",
+            "compiler_spec_id": "default",
+            "entry_points": ["0x00100010", "0x00100000"],
+            "memory_blocks": [
+                {
+                    "name": ".data",
+                    "start": "0x00200000",
+                    "end": "0x00200fff",
+                    "length": 4096,
+                    "rwx": "rw-",
+                    "loaded": True,
+                    "initialized": True,
+                },
+                {
+                    "name": ".text",
+                    "start": "0x00100000",
+                    "end": "0x0010ffff",
+                    "length": 65536,
+                    "rwx": "r-x",
+                    "loaded": True,
+                    "initialized": True,
+                },
+            ],
+            "imports_count": len(self._imports),
+            "exports_count": len(self._exports),
+        }
 
     def read_dword(self, address: int) -> Optional[int]:
         return self._dwords.get(address)
@@ -205,6 +240,14 @@ class GoldenStubGhidraClient:
             if not normalized_query or normalized_query in entry.lower()
         ]
 
+    def get_project_info(self) -> Dict[str, object]:
+        payload = dict(self._project_info)
+        payload["entry_points"] = list(self._project_info["entry_points"])
+        payload["memory_blocks"] = [
+            dict(block) for block in self._project_info["memory_blocks"]
+        ]
+        return payload
+
     def close(self) -> None:  # pragma: no cover - interface requirement
         return None
 
@@ -251,6 +294,14 @@ def golden_client() -> Iterable[TestClient]:
     app = Starlette(routes=make_routes(factory, enable_writes=True))
     with TestClient(app) as client:
         yield client
+
+
+def test_project_info_snapshot(
+    golden_client: TestClient, snapshot_store: SnapshotStore
+) -> None:
+    response = golden_client.get("/api/project_info.json")
+    assert response.status_code == 200
+    snapshot_store.assert_match("project_info", response.json())
 
 
 def test_jt_slot_check_snapshot(golden_client: TestClient, snapshot_store: SnapshotStore) -> None:
