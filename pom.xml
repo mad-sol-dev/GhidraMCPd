@@ -18,6 +18,14 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ghidra.version>11.4.2</ghidra.version>
     <ghidra.dir>${project.basedir}/lib</ghidra.dir>
+    <ghidra.generic.jar>${ghidra.dir}/Generic.jar</ghidra.generic.jar>
+    <ghidra.softwareModeling.jar>${ghidra.dir}/SoftwareModeling.jar</ghidra.softwareModeling.jar>
+    <ghidra.project.jar>${ghidra.dir}/Project.jar</ghidra.project.jar>
+    <ghidra.docking.jar>${ghidra.dir}/Docking.jar</ghidra.docking.jar>
+    <ghidra.decompiler.jar>${ghidra.dir}/Decompiler.jar</ghidra.decompiler.jar>
+    <ghidra.utility.jar>${ghidra.dir}/Utility.jar</ghidra.utility.jar>
+    <ghidra.base.jar>${ghidra.dir}/Base.jar</ghidra.base.jar>
+    <ghidra.gui.jar>${ghidra.dir}/Gui.jar</ghidra.gui.jar>
   </properties>
 
   <profiles>
@@ -30,6 +38,14 @@
       </activation>
       <properties>
         <ghidra.dir>${env.GHIDRA_DIR}</ghidra.dir>
+        <ghidra.generic.jar>${ghidra.dir}/Ghidra/Framework/Generic/lib/Generic.jar</ghidra.generic.jar>
+        <ghidra.softwareModeling.jar>${ghidra.dir}/Ghidra/Features/SoftwareModeling/lib/SoftwareModeling.jar</ghidra.softwareModeling.jar>
+        <ghidra.project.jar>${ghidra.dir}/Ghidra/Framework/Project/lib/Project.jar</ghidra.project.jar>
+        <ghidra.docking.jar>${ghidra.dir}/Ghidra/Framework/Docking/lib/Docking.jar</ghidra.docking.jar>
+        <ghidra.decompiler.jar>${ghidra.dir}/Ghidra/Features/Decompiler/lib/Decompiler.jar</ghidra.decompiler.jar>
+        <ghidra.utility.jar>${ghidra.dir}/Ghidra/Framework/Utility/lib/Utility.jar</ghidra.utility.jar>
+        <ghidra.base.jar>${ghidra.dir}/Ghidra/Framework/Base/lib/Base.jar</ghidra.base.jar>
+        <ghidra.gui.jar>${ghidra.dir}/Ghidra/Framework/Gui/lib/Gui.jar</ghidra.gui.jar>
       </properties>
     </profile>
   </profiles>
@@ -41,56 +57,56 @@
       <artifactId>Generic</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Generic.jar</systemPath>
+      <systemPath>${ghidra.generic.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>SoftwareModeling</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/SoftwareModeling.jar</systemPath>
+      <systemPath>${ghidra.softwareModeling.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Project</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Project.jar</systemPath>
+      <systemPath>${ghidra.project.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Docking</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Docking.jar</systemPath>
+      <systemPath>${ghidra.docking.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Decompiler</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Decompiler.jar</systemPath>
+      <systemPath>${ghidra.decompiler.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Utility</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Utility.jar</systemPath>
+      <systemPath>${ghidra.utility.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Base</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Base.jar</systemPath>
+      <systemPath>${ghidra.base.jar}</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Gui</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Gui.jar</systemPath>
+      <systemPath>${ghidra.gui.jar}</systemPath>
     </dependency>
 
     <!-- Tests -->
