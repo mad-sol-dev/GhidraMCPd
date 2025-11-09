@@ -226,14 +226,14 @@
       "updated_at": "2025-11-02T14:12:11.830040+00:00"
     },
     "D.1": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "91ed09b",
+      "status": "done",
+      "updated_at": "2025-11-08T23:16:33+01:00"
     },
     "D.2": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "dac950b",
+      "status": "done",
+      "updated_at": "2025-11-09T03:36:00+00:00"
     },
     "D.3": {
       "commit": null,

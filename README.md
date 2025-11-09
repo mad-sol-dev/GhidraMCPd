@@ -64,6 +64,7 @@ curl -i http://localhost:8000/messages
 * `/api/jt_slot_process.json`
 * `/api/jt_scan.json`
 * `/api/mmio_annotate.json`
+* `/api/analyze_function_complete.json`
 * `/api/health.json`
 
 See the generated reference in [docs/api.md](docs/api.md).

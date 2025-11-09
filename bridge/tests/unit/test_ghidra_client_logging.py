@@ -27,6 +27,10 @@ class FakeSession:
             return FakeResponse("name: func\nentry_point: 0x00001000\n")
         if path in {"get_xrefs_to", "xrefs_to"}:
             return FakeResponse("00002000 | call string\n00003000 | BL other\n")
+        if path in {"decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"}:
+            return FakeResponse("int stub(void)\\n{\\n    return 0;\\n}\\n")
+        if path == "read_cstring":
+            return FakeResponse("hello world\n")
         if path in {"rename_function_by_address", "renameFunctionByAddress"}:
             return FakeResponse("OK\n")
         if path in {"set_decompiler_comment", "setDecompilerComment"}:
@@ -54,17 +58,21 @@ def test_request_counters_are_recorded(client: GhidraClient) -> None:
     with request_scope("ghidra.test", extra={"tool": "test"}) as ctx:
         assert client.read_dword(0x1234) == 0x10
         assert client.disassemble_function(0x1234)
+        assert client.decompile_function(0x1234)
         assert client.get_function_by_address(0x1234)
         assert client.get_xrefs_to(0x5678, limit=2)
+        assert client.read_cstring(0x2000) == "hello world"
         assert client.rename_function(0x1234, "new_name")
         assert client.set_decompiler_comment(0x1234, "hi")
         assert client.set_disassembly_comment(0x1234, "hi")
         assert client.get_project_info() is not None
     assert ctx.counters["ghidra.read"] == 1
     assert ctx.counters["ghidra.disasm"] == 1
+    assert ctx.counters["ghidra.decompile"] == 1
     assert ctx.counters["ghidra.verify"] == 1
     assert ctx.counters["ghidra.xrefs"] == 1
     assert ctx.counters["ghidra.rename"] == 1
     assert ctx.counters["ghidra.decompiler_comment"] == 1
     assert ctx.counters["ghidra.disassembly_comment"] == 1
     assert ctx.counters["ghidra.project_info"] == 1
+    assert ctx.counters["ghidra.read_cstring"] == 1

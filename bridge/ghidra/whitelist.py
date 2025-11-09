@@ -41,6 +41,12 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         WhitelistEntry("GET", "FUNCTIONS_IN_RANGE", ("functionsInRange",)),
         WhitelistEntry("GET", "DISASSEMBLE_AT", ("disassembleAt",)),
         WhitelistEntry("GET", "READ_BYTES", ("readBytes",)),
+        WhitelistEntry("GET", "READ_CSTRING", ("read_cstring",)),
+        WhitelistEntry(
+            "GET",
+            "DECOMPILE",
+            ("decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"),
+        ),
         WhitelistEntry("GET", "PROJECT_INFO", ("projectInfo", "project_info")),
     ),
     "POST": (

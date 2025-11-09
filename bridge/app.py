@@ -55,6 +55,7 @@ _REQUEST_SCHEMA_MAP = {
     "/api/search_functions.json": "search_functions.request.v1.json",
     "/api/search_imports.json": "search_imports.request.v1.json",
     "/api/search_exports.json": "search_exports.request.v1.json",
+    "/api/analyze_function_complete.json": "analyze_function_complete.request.v1.json",
 }
 
 _RESPONSE_SCHEMA_MAP = {
@@ -63,6 +64,7 @@ _RESPONSE_SCHEMA_MAP = {
     "/api/search_imports.json": "search_imports.v1.json",
     "/api/search_exports.json": "search_exports.v1.json",
     "/api/project_info.json": "project_info.v1.json",
+    "/api/analyze_function_complete.json": "analyze_function_complete.v1.json",
 }
 
 

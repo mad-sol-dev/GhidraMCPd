@@ -30,6 +30,15 @@
     "slot_addr": "0x00400004",
     "target": null
   },
+  "thumb_valid": {
+    "errors": [],
+    "mode": "Thumb",
+    "notes": [],
+    "raw": "0x0040020c",
+    "slot": 3,
+    "slot_addr": "0x0040000c",
+    "target": "0x0040020c"
+  },
   "upper_bound_out_of_range": {
     "errors": [
       "OUT_OF_RANGE"
@@ -40,14 +49,5 @@
     "slot": 4,
     "slot_addr": "0x00400010",
     "target": null
-  },
-  "thumb_valid": {
-    "errors": [],
-    "mode": "Thumb",
-    "notes": [],
-    "raw": "0x0040020c",
-    "slot": 3,
-    "slot_addr": "0x0040000c",
-    "target": "0x0040020c"
   }
 }

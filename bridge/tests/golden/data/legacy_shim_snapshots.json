@@ -1,4 +1,12 @@
 {
+  "health_get": {
+    "endpoints": {
+      "messages": "/messages",
+      "sse": "/sse"
+    },
+    "ok": true,
+    "type": "mcp-sse"
+  },
   "openapi_get": {
     "info": {
       "title": "Ghidra MCP Bridge (stub)",
@@ -34,14 +42,6 @@
         "version": "1.14.1"
       }
     }
-  },
-  "health_get": {
-    "endpoints": {
-      "messages": "/messages",
-      "sse": "/sse"
-    },
-    "ok": true,
-    "type": "mcp-sse"
   },
   "root_post": {
     "id": 0,

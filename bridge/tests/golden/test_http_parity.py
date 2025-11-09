@@ -38,6 +38,7 @@ class GoldenStubGhidraClient:
             0x00102004: [
                 "00102004: PUSH {r4, lr}",
                 "00102008: BL jump_table_target",
+                "0010200C: ADR R0, 0x00200000",
             ],
             0x00005000: [
                 "00005000: BL log_debug",
@@ -93,6 +94,9 @@ class GoldenStubGhidraClient:
                 "refs": 2,
             },
         ]
+        self._string_lookup = {
+            entry["address"]: str(entry["literal"]) for entry in self._strings
+        }
         self._imports: List[str] = [
             f"import_symbol_{i:04d} -> 0x{0x20000000 + i:08x}"
             for i in range(16)
@@ -142,6 +146,11 @@ class GoldenStubGhidraClient:
     def disassemble_function(self, address: int) -> List[str]:
         return list(self._disassembly.get(address, []))
 
+    def decompile_function(self, address: int) -> Optional[str]:
+        if address in self._functions:
+            return "int stub(void) {\n    return 42;\n}"
+        return "void helper(void) {\n    return;\n}"
+
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         return address in self._instruction_addresses
 
@@ -162,6 +171,9 @@ class GoldenStubGhidraClient:
             if not normalized or normalized in literal.lower():
                 results.append(dict(entry))
         return results
+
+    def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
+        return self._string_lookup.get(address)
 
     def search_functions(self, query: str) -> List[str]:
         """Return a predictable list of functions for testing."""
@@ -332,3 +344,14 @@ def test_mmio_annotate_snapshot(
     )
     assert response.status_code == 200
     snapshot_store.assert_match("mmio_annotate", response.json())
+
+
+def test_analyze_function_complete_snapshot(
+    golden_client: TestClient, snapshot_store: SnapshotStore
+) -> None:
+    response = golden_client.post(
+        "/api/analyze_function_complete.json",
+        json={"address": "0x00102004"},
+    )
+    assert response.status_code == 200
+    snapshot_store.assert_match("analyze_function_complete", response.json())
