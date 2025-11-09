@@ -48,6 +48,11 @@ jobs:
       - name: Render OpenAPI markdown
         run: |
           python scripts/gen_api_md.py "${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}" > docs/api.md
+      - name: Upload API docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-md
+          path: docs/api.md
       - name: Detect drift in docs/api.md
         run: |
           if ! git diff --exit-code -- docs/api.md; then
@@ -76,6 +81,7 @@ jobs:
     needs:
       - changes
       - pytests
+      - api-docs
     if: needs.changes.outputs.maven == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +89,19 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'      # matcht deinen lokalen Build
+          java-version: '17'
           cache: maven
+      - name: Determine Ghidra version from POM
+        id: ver
+        run: echo "GHIDRA_VERSION=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.properties.ghidra.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.1.0:exec)" >> $GITHUB_ENV
+      - name: Download Ghidra
+        run: |
+          set -euo pipefail
+          TAG="Ghidra_${GHIDRA_VERSION}_build"
+          URL=$(curl -s https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/tags/${TAG} \
+            | grep browser_download_url | grep PUBLIC | sed -E 's/.*"([^"]+)".*/\1/' | head -n1)
+          curl -L "$URL" -o ghidra.zip
+          unzip -q ghidra.zip
+          echo "GHIDRA_DIR=$(echo ghidra_*_PUBLIC)" >> "$GITHUB_ENV"
       - run: mvn -B -DskipTests package
 

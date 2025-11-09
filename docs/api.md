@@ -2,6 +2,183 @@
 
 _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge API v1.0.0_
 
+## `/api/analyze_function_complete.json`
+
+### POST
+
+**Summary:** analyze_function_route
+
+#### Request body
+- Declares: `http://json-schema.org/draft-07/schema#`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes | pattern=^(0x)?[0-9a-fA-F]+$ |
+| `fields` | array<string> | No |  |
+| `fmt` | string | No | enum=['json'] |
+| `max_result_tokens` | integer | No | min=0 |
+| `options` | object | No |  |
+
+```json
+{
+  "address": "string",
+  "fields": [
+    "function"
+  ],
+  "fmt": "json",
+  "max_result_tokens": 0,
+  "options": {
+    "callgraph": {
+      "limit": 0
+    },
+    "decompile": {
+      "enabled": false,
+      "max_lines": 0
+    },
+    "disasm": {
+      "after": 0,
+      "before": 0,
+      "max_instructions": 0
+    },
+    "strings": {
+      "limit": 0,
+      "max_cstring_len": 0
+    },
+    "xrefs": {
+      "inbound_limit": 0,
+      "outbound_limit": 0
+    }
+  }
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `http://json-schema.org/draft-07/schema#`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes |  |
+| `callgraph` | ['object', 'null'] | No |  |
+| `decompile` | ['object', 'null'] | No |  |
+| `disasm` | ['object', 'null'] | No |  |
+| `features` | ['object', 'null'] | No |  |
+| `function` | ['object', 'null'] | No |  |
+| `meta` | object | Yes |  |
+| `strings` | ['object', 'null'] | No |  |
+| `xrefs` | ['object', 'null'] | No |  |
+
+  ```json
+  {
+  "address": "string",
+  "callgraph": {
+    "callees": [
+      {
+        "address": "string",
+        "name": "string",
+        "type": "string"
+      }
+    ],
+    "callers": [
+      {
+        "name": "string",
+        "site": "string",
+        "type": "string"
+      }
+    ]
+  },
+  "decompile": {
+    "enabled": false,
+    "error": "string",
+    "lines": 0,
+    "snippet": "string",
+    "truncated": false
+  },
+  "disasm": {
+    "after": 0,
+    "before": 0,
+    "center_index": 0,
+    "max_instructions": 0,
+    "total_instructions": 0,
+    "truncated": false,
+    "window": [
+      {
+        "address": "string",
+        "bytes": "string",
+        "is_target": false,
+        "text": "string"
+      }
+    ]
+  },
+  "features": {
+    "call_count": 0,
+    "instruction_count": 0,
+    "notes": [
+      "string"
+    ],
+    "size_bytes": 0,
+    "string_reference_count": 0,
+    "xrefs_inbound_count": 0,
+    "xrefs_outbound_count": 0
+  },
+  "function": {
+    "address": "string",
+    "comment": "string",
+    "entry_point": "string",
+    "name": "string",
+    "range": {
+      "end": "string",
+      "start": "string"
+    },
+    "signature": "string"
+  },
+  "meta": {
+    "estimate_tokens": 0,
+    "fields": [
+      "string"
+    ],
+    "fmt": "string",
+    "max_result_tokens": 0,
+    "truncated": false
+  },
+  "strings": {
+    "items": [
+      {
+        "address": "string",
+        "length": 0,
+        "literal": "string",
+        "source": "string"
+      }
+    ],
+    "limit": 0,
+    "source": "string"
+  },
+  "xrefs": {
+    "inbound": [
+      {
+        "address": "string",
+        "context": "string",
+        "function": "string",
+        "type": "string"
+      }
+    ],
+    "outbound": [
+      {
+        "context": "string",
+        "from_address": "string",
+        "name": "string",
+        "to_address": "string",
+        "type": "string"
+      }
+    ],
+    "summary": {
+      "inbound": 0,
+      "outbound": 0
+    }
+  }
+}
+  ```
+
 ## `/api/disassemble_at.json`
 
 ### POST
@@ -17,50 +194,6 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 ### HEAD
 
 **Summary:** health_route
-
-## `/api/project_info.json`
-
-### GET
-
-**Summary:** project_info
-
-#### Responses
-- `200` — Successful Response
-  - Schema ID: `project_info.v1.json`
-  - Declares: `https://json-schema.org/draft/2020-12/schema`
-
-  ```json
-  {
-    "program_name": "stub_program",
-    "executable_path": "/opt/programs/stub_program.bin",
-    "executable_md5": "0123456789abcdef0123456789abcdef",
-    "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "executable_format": "ELF",
-    "image_base": "0x00100000",
-    "language_id": "ARM:LE:32:v7",
-    "compiler_spec_id": "default",
-    "entry_points": [
-      "0x00100000"
-    ],
-    "memory_blocks": [
-      {
-        "name": ".text",
-        "start": "0x00100000",
-        "end": "0x0010ffff",
-        "length": 65536,
-        "rwx": "r-x",
-        "loaded": true,
-        "initialized": true
-      }
-    ],
-    "imports_count": 24,
-    "exports_count": 24
-  }
-  ```
-
-### HEAD
-
-**Summary:** project_info
 
 ## `/api/jt_scan.json`
 
@@ -92,182 +225,110 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** mmio_annotate_route
 
-#### Request body
-- Schema ID: `mmio_annotate.request.v1.json`
+## `/api/project_info.json`
 
-```json
-{
-  "function_addr": "0x00007000",
-  "dry_run": true,
-  "max_samples": 4
-}
-```
+### GET
+
+**Summary:** project_info
 
 #### Responses
 - `200` — Successful Response
-  - Schema ID: `mmio_annotate.v1.json`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `compiler_spec_id` | ['string', 'null'] | Yes |  |
+| `entry_points` | array<string> | Yes |  |
+| `executable_format` | ['string', 'null'] | No |  |
+| `executable_md5` | ['string', 'null'] | No |  |
+| `executable_path` | ['string', 'null'] | No |  |
+| `executable_sha256` | ['string', 'null'] | No |  |
+| `exports_count` | ['integer', 'null'] | Yes | min=0 |
+| `image_base` | ['string', 'null'] | Yes |  |
+| `imports_count` | integer | Yes | min=0 |
+| `language_id` | string | Yes |  |
+| `memory_blocks` | array<object> | Yes |  |
+| `program_name` | string | Yes |  |
 
   ```json
   {
-    "function": "0x00007000",
-    "annotated": 2,
-    "samples": [
-      {
-        "address": "0x00007008",
-        "comment": "write32: base=0x40010000 offset=0x20"
-      }
-    ],
-    "notes": [
-      "dry-run: no comments written"
-    ]
-  }
+  "compiler_spec_id": "string",
+  "entry_points": [
+    "string"
+  ],
+  "executable_format": "string",
+  "executable_md5": "string",
+  "executable_path": "string",
+  "executable_sha256": "string",
+  "exports_count": 0,
+  "image_base": "string",
+  "imports_count": 0,
+  "language_id": "string",
+  "memory_blocks": [
+    {
+      "end": "string",
+      "initialized": false,
+      "length": 0,
+      "loaded": false,
+      "name": "string",
+      "rwx": "string",
+      "start": "string"
+    }
+  ],
+  "program_name": "string"
+}
   ```
 
-## `/api/analyze_function_complete.json`
+### HEAD
 
-### POST
-
-**Summary:** analyze_function_complete_route
-
-#### Request body
-- Schema ID: `analyze_function_complete.request.v1.json`
-
-```json
-{
-  "address": "0x00102004",
-  "fields": [
-    "function",
-    "disasm",
-    "decompile",
-    "xrefs",
-    "callgraph",
-    "strings",
-    "features"
-  ],
-  "options": {
-    "disasm": {"before": 8, "after": 8},
-    "xrefs": {"inbound_limit": 32, "outbound_limit": 32},
-    "strings": {"limit": 6},
-    "decompile": {"max_lines": 80}
-  }
-}
-```
+**Summary:** project_info
 
 #### Responses
 - `200` — Successful Response
-  - Schema ID: `analyze_function_complete.v1.json`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `compiler_spec_id` | ['string', 'null'] | Yes |  |
+| `entry_points` | array<string> | Yes |  |
+| `executable_format` | ['string', 'null'] | No |  |
+| `executable_md5` | ['string', 'null'] | No |  |
+| `executable_path` | ['string', 'null'] | No |  |
+| `executable_sha256` | ['string', 'null'] | No |  |
+| `exports_count` | ['integer', 'null'] | Yes | min=0 |
+| `image_base` | ['string', 'null'] | Yes |  |
+| `imports_count` | integer | Yes | min=0 |
+| `language_id` | string | Yes |  |
+| `memory_blocks` | array<object> | Yes |  |
+| `program_name` | string | Yes |  |
 
   ```json
   {
-    "address": "0x00102004",
-    "function": {
-      "name": "sub_102004",
-      "entry_point": "0x00102004",
-      "address": "0x00102004",
-      "signature": "int sub_102004(void)",
-      "comment": "initial",
-      "range": {
-        "start": "0x00102004",
-        "end": "0x0010201f"
-      }
-    },
-    "disasm": {
-      "before": 8,
-      "after": 8,
-      "max_instructions": 48,
-      "window": [
-        {
-          "address": "0x00102004",
-          "bytes": "PUSH",
-          "text": "PUSH {r4, lr}",
-          "is_target": true
-        },
-        {
-          "address": "0x00102008",
-          "bytes": "BL",
-          "text": "BL jump_table_target",
-          "is_target": false
-        }
-      ],
-      "total_instructions": 12,
-      "center_index": 0,
-      "truncated": false
-    },
-    "decompile": {
-      "enabled": true,
-      "snippet": "int sub_102004(void)\n{\n    return 0;\n}",
-      "lines": 4,
-      "truncated": false,
-      "error": null
-    },
-    "xrefs": {
-      "inbound": [
-        {
-          "address": "0x00005000",
-          "type": "CALL",
-          "function": "caller_one",
-          "context": "00005000 in caller_one [CALL]"
-        }
-      ],
-      "outbound": [
-        {
-          "from_address": "0x00102008",
-          "to_address": "0x00006000",
-          "name": "target",
-          "type": "BL",
-          "context": "BL target"
-        }
-      ],
-      "summary": {
-        "inbound": 1,
-        "outbound": 1
-      }
-    },
-    "callgraph": {
-      "callers": [
-        {"name": "caller_one", "site": "0x00005000", "type": "CALL"}
-      ],
-      "callees": [
-        {"name": "target", "address": "0x00006000", "type": "BL"}
-      ]
-    },
-    "strings": {
-      "items": [
-        {
-          "address": "0x00200000",
-          "source": "0x0010200C",
-          "literal": "Diagnostic mode enabled",
-          "length": 25
-        }
-      ],
-      "limit": 6,
-      "source": "disassembly_literals"
-    },
-    "features": {
-      "instruction_count": 12,
-      "call_count": 1,
-      "string_reference_count": 1,
-      "xrefs_inbound_count": 1,
-      "xrefs_outbound_count": 1,
-      "size_bytes": 28,
-      "notes": []
-    },
-    "meta": {
-      "fields": [
-        "callgraph",
-        "decompile",
-        "disasm",
-        "features",
-        "function",
-        "strings",
-        "xrefs"
-      ],
-      "fmt": "json",
-      "max_result_tokens": null,
-      "estimate_tokens": 112,
-      "truncated": false
+  "compiler_spec_id": "string",
+  "entry_points": [
+    "string"
+  ],
+  "executable_format": "string",
+  "executable_md5": "string",
+  "executable_path": "string",
+  "executable_sha256": "string",
+  "exports_count": 0,
+  "image_base": "string",
+  "imports_count": 0,
+  "language_id": "string",
+  "memory_blocks": [
+    {
+      "end": "string",
+      "initialized": false,
+      "length": 0,
+      "loaded": false,
+      "name": "string",
+      "rwx": "string",
+      "start": "string"
     }
-  }
+  ],
+  "program_name": "string"
+}
   ```
 
 ## `/api/read_bytes.json`

@@ -22,6 +22,8 @@
 - [x] {D.2} POST /api/analyze_function_complete.json (read-only) — composite dossier (`fields`, `fmt`, `max_result_tokens`, disasm/decompile/xrefs/callgraph/strings/features) with deterministic ordering, unit/contract/golden coverage, docs updated.
 - [x] {D.5} Error schema + enums — unified error envelope `{status,code,message,recovery[]}`, updated docs, contract/unit/golden coverage.
 - [x] {D.8} Cursor streaming for very large sets — cursor pagination envelopes, resume cursors documented, coverage in unit/contract/golden tests.
+- [x] OpenAPI renderer fixed — gen_api_md.py handles 3.1 unions/combinators, docs regenerated.
+- [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.

@@ -111,6 +111,28 @@
         "Cache layer with TTL=300s",
         "Cache key schema documented; hit/miss metrics"
       ]
+    },
+    {
+      "id": "HK-OPENAPI-RENDERER",
+      "title": "Fix OpenAPI renderer combinators",
+      "area": "docs",
+      "depends_on": [],
+      "dod": [
+        "example_from_schema handles list types",
+        "oneOf/anyOf/allOf emit examples"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "HK-GHIDRA-DEPS",
+      "title": "Resolve Ghidra dependencies via GHIDRA_DIR",
+      "area": "build",
+      "depends_on": [],
+      "dod": [
+        "POM references GHIDRA_DIR",
+        "CI downloads ghidra and sets GHIDRA_DIR"
+      ],
+      "status": "done"
     }
   ]
 }
