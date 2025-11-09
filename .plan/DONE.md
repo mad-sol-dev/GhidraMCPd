@@ -18,3 +18,4 @@
 - 2025-11-09 **T-202511-015** — Enforce `has_more` pagination across search_* responses
 - 2025-11-09 **T-202511-016** — Extend contract coverage for search pagination hints
 - 2025-11-09 **T-202511-017** — Sync .plan manifest and API docs drift gate checks
+- 2025-11-09 **D.2** — POST /api/analyze_function_complete.json composite dossier (disasm/decompile/xrefs/callgraph/strings/features, schema+docs+tests) _commit:dac950b_

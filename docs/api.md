@@ -92,6 +92,184 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** mmio_annotate_route
 
+#### Request body
+- Schema ID: `mmio_annotate.request.v1.json`
+
+```json
+{
+  "function_addr": "0x00007000",
+  "dry_run": true,
+  "max_samples": 4
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `mmio_annotate.v1.json`
+
+  ```json
+  {
+    "function": "0x00007000",
+    "annotated": 2,
+    "samples": [
+      {
+        "address": "0x00007008",
+        "comment": "write32: base=0x40010000 offset=0x20"
+      }
+    ],
+    "notes": [
+      "dry-run: no comments written"
+    ]
+  }
+  ```
+
+## `/api/analyze_function_complete.json`
+
+### POST
+
+**Summary:** analyze_function_complete_route
+
+#### Request body
+- Schema ID: `analyze_function_complete.request.v1.json`
+
+```json
+{
+  "address": "0x00102004",
+  "fields": [
+    "function",
+    "disasm",
+    "decompile",
+    "xrefs",
+    "callgraph",
+    "strings",
+    "features"
+  ],
+  "options": {
+    "disasm": {"before": 8, "after": 8},
+    "xrefs": {"inbound_limit": 32, "outbound_limit": 32},
+    "strings": {"limit": 6},
+    "decompile": {"max_lines": 80}
+  }
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `analyze_function_complete.v1.json`
+
+  ```json
+  {
+    "address": "0x00102004",
+    "function": {
+      "name": "sub_102004",
+      "entry_point": "0x00102004",
+      "address": "0x00102004",
+      "signature": "int sub_102004(void)",
+      "comment": "initial",
+      "range": {
+        "start": "0x00102004",
+        "end": "0x0010201f"
+      }
+    },
+    "disasm": {
+      "before": 8,
+      "after": 8,
+      "max_instructions": 48,
+      "window": [
+        {
+          "address": "0x00102004",
+          "bytes": "PUSH",
+          "text": "PUSH {r4, lr}",
+          "is_target": true
+        },
+        {
+          "address": "0x00102008",
+          "bytes": "BL",
+          "text": "BL jump_table_target",
+          "is_target": false
+        }
+      ],
+      "total_instructions": 12,
+      "center_index": 0,
+      "truncated": false
+    },
+    "decompile": {
+      "enabled": true,
+      "snippet": "int sub_102004(void)\n{\n    return 0;\n}",
+      "lines": 4,
+      "truncated": false,
+      "error": null
+    },
+    "xrefs": {
+      "inbound": [
+        {
+          "address": "0x00005000",
+          "type": "CALL",
+          "function": "caller_one",
+          "context": "00005000 in caller_one [CALL]"
+        }
+      ],
+      "outbound": [
+        {
+          "from_address": "0x00102008",
+          "to_address": "0x00006000",
+          "name": "target",
+          "type": "BL",
+          "context": "BL target"
+        }
+      ],
+      "summary": {
+        "inbound": 1,
+        "outbound": 1
+      }
+    },
+    "callgraph": {
+      "callers": [
+        {"name": "caller_one", "site": "0x00005000", "type": "CALL"}
+      ],
+      "callees": [
+        {"name": "target", "address": "0x00006000", "type": "BL"}
+      ]
+    },
+    "strings": {
+      "items": [
+        {
+          "address": "0x00200000",
+          "source": "0x0010200C",
+          "literal": "Diagnostic mode enabled",
+          "length": 25
+        }
+      ],
+      "limit": 6,
+      "source": "disassembly_literals"
+    },
+    "features": {
+      "instruction_count": 12,
+      "call_count": 1,
+      "string_reference_count": 1,
+      "xrefs_inbound_count": 1,
+      "xrefs_outbound_count": 1,
+      "size_bytes": 28,
+      "notes": []
+    },
+    "meta": {
+      "fields": [
+        "callgraph",
+        "decompile",
+        "disasm",
+        "features",
+        "function",
+        "strings",
+        "xrefs"
+      ],
+      "fmt": "json",
+      "max_result_tokens": null,
+      "estimate_tokens": 112,
+      "truncated": false
+    }
+  }
+  ```
+
 ## `/api/read_bytes.json`
 
 ### POST

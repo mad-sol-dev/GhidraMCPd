@@ -84,6 +84,10 @@ class StubGhidraClient:
                 "refs": 4,
             },
         ]
+        self._string_lookup = {
+            entry["address"]: str(entry["literal"])
+            for entry in self._strings
+        }
         self._imports: List[str] = [
             f"import_symbol_{i:04d} -> 0x{0x10000000 + i:08x}"
             for i in range(24)
@@ -189,8 +193,14 @@ class StubGhidraClient:
             return [
                 f"{address:08x}: PUSH {{lr}}",
                 f"{address + 4:08x}: BL dispatch_handler",
+                f"{address + 8:08x}: ADR R0, 0x00200000",
             ]
         return []
+
+    def decompile_function(self, address: int) -> Optional[str]:
+        if address in self._functions:
+            return "int sub_stub(void) {\n    return 1;\n}"
+        return "void helper(void) {\n    return;\n}"
 
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         return True
@@ -212,6 +222,9 @@ class StubGhidraClient:
             if not normalized or normalized in literal.lower():
                 results.append(dict(entry))
         return results
+
+    def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
+        return self._string_lookup.get(address)
 
     def search_functions(self, query: str) -> List[str]:
         """Return a predictable list of functions for testing."""

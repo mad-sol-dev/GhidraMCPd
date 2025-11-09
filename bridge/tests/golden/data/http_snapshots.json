@@ -1,4 +1,129 @@
 {
+  "analyze_function_complete": {
+    "data": {
+      "address": "0x00102004",
+      "callgraph": {
+        "callees": [
+          {
+            "address": null,
+            "name": "jump_table_target",
+            "type": "BL"
+          }
+        ],
+        "callers": []
+      },
+      "decompile": {
+        "enabled": true,
+        "error": null,
+        "lines": 3,
+        "snippet": "int stub(void) {\n    return 42;\n}",
+        "truncated": false
+      },
+      "disasm": {
+        "after": 8,
+        "before": 8,
+        "center_index": 0,
+        "max_instructions": 48,
+        "total_instructions": 3,
+        "truncated": false,
+        "window": [
+          {
+            "address": "0x00102004",
+            "bytes": "",
+            "is_target": true,
+            "text": "PUSH {r4, lr}"
+          },
+          {
+            "address": "0x00102008",
+            "bytes": "",
+            "is_target": false,
+            "text": "BL jump_table_target"
+          },
+          {
+            "address": "0x0010200c",
+            "bytes": "",
+            "is_target": false,
+            "text": "ADR R0, 0x00200000"
+          }
+        ]
+      },
+      "features": {
+        "call_count": 1,
+        "instruction_count": 3,
+        "notes": [],
+        "size_bytes": null,
+        "string_reference_count": 1,
+        "xrefs_inbound_count": 2,
+        "xrefs_outbound_count": 1
+      },
+      "function": {
+        "address": "0x00102004",
+        "comment": "initial",
+        "entry_point": "0x00102004",
+        "name": "sub_102004",
+        "range": null,
+        "signature": null
+      },
+      "meta": {
+        "estimate_tokens": 83,
+        "fields": [
+          "callgraph",
+          "decompile",
+          "disasm",
+          "features",
+          "function",
+          "strings",
+          "xrefs"
+        ],
+        "fmt": "json",
+        "max_result_tokens": null,
+        "truncated": false
+      },
+      "strings": {
+        "items": [
+          {
+            "address": "0x00200000",
+            "length": 23,
+            "literal": "Diagnostic mode enabled",
+            "source": "0x0010200c"
+          }
+        ],
+        "limit": 6,
+        "source": "disassembly_literals"
+      },
+      "xrefs": {
+        "inbound": [
+          {
+            "address": "0x00005000",
+            "context": "BL log_debug",
+            "function": null,
+            "type": null
+          },
+          {
+            "address": "0x00006000",
+            "context": "BL printf",
+            "function": null,
+            "type": null
+          }
+        ],
+        "outbound": [
+          {
+            "context": "BL jump_table_target",
+            "from_address": "0x00102008",
+            "name": "jump_table_target",
+            "to_address": null,
+            "type": "BL"
+          }
+        ],
+        "summary": {
+          "inbound": 2,
+          "outbound": 1
+        }
+      }
+    },
+    "errors": [],
+    "ok": true
+  },
   "jt_scan": {
     "data": {
       "items": [

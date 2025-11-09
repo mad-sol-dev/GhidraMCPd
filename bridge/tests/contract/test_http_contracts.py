@@ -145,6 +145,20 @@ def test_mmio_annotate_contract(contract_client: TestClient) -> None:
     _assert_valid("mmio_annotate.v1.json", body["data"])
 
 
+def test_analyze_function_complete_contract(contract_client: TestClient) -> None:
+    response = contract_client.post(
+        "/api/analyze_function_complete.json",
+        json={"address": "0x00102004"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    _assert_envelope(body)
+    data = body["data"]
+    _assert_valid("analyze_function_complete.v1.json", data)
+    assert data["meta"]["fmt"] == "json"
+
+
 @pytest.mark.parametrize(
     "path,payload",
     [
@@ -180,6 +194,10 @@ def test_mmio_annotate_contract(contract_client: TestClient) -> None:
         (
             "/api/mmio_annotate.json",
             {"function_addr": "0x1", "dry_run": True, "max_samples": 2, "extra": 1},
+        ),
+        (
+            "/api/analyze_function_complete.json",
+            {"address": "0x00102004", "extra": 1},
         ),
     ],
 )
