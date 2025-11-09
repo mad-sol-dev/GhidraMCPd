@@ -13,9 +13,11 @@
 
   <!-- Java-/Build-Defaults -->
   <properties>
-    <!-- Nutze das JDK 21 Toolchain-Level (empfohlen statt source/target) -->
-    <maven.compiler.release>21</maven.compiler.release>
+    <!-- Nutze das JDK 17 Toolchain-Level (empfohlen statt source/target) -->
+    <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <ghidra.version>11.4.2</ghidra.version>
+    <ghidra.dir>${env.GHIDRA_DIR}</ghidra.dir>
   </properties>
 
   <dependencies>
@@ -23,58 +25,58 @@
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Generic</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Generic.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/Generic/lib/Generic.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>SoftwareModeling</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/SoftwareModeling.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/SoftwareModeling/lib/SoftwareModeling.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Project</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Project.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/Project/lib/Project.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Docking</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Docking.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/Docking/lib/Docking.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Decompiler</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Decompiler.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Features/Decompiler/lib/Decompiler.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Utility</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Utility.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/Utility/lib/Utility.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Base</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Base.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Features/Base/lib/Base.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Gui</artifactId>
-      <version>11.4.2</version>
+      <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/Gui.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Framework/Generic/lib/Gui.jar</systemPath>
     </dependency>
 
     <!-- Tests -->
@@ -88,7 +90,7 @@
 
   <build>
     <plugins>
-      <!-- Compiler: setze Java 21 über "release" -->
+        <!-- Compiler: setze Java 17 über "release" -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>

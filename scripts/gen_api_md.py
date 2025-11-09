@@ -28,20 +28,43 @@ def load_openapi(source: str) -> Mapping[str, Any]:
 
 def example_from_schema(schema: Mapping[str, Any] | None, depth: int = 0) -> Any:
     """Derive a minimal example for the provided JSON schema."""
-    if schema is None or depth > 3:
+    if schema is None or depth > 5:
         return "…"
+
+    def normalize_type(t: Any) -> Any:
+        if isinstance(t, list):
+            t = [x for x in t if x != "null"]
+            return t[0] if t else "null"
+        return t
+
+    for key in ("oneOf", "anyOf"):
+        if key in schema and isinstance(schema[key], list) and schema[key]:
+            return example_from_schema(schema[key][0], depth + 1)
+    if "allOf" in schema and isinstance(schema["allOf"], list):
+        merged: dict[str, Any] = {}
+        for part in schema["allOf"]:
+            if isinstance(part, Mapping) and "properties" in part:
+                merged.setdefault("type", "object")
+                merged.setdefault("properties", {}).update(part["properties"])
+        if merged:
+            return example_from_schema(merged, depth + 1)
+
+    schema_type = normalize_type(schema.get("type"))
 
     if "example" in schema:
         return schema["example"]
-
-    if "allOf" in schema and schema["allOf"]:
-        return example_from_schema(schema["allOf"][0], depth)
-    if "anyOf" in schema and schema["anyOf"]:
-        return example_from_schema(schema["anyOf"][0], depth)
-    if "oneOf" in schema and schema["oneOf"]:
-        return example_from_schema(schema["oneOf"][0], depth)
-
-    schema_type = schema.get("type")
+    if "enum" in schema and schema["enum"]:
+        return schema["enum"][0]
+    if schema_type in {"integer", "number"}:
+        return schema.get("default", 0)
+    if schema_type == "string":
+        if schema.get("pattern", "").startswith("^0x"):
+            return "0x0"
+        return schema.get("example", schema.get("default", "string"))
+    if schema_type == "boolean":
+        return schema.get("default", False)
+    if schema_type == "array":
+        return [example_from_schema(schema.get("items", {}), depth + 1)]
     if schema_type == "object" or "properties" in schema:
         props = schema.get("properties", {})
         example_obj: dict[str, Any] = {}
@@ -49,24 +72,8 @@ def example_from_schema(schema: Mapping[str, Any] | None, depth: int = 0) -> Any
             example_obj[key] = example_from_schema(props[key], depth + 1)
         additional = schema.get("additionalProperties")
         if isinstance(additional, Mapping):
-            example_obj["key"] = example_from_schema(additional, depth + 1)
+            example_obj.setdefault("key", example_from_schema(additional, depth + 1))
         return example_obj
-    if schema_type == "array":
-        items = schema.get("items")
-        return [example_from_schema(items, depth + 1)]
-    if schema_type == "string":
-        if "enum" in schema and schema["enum"]:
-            return schema["enum"][0]
-        if schema.get("pattern", "").startswith("^0x"):
-            return "0x0"
-        return schema.get("default", "string")
-    if schema_type in {"integer", "number"}:
-        return schema.get("default", 0)
-    if schema_type == "boolean":
-        return schema.get("default", False)
-
-    if "enum" in schema and schema["enum"]:
-        return schema["enum"][0]
     return schema.get("default", "…")
 
 
