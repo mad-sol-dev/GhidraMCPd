@@ -24,12 +24,9 @@ def create_memory_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/read_bytes.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "read_bytes.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 payload = memory.read_bytes(
                     client,

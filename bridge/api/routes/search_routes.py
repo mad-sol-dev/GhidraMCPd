@@ -51,12 +51,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/string_xrefs.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "string_xrefs.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 payload = strings.xrefs_compact(
                     client,
@@ -81,12 +78,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_strings.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_strings.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
@@ -119,12 +113,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/strings_compact.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "strings_compact.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 limit = int(data.get("limit", 0))
                 offset = int(data.get("offset", 0))
@@ -172,12 +163,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_imports.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_imports.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
@@ -210,12 +198,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_exports.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_exports.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
@@ -248,12 +233,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_xrefs_to.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_xrefs_to.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 address = str(data["address"])
                 query = str(data["query"])
@@ -290,12 +272,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_functions.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_functions.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
@@ -328,12 +307,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/search_scalars.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "search_scalars.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 raw_value = data["value"]
                 if isinstance(raw_value, str):
@@ -380,12 +356,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/list_functions_in_range.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "list_functions_in_range.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 address_min = str(data["address_min"])
                 address_max = str(data["address_max"])

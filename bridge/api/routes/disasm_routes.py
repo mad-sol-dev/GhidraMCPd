@@ -24,12 +24,9 @@ def create_disasm_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/disassemble_at.json"},
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "disassemble_at.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 payload = disasm.disassemble_at(
                     client,

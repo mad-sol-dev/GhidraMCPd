@@ -32,10 +32,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/jt_slot_check.json"},
         ):
-            data, error = await deps.validated_json_body(request, "jt_slot_check.request.v1.json")
-            if error is not None:
-                return error
-            assert data is not None
+            data = await deps.validated_json_body(request, "jt_slot_check.request.v1.json")
             try:
                 adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.slot_check(
@@ -65,12 +62,9 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             extra={"path": "/api/jt_slot_process.json"},
             max_writes=MAX_WRITES_PER_REQUEST,
         ):
-            data, error = await deps.validated_json_body(
+            data = await deps.validated_json_body(
                 request, "jt_slot_process.request.v1.json"
             )
-            if error is not None:
-                return error
-            assert data is not None
             try:
                 adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.slot_process(
@@ -103,10 +97,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/jt_scan.json"},
         ):
-            data, error = await deps.validated_json_body(request, "jt_scan.request.v1.json")
-            if error is not None:
-                return error
-            assert data is not None
+            data = await deps.validated_json_body(request, "jt_scan.request.v1.json")
             try:
                 adapter = _resolve_adapter(str(data.get("arch", "auto")))
                 payload = jt.scan(
