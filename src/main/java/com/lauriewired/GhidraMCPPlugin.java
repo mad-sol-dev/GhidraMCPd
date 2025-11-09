@@ -5,6 +5,7 @@ import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
+import ghidra.program.model.address.AddressIterator;
 import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryBlock;
@@ -2279,26 +2280,22 @@ public class GhidraMCPPlugin extends Plugin {
     private void appendEntryPoints(StringBuilder sb, Program program) {
         List<Address> entries = new ArrayList<>();
         SymbolTable table = program.getSymbolTable();
-        SymbolIterator it = table.getExternalEntryPointIterator();
-        while (it.hasNext()) {
-            Symbol symbol = it.next();
-            if (symbol != null && symbol.getAddress() != null) {
-                Address addr = symbol.getAddress();
-                if (!entries.contains(addr)) {
-                    entries.add(addr);
-                }
+        AddressIterator externalEntries = table.getExternalEntryPointIterator();
+        while (externalEntries.hasNext()) {
+            Address addr = externalEntries.next();
+            if (addr != null && !entries.contains(addr)) {
+                entries.add(addr);
             }
         }
 
         if (entries.isEmpty()) {
-            Symbol[] entrySymbols = table.getSymbols("entry");
-            if (entrySymbols != null) {
-                for (Symbol symbol : entrySymbols) {
-                    if (symbol != null && symbol.getAddress() != null) {
-                        Address addr = symbol.getAddress();
-                        if (!entries.contains(addr)) {
-                            entries.add(addr);
-                        }
+            SymbolIterator entrySymbols = table.getSymbols("entry");
+            while (entrySymbols != null && entrySymbols.hasNext()) {
+                Symbol symbol = entrySymbols.next();
+                if (symbol != null && symbol.getAddress() != null) {
+                    Address addr = symbol.getAddress();
+                    if (!entries.contains(addr)) {
+                        entries.add(addr);
                     }
                 }
             }
