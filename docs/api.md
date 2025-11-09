@@ -59,14 +59,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `address` | string | Yes |  |
-| `callgraph` | ['object', 'null'] | No |  |
-| `decompile` | ['object', 'null'] | No |  |
-| `disasm` | ['object', 'null'] | No |  |
-| `features` | ['object', 'null'] | No |  |
-| `function` | ['object', 'null'] | No |  |
+| `callgraph` | object | No |  |
+| `decompile` | object | No |  |
+| `disasm` | object | No |  |
+| `features` | object | No |  |
+| `function` | object | No |  |
 | `meta` | object | Yes |  |
-| `strings` | ['object', 'null'] | No |  |
-| `xrefs` | ['object', 'null'] | No |  |
+| `strings` | object | No |  |
+| `xrefs` | object | No |  |
 
   ```json
   {
@@ -237,14 +237,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `compiler_spec_id` | ['string', 'null'] | Yes |  |
+| `compiler_spec_id` | string | Yes |  |
 | `entry_points` | array<string> | Yes |  |
-| `executable_format` | ['string', 'null'] | No |  |
-| `executable_md5` | ['string', 'null'] | No |  |
-| `executable_path` | ['string', 'null'] | No |  |
-| `executable_sha256` | ['string', 'null'] | No |  |
-| `exports_count` | ['integer', 'null'] | Yes | min=0 |
-| `image_base` | ['string', 'null'] | Yes |  |
+| `executable_format` | string | No |  |
+| `executable_md5` | string | No |  |
+| `executable_path` | string | No |  |
+| `executable_sha256` | string | No |  |
+| `exports_count` | integer | Yes | min=0 |
+| `image_base` | string | Yes |  |
 | `imports_count` | integer | Yes | min=0 |
 | `language_id` | string | Yes |  |
 | `memory_blocks` | array<object> | Yes |  |
@@ -289,14 +289,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `compiler_spec_id` | ['string', 'null'] | Yes |  |
+| `compiler_spec_id` | string | Yes |  |
 | `entry_points` | array<string> | Yes |  |
-| `executable_format` | ['string', 'null'] | No |  |
-| `executable_md5` | ['string', 'null'] | No |  |
-| `executable_path` | ['string', 'null'] | No |  |
-| `executable_sha256` | ['string', 'null'] | No |  |
-| `exports_count` | ['integer', 'null'] | Yes | min=0 |
-| `image_base` | ['string', 'null'] | Yes |  |
+| `executable_format` | string | No |  |
+| `executable_md5` | string | No |  |
+| `executable_path` | string | No |  |
+| `executable_sha256` | string | No |  |
+| `exports_count` | integer | Yes | min=0 |
+| `image_base` | string | Yes |  |
 | `imports_count` | integer | Yes | min=0 |
 | `language_id` | string | Yes |  |
 | `memory_blocks` | array<object> | Yes |  |
