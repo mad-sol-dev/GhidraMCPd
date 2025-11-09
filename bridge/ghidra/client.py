@@ -417,11 +417,10 @@ class GhidraClient:
         if _is_error(lines):
             return []
         return [line.strip() for line in lines if line.strip()]
-def search_functions(self, query: str) -> List[str]:
-        """
-        Search for functions using the plaintext /functions endpoint.
-        Returns list lines like "Name at 00000000".
-        """
+
+    def search_functions(self, query: str) -> List[str]:
+        """Search for functions using the plaintext /functions endpoint."""
+
         increment_counter("ghidra.search_functions")
         lines = self._request_lines(
             "GET",
