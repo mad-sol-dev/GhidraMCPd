@@ -8,7 +8,7 @@ import pytest
 
 from bridge.adapters.arm_thumb import ARMThumbAdapter, BX_SENTINELS
 from bridge.features.jt import slot_check
-from bridge.utils.errors import ErrorCode
+from bridge.utils.errors import DetailCode
 
 
 @dataclass
@@ -56,7 +56,7 @@ def test_slot_check_flags_instruction_word(adapter: ARMThumbAdapter) -> None:
         adapter=adapter,
     )
 
-    assert result["errors"] == [ErrorCode.ARM_INSTRUCTION.value]
+    assert result["errors"] == [DetailCode.ARM_INSTRUCTION.value]
     assert client.disassemble_calls == []
     assert client.function_calls == []
 
@@ -75,7 +75,7 @@ def test_slot_check_out_of_range(adapter: ARMThumbAdapter) -> None:
         adapter=adapter,
     )
 
-    assert result["errors"] == [ErrorCode.OUT_OF_RANGE.value]
+    assert result["errors"] == [DetailCode.OUT_OF_RANGE.value]
     assert client.disassemble_calls == []
     assert client.function_calls == []
 
@@ -96,7 +96,7 @@ def test_slot_check_enforces_half_open_upper_bound(adapter: ARMThumbAdapter) -> 
         adapter=adapter,
     )
 
-    assert result["errors"] == [ErrorCode.OUT_OF_RANGE.value]
+    assert result["errors"] == [DetailCode.OUT_OF_RANGE.value]
     assert client.disassemble_calls == []
     assert client.function_calls == []
 

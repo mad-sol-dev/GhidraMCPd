@@ -7,8 +7,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from ...ghidra.client import GhidraClient
+from ...utils.errors import ErrorCode
 from ...utils.logging import request_scope
-from .._shared import envelope_error, envelope_ok
+from .._shared import envelope_ok, envelope_response, error_response
 from ._common import RouteDependencies
 
 
@@ -22,15 +23,9 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
         ):
             payload = client.get_project_info()
             if payload is None:
-                return JSONResponse(
-                    envelope_error(
-                        "PROGRAM_NOT_AVAILABLE",
-                        "No program is currently loaded or metadata is unavailable.",
-                    ),
-                    status_code=404,
-                )
+                return error_response(ErrorCode.UNAVAILABLE)
             normalized = _normalise_project_info(payload)
-            return JSONResponse(envelope_ok(normalized))
+            return envelope_response(envelope_ok(normalized))
 
     return [
         Route(

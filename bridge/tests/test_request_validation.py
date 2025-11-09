@@ -70,7 +70,13 @@ def test_rejects_additional_properties(client: TestClient, path: str) -> None:
     body = response.json()
     assert body["ok"] is False
     assert body["errors"], "Expected an error payload"
-    assert body["errors"][0]["code"].endswith("SCHEMA_INVALID")
+    first = body["errors"][0]
+    assert first == {
+        "status": 400,
+        "code": "INVALID_REQUEST",
+        "message": "Request was malformed or failed validation.",
+        "recovery": ["Check required fields and value formats."],
+    }
 
 
 def test_rejects_non_object_payload(client: TestClient) -> None:
@@ -81,7 +87,12 @@ def test_rejects_non_object_payload(client: TestClient) -> None:
     assert response.status_code == 400
     body = response.json()
     assert body["ok"] is False
-    assert body["errors"][0]["code"].endswith("INVALID_ARGUMENT")
+    assert body["errors"][0] == {
+        "status": 400,
+        "code": "INVALID_REQUEST",
+        "message": "Request was malformed or failed validation.",
+        "recovery": ["Check required fields and value formats."],
+    }
 
 
 def test_rejects_invalid_json(client: TestClient) -> None:
@@ -93,4 +104,9 @@ def test_rejects_invalid_json(client: TestClient) -> None:
     assert response.status_code == 400
     body = response.json()
     assert body["ok"] is False
-    assert body["errors"][0]["code"].endswith("INVALID_ARGUMENT")
+    assert body["errors"][0] == {
+        "status": 400,
+        "code": "INVALID_REQUEST",
+        "message": "Request was malformed or failed validation.",
+        "recovery": ["Check required fields and value formats."],
+    }

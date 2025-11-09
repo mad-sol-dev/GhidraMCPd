@@ -62,7 +62,7 @@ def register_tools(
         }
         valid, errors = validate_payload("jt_slot_check.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         adapter = adapter_for_arch(arch)
         with request_scope(
@@ -80,7 +80,7 @@ def register_tools(
             )
         valid, errors = validate_payload("jt_slot_check.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -108,7 +108,7 @@ def register_tools(
         }
         valid, errors = validate_payload("jt_slot_process.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         adapter = adapter_for_arch(arch)
         try:
@@ -131,10 +131,10 @@ def register_tools(
                     writes_enabled=enable_writes,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
         valid, errors = validate_payload("jt_slot_process.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -158,7 +158,7 @@ def register_tools(
         }
         valid, errors = validate_payload("jt_scan.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         adapter = adapter_for_arch(arch)
         with request_scope(
@@ -177,7 +177,7 @@ def register_tools(
             )
         valid, errors = validate_payload("jt_scan.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -193,7 +193,7 @@ def register_tools(
         }
         valid, errors = validate_payload("string_xrefs.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         with request_scope(
             "string_xrefs",
@@ -207,7 +207,7 @@ def register_tools(
             )
         valid, errors = validate_payload("string_xrefs.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -221,7 +221,7 @@ def register_tools(
         request_payload = {"query": query, "limit": limit, "offset": offset}
         valid, errors = validate_payload("search_strings.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -236,11 +236,11 @@ def register_tools(
                     offset=int(offset),
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_strings.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -253,12 +253,12 @@ def register_tools(
         request_payload = {"limit": limit, "offset": offset}
         valid, errors = validate_payload("strings_compact.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             enforce_batch_limit(limit, counter="strings.compact.limit")
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         with request_scope(
             "strings_compact",
@@ -282,11 +282,11 @@ def register_tools(
             try:
                 data = strings.strings_compact_view(raw_entries)
             except (TypeError, ValueError) as exc:
-                return envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc))
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
 
         valid, errors = validate_payload("strings_compact.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -304,7 +304,7 @@ def register_tools(
             "search_imports.request.v1.json", request_payload
         )
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -319,11 +319,11 @@ def register_tools(
                     offset=offset,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_imports.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -341,7 +341,7 @@ def register_tools(
             "search_exports.request.v1.json", request_payload
         )
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -356,11 +356,11 @@ def register_tools(
                     offset=offset,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_exports.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -384,7 +384,7 @@ def register_tools(
             "search_xrefs_to.request.v1.json", request_payload
         )
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -400,13 +400,13 @@ def register_tools(
                     offset=offset,
                 )
         except ValueError as exc:
-            return envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc))
+            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_xrefs_to.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -432,7 +432,7 @@ def register_tools(
         request_payload = {"query": query, "limit": limit, "offset": offset}
         valid, errors = validate_payload("search_functions.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -447,11 +447,11 @@ def register_tools(
                     offset=offset,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_functions.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -469,7 +469,7 @@ def register_tools(
         }
         valid, errors = validate_payload("mmio_annotate.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -486,12 +486,12 @@ def register_tools(
                 )
         except mmio.WritesDisabledError:
             return envelope_error(
-                ErrorCode.WRITE_DISABLED_DRY_RUN,
+                ErrorCode.INVALID_REQUEST,
                 "Writes are disabled while dry_run is false.",
             )
         valid, errors = validate_payload("mmio_annotate.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -507,7 +507,7 @@ def register_tools(
         request_payload = {"value": value, "limit": limit, "page": page}
         valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         # Normalize value
         if isinstance(value, str):
@@ -534,11 +534,11 @@ def register_tools(
                     page=page,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_scalars.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -562,7 +562,7 @@ def register_tools(
             "list_functions_in_range.request.v1.json", request_payload
         )
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -578,11 +578,11 @@ def register_tools(
                     page=page,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("list_functions_in_range.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -597,7 +597,7 @@ def register_tools(
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -611,11 +611,11 @@ def register_tools(
                     count=count,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("disassemble_at.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -630,7 +630,7 @@ def register_tools(
         request_payload = {"address": address, "length": length}
         valid, errors = validate_payload("read_bytes.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -644,11 +644,11 @@ def register_tools(
                     length=length,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("read_bytes.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -674,7 +674,7 @@ def register_tools(
         request_payload = {"addresses": addresses, "count": count}
         valid, errors = validate_payload("disassemble_batch.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -688,11 +688,11 @@ def register_tools(
                     count=count,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("disassemble_batch.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -719,7 +719,7 @@ def register_tools(
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("read_words.request.v1.json", request_payload)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         try:
             with request_scope(
@@ -733,11 +733,11 @@ def register_tools(
                     count=count,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("read_words.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
     @server.tool()
@@ -772,7 +772,7 @@ def register_tools(
             "search_scalars_with_context.request.v1.json", request_payload
         )
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
 
         # Normalize value
         if isinstance(value, str) and value.startswith("0x"):
@@ -793,11 +793,11 @@ def register_tools(
                     limit=limit,
                 )
         except SafetyLimitExceeded as exc:
-            return envelope_error(ErrorCode.SAFETY_LIMIT, str(exc))
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
 
         valid, errors = validate_payload("search_scalars_with_context.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
 
 

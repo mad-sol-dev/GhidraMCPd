@@ -3,7 +3,7 @@
 ## Phase 1 – Correctness & consistency (now)
 - ✅ GET /api/project_info.json
 - Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based)
-- Unified error schema + enums
+- ✅ Unified error schema + enums
 - OpenAPI snapshots drift-free
 
 ## Phase 2 – Fewer Round Trips (Composite & Collector)

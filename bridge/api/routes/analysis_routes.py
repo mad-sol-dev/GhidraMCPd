@@ -11,7 +11,7 @@ from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_error, envelope_ok
+from .._shared import envelope_ok, envelope_response, error_response
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -33,17 +33,12 @@ def create_analysis_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 address = parse_hex(str(data["address"]))
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 
             fields = data.get("fields")
             if fields is not None and not isinstance(fields, list):
-                return JSONResponse(
-                    envelope_error(
-                        ErrorCode.INVALID_ARGUMENT, "fields must be an array when provided"
-                    ),
-                    status_code=400,
+                return error_response(
+                    ErrorCode.INVALID_REQUEST, "fields must be an array when provided"
                 )
 
             try:
@@ -60,23 +55,18 @@ def create_analysis_routes(deps: RouteDependencies) -> List[Route]:
                     options=_coerce_mapping(data.get("options")),
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             except ValueError as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 
             valid, errors = validate_payload(
                 "analyze_function_complete.v1.json", payload
             )
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     return [
         Route(
