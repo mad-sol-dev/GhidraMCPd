@@ -26,16 +26,26 @@ def load_openapi(source: str) -> Mapping[str, Any]:
         return json.load(fh)
 
 
+def normalize_schema_type(type_value: Any) -> str | None:
+    """Return the first non-null schema type as a string."""
+    if isinstance(type_value, list):
+        filtered = [value for value in type_value if value != "null"]
+        if filtered:
+            type_value = filtered[0]
+        elif type_value:
+            # Only explicit null entries remain.
+            type_value = type_value[0]
+        else:
+            return None
+    if isinstance(type_value, str):
+        return type_value
+    return None
+
+
 def example_from_schema(schema: Mapping[str, Any] | None, depth: int = 0) -> Any:
     """Derive a minimal example for the provided JSON schema."""
     if schema is None or depth > 5:
         return "…"
-
-    def normalize_type(t: Any) -> Any:
-        if isinstance(t, list):
-            t = [x for x in t if x != "null"]
-            return t[0] if t else "null"
-        return t
 
     for key in ("oneOf", "anyOf"):
         if key in schema and isinstance(schema[key], list) and schema[key]:
@@ -49,7 +59,7 @@ def example_from_schema(schema: Mapping[str, Any] | None, depth: int = 0) -> Any
         if merged:
             return example_from_schema(merged, depth + 1)
 
-    schema_type = normalize_type(schema.get("type"))
+    schema_type = normalize_schema_type(schema.get("type"))
 
     if "example" in schema:
         return schema["example"]
@@ -64,7 +74,14 @@ def example_from_schema(schema: Mapping[str, Any] | None, depth: int = 0) -> Any
     if schema_type == "boolean":
         return schema.get("default", False)
     if schema_type == "array":
-        return [example_from_schema(schema.get("items", {}), depth + 1)]
+        items = schema.get("items")
+        if isinstance(items, list) and items:
+            item_schema = items[0] if isinstance(items[0], Mapping) else {}
+        elif isinstance(items, Mapping):
+            item_schema = items
+        else:
+            item_schema = {}
+        return [example_from_schema(item_schema, depth + 1)]
     if schema_type == "object" or "properties" in schema:
         props = schema.get("properties", {})
         example_obj: dict[str, Any] = {}
@@ -84,10 +101,19 @@ def summarise_properties(schema: Mapping[str, Any]) -> list[tuple[str, str, str,
     rows: list[tuple[str, str, str, str]] = []
     for name in sorted(props):
         prop = props[name]
-        prop_type = prop.get("type", "object")
+        prop_type = normalize_schema_type(prop.get("type")) or "object"
         if prop_type == "array":
-            item = prop.get("items", {})
-            item_type = item.get("type", "object")
+            item = prop.get("items")
+            if isinstance(item, list) and item:
+                candidate = item[0] if isinstance(item[0], Mapping) else {}
+            elif isinstance(item, Mapping):
+                candidate = item
+            else:
+                candidate = {}
+            if isinstance(candidate, Mapping):
+                item_type = normalize_schema_type(candidate.get("type")) or "object"
+            else:
+                item_type = "object"
             prop_type = f"array<{item_type}>"
         notes_parts = []
         if "default" in prop:
