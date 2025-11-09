@@ -209,5 +209,5 @@ def test_unexpected_field_is_rejected(client: TestClient, case: EndpointCase) ->
     first_error = errors[0]
     assert first_error["status"] == 400
     assert first_error["code"] == "INVALID_REQUEST"
-    assert "unexpected" in first_error["message"]
+    assert first_error["message"] == "Request was malformed or failed validation."
     assert first_error["recovery"] == ["Check required fields and value formats."]
