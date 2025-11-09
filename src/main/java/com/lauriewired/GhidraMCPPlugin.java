@@ -52,6 +52,8 @@ import ghidra.framework.options.Options;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import com.lauriewired.CursorPager;
+
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -228,7 +230,8 @@ public class GhidraMCPPlugin extends Plugin {
             String searchTerm = qparams.get("query");
             int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit = parseIntOrDefault(qparams.get("limit"), 100);
-            sendResponse(exchange, searchFunctionsByName(searchTerm, offset, limit));
+            String cursor = qparams.get("cursor");
+            sendJsonResponse(exchange, searchFunctionsByName(searchTerm, cursor, offset, limit));
         });
 
         // New API endpoints based on requirements
@@ -407,8 +410,10 @@ public class GhidraMCPPlugin extends Plugin {
         server.createContext("/searchScalars", exchange -> {
             Map<String, String> qparams = parseQueryParams(exchange);
             String value = qparams.get("value");
+            int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit = parseIntOrDefault(qparams.get("limit"), 500);
-            sendResponse(exchange, handleSearchScalars(value, limit));
+            String cursor = qparams.get("cursor");
+            sendJsonResponse(exchange, handleSearchScalars(value, cursor, offset, limit));
         });
 
         server.createContext("/functionsInRange", exchange -> {
@@ -588,13 +593,15 @@ public class GhidraMCPPlugin extends Plugin {
         return paginateList(lines, offset, limit);
     }
 
-    private String searchFunctionsByName(String searchTerm, int offset, int limit) {
+    private String searchFunctionsByName(String searchTerm, String cursorParam, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        
+        if (program == null) {
+            return CursorPager.errorJson("No program loaded", this::jsonEscape);
+        }
+
         // Wildcard support: empty or "*" means return all functions
         boolean matchAll = (searchTerm == null || searchTerm.isEmpty() || searchTerm.equals("*"));
-    
+
         List<String> matches = new ArrayList<>();
         for (Function func : program.getFunctionManager().getFunctions(true)) {
             String name = func.getName();
@@ -603,14 +610,21 @@ public class GhidraMCPPlugin extends Plugin {
                 matches.add(String.format("%s @ %s", name, func.getEntryPoint()));
             }
         }
-    
+
         Collections.sort(matches);
-    
-        if (matches.isEmpty()) {
-            return "No functions matching '" + searchTerm + "'";
-        }
-        return paginateList(matches, offset, limit);
-    }    
+
+        CursorPager.CursorRequest request = new CursorPager.CursorRequest(
+            "searchFunctions",
+            matchAll ? "*" : searchTerm.toLowerCase(Locale.ROOT),
+            offset,
+            limit,
+            100,
+            1000,
+            cursorParam
+        );
+        CursorPager.CursorPage page = CursorPager.fromList(matches, request);
+        return CursorPager.toJson(page, this::jsonEscape);
+    }
 
     // ----------------------------------------------------------------------------------
     // Logic for rename, decompile, etc.
@@ -1970,13 +1984,17 @@ public class GhidraMCPPlugin extends Plugin {
     /**
      * Search for scalar values (immediates/constants) in instructions
      */
-    private String handleSearchScalars(String valueStr, int limit) {
+    private String handleSearchScalars(String valueStr, String cursorParam, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (valueStr == null || valueStr.isEmpty()) return "ERROR: value parameter is required";
+        if (program == null) {
+            return CursorPager.errorJson("No program loaded", this::jsonEscape);
+        }
+        if (valueStr == null || valueStr.isEmpty()) {
+            return CursorPager.errorJson("value parameter is required", this::jsonEscape);
+        }
 
-        // Cap limit at 500
-        int effectiveLimit = Math.min(limit, 500);
+        int requestedLimit = limit > 0 ? limit : 100;
+        int effectiveLimit = Math.min(requestedLimit, 500);
 
         try {
             // Parse value as hex or decimal
@@ -1987,46 +2005,67 @@ public class GhidraMCPPlugin extends Plugin {
                 searchValue = Long.parseLong(valueStr);
             }
 
-            List<String> matches = new ArrayList<>();
+            CursorPager.CursorRequest request = new CursorPager.CursorRequest(
+                "searchScalars",
+                Long.toUnsignedString(searchValue),
+                offset,
+                effectiveLimit,
+                100,
+                500,
+                cursorParam
+            );
+
+            CursorPager.ResolvedRequest resolved = CursorPager.resolve(request);
             InstructionIterator instructions = program.getListing().getInstructions(true);
 
-            while (instructions.hasNext() && matches.size() < effectiveLimit) {
+            List<String> pageItems = new ArrayList<>();
+            int matchIndex = 0;
+            boolean hasMore = false;
+
+            while (instructions.hasNext()) {
                 Instruction instr = instructions.next();
-                
-                // Check all operands for scalar values
-                int numOperands = instr.getNumOperands();
-                for (int i = 0; i < numOperands; i++) {
-                    Object[] opObjects = instr.getOpObjects(i);
-                    for (Object obj : opObjects) {
-                        if (obj instanceof Scalar) {
-                            Scalar scalar = (Scalar) obj;
-                            // Compare unsigned values
-                            long scalarValue = scalar.getUnsignedValue();
-                            if (scalarValue == searchValue) {
-                                matches.add(String.format("%s: %s", 
-                                    instr.getAddress(), 
-                                    instr.toString()));
-                                break; // Found match in this instruction, move to next
-                            }
-                        }
+                if (!instructionHasScalarValue(instr, searchValue)) {
+                    continue;
+                }
+
+                if (matchIndex >= resolved.startOffset() + resolved.limit()) {
+                    hasMore = true;
+                    break;
+                }
+
+                if (matchIndex >= resolved.startOffset()) {
+                    pageItems.add(String.format("%s: %s",
+                        instr.getAddress(),
+                        instr.toString()));
+                }
+
+                matchIndex++;
+            }
+
+            CursorPager.CursorPage page = CursorPager.buildPage(resolved, pageItems, hasMore);
+            return CursorPager.toJson(page, this::jsonEscape);
+
+        } catch (NumberFormatException e) {
+            return CursorPager.errorJson("invalid value format", this::jsonEscape);
+        } catch (Exception e) {
+            return CursorPager.errorJson(e.getMessage(), this::jsonEscape);
+        }
+    }
+
+    private boolean instructionHasScalarValue(Instruction instr, long searchValue) {
+        int numOperands = instr.getNumOperands();
+        for (int i = 0; i < numOperands; i++) {
+            Object[] opObjects = instr.getOpObjects(i);
+            for (Object obj : opObjects) {
+                if (obj instanceof Scalar) {
+                    Scalar scalar = (Scalar) obj;
+                    if (scalar.getUnsignedValue() == searchValue) {
+                        return true;
                     }
                 }
             }
-
-            // Sort by address ascending
-            matches.sort((a, b) -> {
-                String addrA = a.substring(0, a.indexOf(':'));
-                String addrB = b.substring(0, b.indexOf(':'));
-                return addrA.compareTo(addrB);
-            });
-
-            return matches.isEmpty() ? "" : String.join("\n", matches);
-
-        } catch (NumberFormatException e) {
-            return "ERROR: invalid value format";
-        } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
         }
+        return false;
     }
 
     /**
@@ -2170,6 +2209,15 @@ public class GhidraMCPPlugin extends Plugin {
     private void sendResponse(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    private void sendJsonResponse(HttpExchange exchange, String response) throws IOException {
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);

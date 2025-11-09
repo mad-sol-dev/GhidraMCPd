@@ -15,7 +15,7 @@
 
 ## Phase 3 – Relevance & Scaling
 - rank=simple & k (opt-in)
-- Cursor streaming for large sets
+- ✅ Cursor streaming for large sets
 - 5-minute short-term cache per {digest,query}
 
 ## Principles

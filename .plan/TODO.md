@@ -15,13 +15,13 @@
 
 ## LATER
 - {D.7} rank=simple & k (heuristic prefilter, opt-in)
-- {D.8} Cursor streaming for very large sets
 - {D.9} 5-min short-term cache per {digest,query}
 
 ## DONE
 - [x] {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.
 - [x] {D.2} POST /api/analyze_function_complete.json (read-only) — composite dossier (`fields`, `fmt`, `max_result_tokens`, disasm/decompile/xrefs/callgraph/strings/features) with deterministic ordering, unit/contract/golden coverage, docs updated.
 - [x] {D.5} Error schema + enums — unified error envelope `{status,code,message,recovery[]}`, updated docs, contract/unit/golden coverage.
+- [x] {D.8} Cursor streaming for very large sets — cursor pagination envelopes, resume cursors documented, coverage in unit/contract/golden tests.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.
