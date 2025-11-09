@@ -21,9 +21,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
+from .api._shared import envelope_error, envelope_response
 from .api.routes import make_routes
 from .api.tools import register_tools
 from .ghidra.client import GhidraClient
+from .utils.errors import ErrorCode
 from .utils.logging import configure_root
 
 MCP_SERVER = FastMCP("ghidra-bridge")
@@ -201,9 +203,10 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                         "reason": "sse_already_active",
                     },
                 )
-                return JSONResponse(
-                    {"error": "sse_already_active", "detail": "Another client is connected."},
-                    status_code=409,
+                return envelope_response(
+                    envelope_error(
+                        ErrorCode.SSE_CONFLICT,
+                    )
                 )
             connection_id = uuid.uuid4().hex
             _BRIDGE_STATE.active_sse_id = connection_id
@@ -318,11 +321,13 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 "reason": "method_not_allowed",
             },
         )
-        return JSONResponse(
-            {"error": "method_not_allowed", "allow": "GET"},
-            status_code=405,
-            headers={"Allow": "GET"},
+        payload = envelope_error(
+            ErrorCode.INVALID_REQUEST,
+            "Only GET is allowed for the SSE endpoint.",
+            status=405,
+            recovery=("Use GET when establishing the SSE stream.",),
         )
+        return JSONResponse(payload, status_code=405, headers={"Allow": "GET"})
 
     async def handle_message(scope, receive, send) -> None:  # type: ignore[override]
         if scope.get("type") != "http":  # pragma: no cover - defensive
@@ -353,7 +358,7 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 "reason": "mcp_not_ready",
             },
         )
-        response = JSONResponse({"error": "mcp_not_ready"}, status_code=425)
+        response = envelope_response(envelope_error(ErrorCode.NOT_READY))
         await response(scope, _replay_receive(b""), send)
 
     return Starlette(

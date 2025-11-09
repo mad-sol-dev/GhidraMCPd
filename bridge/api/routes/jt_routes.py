@@ -13,7 +13,7 @@ from ...utils.config import MAX_WRITES_PER_REQUEST
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_error, envelope_ok
+from .._shared import envelope_ok, envelope_response, error_response
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -47,20 +47,15 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                     adapter=adapter,
                 )
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("jt_slot_check.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def jt_slot_process_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -91,20 +86,15 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                     writes_enabled=deps.enable_writes,
                 )
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("jt_slot_process.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def jt_scan_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -129,20 +119,15 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
                     adapter=adapter,
                 )
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("jt_scan.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     return [
         Route("/api/jt_slot_check.json", jt_slot_check_route, methods=["POST"]),

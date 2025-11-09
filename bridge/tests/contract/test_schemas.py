@@ -187,8 +187,10 @@ def test_missing_required_field_is_rejected(
     errors = body["errors"]
     assert isinstance(errors, list) and errors
     first_error = errors[0]
-    assert first_error["code"].endswith("SCHEMA_INVALID")
+    assert first_error["status"] == 400
+    assert first_error["code"] == "INVALID_REQUEST"
     assert isinstance(first_error["message"], str) and first_error["message"]
+    assert first_error["recovery"] == ["Check required fields and value formats."]
 
 
 @pytest.mark.parametrize("case", _CASES, ids=_case_ids())
@@ -203,5 +205,7 @@ def test_unexpected_field_is_rejected(client: TestClient, case: EndpointCase) ->
     errors = body["errors"]
     assert isinstance(errors, list) and errors
     first_error = errors[0]
-    assert first_error["code"].endswith("SCHEMA_INVALID")
+    assert first_error["status"] == 400
+    assert first_error["code"] == "INVALID_REQUEST"
     assert "unexpected" in first_error["message"]
+    assert first_error["recovery"] == ["Check required fields and value formats."]

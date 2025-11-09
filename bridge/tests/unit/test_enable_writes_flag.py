@@ -1,7 +1,7 @@
 import pytest
 
 from bridge.features import jt, mmio
-from bridge.utils.errors import ErrorCode
+from bridge.utils.errors import DetailCode
 
 
 class DummyAdapter:
@@ -81,7 +81,7 @@ def test_jt_slot_process_gates_writes_when_disabled(dry_run):
         assert client.comment_calls == 0
         assert client.meta_calls == 1
     else:
-        assert payload["errors"] == [ErrorCode.WRITE_DISABLED_DRY_RUN.value]
+        assert payload["errors"] == [DetailCode.WRITE_DISABLED_DRY_RUN.value]
         assert payload["writes"] == {"renamed": False, "comment_set": False}
         assert _has_note(payload, "writes disabled")
         assert client.rename_calls == 0

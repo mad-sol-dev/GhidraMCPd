@@ -10,8 +10,6 @@
 ## NEXT
 - {D.4} POST /api/collect.json (multi-query collector, read-only)
   DoD: `queries[]` (multiple sub-ops) in one call; shortened by budget if necessary; each sub-result with its own envelope; tests.
-- {D.5} Error schema + enums
-  DoD: `errors[]` entries = {status, code, message, recovery[]}; Enums: INVALID_REQUEST, RESULT_TOO_LARGE, NOT_READY, SSE_CONFLICT, TOO_MANY_REQUESTS, INTERNAL, UNAVAILABLE; Golden examples.
 - {D.6} Result budgeting (server-side)
   DoD: `max_result_tokens` (hard), `result_budget.mode=auto_trim|strict`; Response carries `estimate_tokens`, `truncated`, `resume_cursor?`; Docs+tests.
 
@@ -23,6 +21,7 @@
 ## DONE
 - [x] {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.
 - [x] {D.2} POST /api/analyze_function_complete.json (read-only) — composite dossier (`fields`, `fmt`, `max_result_tokens`, disasm/decompile/xrefs/callgraph/strings/features) with deterministic ordering, unit/contract/golden coverage, docs updated.
+- [x] {D.5} Error schema + enums — unified error envelope `{status,code,message,recovery[]}`, updated docs, contract/unit/golden coverage.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.
