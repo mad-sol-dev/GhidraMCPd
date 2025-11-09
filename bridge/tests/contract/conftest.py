@@ -7,6 +7,7 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
+from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 
 
@@ -282,4 +283,5 @@ def contract_client() -> TestClient:
         return StubGhidraClient()
 
     app = Starlette(routes=make_routes(factory, enable_writes=False))
+    install_error_handlers(app)
     return TestClient(app)
