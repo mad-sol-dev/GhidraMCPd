@@ -28,6 +28,15 @@ uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 
 ## Build the Ghidra extension
 
+Populate `lib/` with the required Ghidra jars, then run Maven:
+
+```bash
+python scripts/fetch_ghidra_jars.py
+mvn -DskipTests package
+```
+
+If you already have a local Ghidra checkout, you can still point Maven at it directly:
+
 ```bash
 export GHIDRA_DIR=/path/to/ghidra_*_PUBLIC && mvn -DskipTests package
 ```
