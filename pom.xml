@@ -17,8 +17,22 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ghidra.version>11.4.2</ghidra.version>
-    <ghidra.dir>${env.GHIDRA_DIR}</ghidra.dir>
+    <ghidra.dir>${project.basedir}/lib</ghidra.dir>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>env-ghidra-dir</id>
+      <activation>
+        <property>
+          <name>env.GHIDRA_DIR</name>
+        </property>
+      </activation>
+      <properties>
+        <ghidra.dir>${env.GHIDRA_DIR}</ghidra.dir>
+      </properties>
+    </profile>
+  </profiles>
 
   <dependencies>
     <!-- Ghidra JARs als system-scope (lokal in lib/) -->
@@ -27,56 +41,56 @@
       <artifactId>Generic</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/Generic/lib/Generic.jar</systemPath>
+      <systemPath>${ghidra.dir}/Generic.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>SoftwareModeling</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/SoftwareModeling/lib/SoftwareModeling.jar</systemPath>
+      <systemPath>${ghidra.dir}/SoftwareModeling.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Project</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/Project/lib/Project.jar</systemPath>
+      <systemPath>${ghidra.dir}/Project.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Docking</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/Docking/lib/Docking.jar</systemPath>
+      <systemPath>${ghidra.dir}/Docking.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Decompiler</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Features/Decompiler/lib/Decompiler.jar</systemPath>
+      <systemPath>${ghidra.dir}/Decompiler.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Utility</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/Utility/lib/Utility.jar</systemPath>
+      <systemPath>${ghidra.dir}/Utility.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Base</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Features/Base/lib/Base.jar</systemPath>
+      <systemPath>${ghidra.dir}/Base.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
       <artifactId>Gui</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Framework/Generic/lib/Gui.jar</systemPath>
+      <systemPath>${ghidra.dir}/Gui.jar</systemPath>
     </dependency>
 
     <!-- Tests -->
