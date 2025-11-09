@@ -9,7 +9,7 @@ from starlette.routing import Route
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.logging import request_scope
-from .._shared import envelope_ok, envelope_response, error_response
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error
 from ._common import RouteDependencies
 
 

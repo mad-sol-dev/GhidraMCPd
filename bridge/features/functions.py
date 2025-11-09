@@ -77,3 +77,45 @@ def search_functions(
         "items": paginated_items,
         "has_more": has_more,
     }
+
+def search_functions(client, query: str, limit: int = 100, offset: int = 0):
+    """
+    Build a contract-compliant payload for /api/search_functions.json.
+    """
+    lines = client.search_functions(query) or []
+    total = len(lines)
+
+    # Pagination (offset/limit -> page/has_more)
+    start = max(int(offset), 0)
+    lim   = max(int(limit), 0)
+    end   = start + lim if lim > 0 else start
+    page  = (start // (lim if lim > 0 else 1)) + 1
+    selected = lines[start:end] if lim > 0 else []
+
+    items = []
+    for line in selected:
+        # Expected format: "Name at 00000000" or "Name at 0x00000000"
+        line = line.strip()
+        if ' @ ' in line:
+            parts = line.rsplit(' @ ', 1)
+        elif ' at ' in line:
+            parts = line.rsplit(' at ', 1)
+        else:
+            continue
+        if len(parts) != 2:
+            continue  # skip malformed line safely
+        name, addr = parts
+        addr = addr.strip()
+        if not addr.startswith('0x'):
+            addr = '0x' + addr
+        items.append({"name": name.strip(), "address": addr.lower()})
+
+    has_more = end < total
+    return {
+        "query": query,
+        "total": total,
+        "page": page,
+        "limit": lim,
+        "items": items,
+        "has_more": has_more,
+    }

@@ -24,7 +24,7 @@ from ...utils.logging import (
     increment_counter,
     request_scope,
 )
-from .._shared import envelope_ok, envelope_response, error_response
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
