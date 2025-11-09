@@ -1,4 +1,5 @@
 {
+  "workflow": "READ→VERIFY",
   "sequence": [
     {
       "id": "D.1",
