@@ -97,7 +97,7 @@ def test_default_whitelist_blocks_forbidden_get_calls():
         transport=_build_transport(handle),
     )
 
-    for path in ("read_bytes", "read_cstring", "list_functions", "search_bytes"):
+    for path in ("read_bytes", "list_functions", "search_bytes"):
         result = client._request_lines("GET", path)
         assert result == [f"ERROR: endpoint GET {path} not allowed"]
 

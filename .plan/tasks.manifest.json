@@ -25,7 +25,8 @@
         "`fields`, `fmt`, `max_result_tokens` supported",
         "Deterministic ordering, server timeout enforced",
         "Unit + Contract + Golden; docs"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.3",

@@ -4,8 +4,6 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {D.2} POST /api/analyze_function_complete.json (read-only)
-  DoD: Aggregates Disasm(±N), Strings(xN), Xrefs in/out, Callers/Callees(r1), feature sketch; `fields`, `fmt`, `max_result_tokens`; deterministic order; tests+Golden.
 - {D.3} Unify search metadata
   DoD: All search endpoints return {query,total,page,limit,has_more,items}; 1-based `page`; edge case tests (0/limit/last).
 
@@ -24,6 +22,7 @@
 
 ## DONE
 - {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.
+- {D.2} POST /api/analyze_function_complete.json (read-only) — composite dossier (`fields`, `fmt`, `max_result_tokens`, disasm/decompile/xrefs/callgraph/strings/features) with deterministic ordering, unit/contract/golden coverage, docs updated.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.

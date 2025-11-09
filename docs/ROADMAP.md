@@ -7,7 +7,7 @@
 - OpenAPI snapshots drift-free
 
 ## Phase 2 – Fewer Round Trips (Composite & Collector)
-- POST /api/analyze_function_complete.json (read-only, server-side aggregation)
+- ✅ POST /api/analyze_function_complete.json (read-only, server-side aggregation)
 - POST /api/collect.json (multi-query collector for multiple read-only sub-ops)
 - Result budgeting (server-side): `max_result_tokens`, `result_budget.mode=auto_trim|strict`
   - **auto_trim:** 200 OK, `truncated=true`, `estimate_tokens`, optional `resume_cursor`
