@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Any, Dict, List
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -29,7 +29,8 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
                     ),
                     status_code=404,
                 )
-            return JSONResponse(envelope_ok(payload))
+            normalized = _normalise_project_info(payload)
+            return JSONResponse(envelope_ok(normalized))
 
     return [
         Route(
@@ -39,3 +40,38 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
             name="project_info",
         )
     ]
+
+
+def _normalise_project_info(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of the payload with deterministic ordering applied."""
+
+    data = dict(payload)
+
+    entry_points = payload.get("entry_points")
+    if isinstance(entry_points, list):
+        data["entry_points"] = sorted(
+            (value for value in entry_points if isinstance(value, str))
+        )
+
+    blocks = payload.get("memory_blocks")
+    if isinstance(blocks, list):
+        normalised_blocks: List[Dict[str, Any]] = []
+        for block in blocks:
+            if isinstance(block, dict):
+                normalised_blocks.append(dict(block))
+        normalised_blocks.sort(key=_block_sort_key)
+        data["memory_blocks"] = normalised_blocks
+
+    return data
+
+
+def _block_sort_key(block: Dict[str, Any]) -> tuple[int, str]:
+    start = block.get("start")
+    if isinstance(start, str):
+        try:
+            value = int(start, 16)
+        except ValueError:
+            pass
+        else:
+            return (0, f"{value:016x}")
+    return (1, str(start))

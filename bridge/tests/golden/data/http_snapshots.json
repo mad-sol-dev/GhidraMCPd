@@ -258,6 +258,46 @@
     "errors": [],
     "ok": true
   },
+  "project_info": {
+    "ok": true,
+    "data": {
+      "program_name": "golden_stub.bin",
+      "executable_path": "/opt/golden_stub.bin",
+      "executable_md5": "0123456789abcdef0123456789abcdef",
+      "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "executable_format": "ELF",
+      "image_base": "0x00100000",
+      "language_id": "ARM:LE:32:v7",
+      "compiler_spec_id": "default",
+      "entry_points": [
+        "0x00100000",
+        "0x00100010"
+      ],
+      "memory_blocks": [
+        {
+          "name": ".text",
+          "start": "0x00100000",
+          "end": "0x0010ffff",
+          "length": 65536,
+          "rwx": "r-x",
+          "loaded": true,
+          "initialized": true
+        },
+        {
+          "name": ".data",
+          "start": "0x00200000",
+          "end": "0x00200fff",
+          "length": 4096,
+          "rwx": "rw-",
+          "loaded": true,
+          "initialized": true
+        }
+      ],
+      "imports_count": 16,
+      "exports_count": 16
+    },
+    "errors": []
+  },
   "string_xrefs": {
     "data": {
       "callers": [
