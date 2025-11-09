@@ -24,6 +24,7 @@ from starlette.routing import Mount, Route
 from .api._shared import envelope_error, envelope_response
 from .api.routes import make_routes
 from .api.tools import register_tools
+from .error_handlers import install_error_handlers
 from .ghidra.client import GhidraClient
 from .utils.errors import ErrorCode
 from .utils.logging import configure_root
@@ -373,6 +374,11 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
 
 def build_api_app() -> Starlette:
     configure()
+    
+    # Install error handlers
+    app = Starlette()
+    install_error_handlers(app)
+    
     async def state(_: Request) -> JSONResponse:
         async with _STATE_LOCK:
             session_ready = _BRIDGE_STATE.ready.is_set()
@@ -399,7 +405,8 @@ def build_api_app() -> Starlette:
     )
 
     routes.extend([openapi_route, state_route])
-    return Starlette(routes=routes)
+    app.router.routes.extend(routes)
+    return app
 
 
 def create_app() -> Starlette:
