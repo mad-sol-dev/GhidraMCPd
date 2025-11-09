@@ -1,6 +1,7 @@
 """Logging helpers for the bridge."""
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from contextlib import contextmanager
@@ -102,6 +103,12 @@ def request_scope(
     try:
         with scoped_timer(logger, f"{name}.duration", extra=context.extra(event="timer")):
             yield context
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        logger.debug(
+            "request.validation_error",
+            extra=context.extra(error_type=type(exc).__name__, error_message=str(exc))
+        )
+        raise
     except Exception:
         logger.exception("request.error", extra=context.extra())
         raise
