@@ -89,7 +89,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: maven
       - name: Determine Ghidra version from POM
         id: ver
@@ -103,5 +103,7 @@ jobs:
           curl -L "$URL" -o ghidra.zip
           unzip -q ghidra.zip
           echo "GHIDRA_DIR=$(echo ghidra_*_PUBLIC)" >> "$GITHUB_ENV"
+      - name: Fetch required Ghidra jars
+        run: python scripts/fetch_ghidra_jars.py --tag "Ghidra_${GHIDRA_VERSION}_build"
       - run: mvn -B -DskipTests package
 
