@@ -26,6 +26,12 @@ python -m pip install -r requirements.txt -r requirements-dev.txt
 uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
+## Build the Ghidra extension
+
+```bash
+export GHIDRA_DIR=/path/to/ghidra_*_PUBLIC && mvn -DskipTests package
+```
+
 ## Advanced start
 
 Run the server and verify deterministic behavior:
