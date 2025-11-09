@@ -43,6 +43,288 @@
         "summary": "mmio_annotate_route"
       }
     },
+    "/api/project_info.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "compiler_spec_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "entry_points": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "executable_format": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_md5": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exports_count": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "image_base": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "imports_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "language_id": {
+                      "type": "string"
+                    },
+                    "memory_blocks": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "initialized": {
+                            "type": "boolean"
+                          },
+                          "length": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "loaded": {
+                            "type": "boolean"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rwx": {
+                            "pattern": "^[r-][w-][x-]$",
+                            "type": "string"
+                          },
+                          "start": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "start",
+                          "end",
+                          "length",
+                          "rwx",
+                          "loaded",
+                          "initialized"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "program_name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "program_name",
+                    "image_base",
+                    "language_id",
+                    "compiler_spec_id",
+                    "entry_points",
+                    "memory_blocks",
+                    "imports_count",
+                    "exports_count"
+                  ],
+                  "title": "project_info.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "project_info",
+        "x-response-model": "project_info.v1.json"
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "compiler_spec_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "entry_points": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "executable_format": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_md5": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_path": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "executable_sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "exports_count": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "image_base": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "imports_count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "language_id": {
+                      "type": "string"
+                    },
+                    "memory_blocks": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "initialized": {
+                            "type": "boolean"
+                          },
+                          "length": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "loaded": {
+                            "type": "boolean"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rwx": {
+                            "pattern": "^[r-][w-][x-]$",
+                            "type": "string"
+                          },
+                          "start": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "start",
+                          "end",
+                          "length",
+                          "rwx",
+                          "loaded",
+                          "initialized"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "program_name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "program_name",
+                    "image_base",
+                    "language_id",
+                    "compiler_spec_id",
+                    "entry_points",
+                    "memory_blocks",
+                    "imports_count",
+                    "exports_count"
+                  ],
+                  "title": "project_info.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "project_info",
+        "x-response-model": "project_info.v1.json"
+      }
+    },
     "/api/read_bytes.json": {
       "post": {
         "summary": "read_bytes_route"

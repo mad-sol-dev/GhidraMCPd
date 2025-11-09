@@ -14,6 +14,22 @@ def _assert_envelope(payload: dict) -> None:
     _assert_valid("envelope.v1.json", payload)
 
 
+def test_project_info_contract(contract_client: TestClient) -> None:
+    response = contract_client.get("/api/project_info.json")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    _assert_envelope(body)
+    data = body["data"]
+    _assert_valid("project_info.v1.json", data)
+    entry_points = data["entry_points"]
+    assert entry_points == sorted(entry_points)
+    starts = [block["start"] for block in data["memory_blocks"]]
+    assert starts == sorted(starts)
+    assert data["imports_count"] == 24
+    assert data["exports_count"] == 24
+
+
 def test_jt_slot_check_contract(contract_client: TestClient) -> None:
     response = contract_client.post(
         "/api/jt_slot_check.json",

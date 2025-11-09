@@ -92,6 +92,48 @@ class StubGhidraClient:
             f"export_symbol_{i:04d} -> 0x{0x20000000 + i:08x}"
             for i in range(24)
         ]
+        self._project_info: Dict[str, object] = {
+            "program_name": "stub_program",
+            "executable_path": "/opt/programs/stub_program.bin",
+            "executable_md5": "0123456789abcdef0123456789abcdef",
+            "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "executable_format": "ELF",
+            "image_base": "0x00100000",
+            "language_id": "ARM:LE:32:v7",
+            "compiler_spec_id": "default",
+            "entry_points": ["0x00100000"],
+            "memory_blocks": [
+                {
+                    "name": ".text",
+                    "start": "0x00100000",
+                    "end": "0x0010ffff",
+                    "length": 65536,
+                    "rwx": "r-x",
+                    "loaded": True,
+                    "initialized": True,
+                },
+                {
+                    "name": ".data",
+                    "start": "0x00200000",
+                    "end": "0x00200fff",
+                    "length": 4096,
+                    "rwx": "rw-",
+                    "loaded": True,
+                    "initialized": True,
+                },
+                {
+                    "name": ".bss",
+                    "start": "0x00201000",
+                    "end": "0x00201fff",
+                    "length": 4096,
+                    "rwx": "rw-",
+                    "loaded": True,
+                    "initialized": False,
+                },
+            ],
+            "imports_count": len(self._imports),
+            "exports_count": len(self._exports),
+        }
 
     def read_dword(self, address: int) -> Optional[int]:
         index = (address - self._jt_base) // 4
@@ -200,6 +242,22 @@ class StubGhidraClient:
             for entry in self._exports
             if not normalized_query or normalized_query in entry.lower()
         ]
+
+    def get_project_info(self) -> Dict[str, object]:
+        return {
+            "program_name": self._project_info["program_name"],
+            "executable_path": self._project_info["executable_path"],
+            "executable_md5": self._project_info["executable_md5"],
+            "executable_sha256": self._project_info["executable_sha256"],
+            "executable_format": self._project_info["executable_format"],
+            "image_base": self._project_info["image_base"],
+            "language_id": self._project_info["language_id"],
+            "compiler_spec_id": self._project_info["compiler_spec_id"],
+            "entry_points": list(self._project_info["entry_points"]),
+            "memory_blocks": [dict(block) for block in self._project_info["memory_blocks"]],
+            "imports_count": self._project_info["imports_count"],
+            "exports_count": self._project_info["exports_count"],
+        }
 
     def close(self) -> None:
         return None

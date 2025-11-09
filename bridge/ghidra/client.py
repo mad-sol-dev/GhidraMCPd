@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import json
 from dataclasses import dataclass, field
 import logging
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
@@ -241,6 +242,28 @@ class GhidraClient:
         except ValueError:
             logger.warning("Unexpected read_dword payload %s", line)
             return None
+
+    def get_project_info(self) -> Optional[Dict[str, Any]]:
+        """Fetch metadata about the active program from Ghidra."""
+
+        increment_counter("ghidra.project_info")
+        lines = self._request_lines("GET", "projectInfo", key="PROJECT_INFO")
+        if _is_error(lines) or not lines:
+            logger.warning("project_info request failed: %s", lines[:1])
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("project_info returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode project_info payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("Unexpected project_info payload type: %s", type(payload))
+            return None
+        return payload
 
     def disassemble_function(self, address: int) -> List[str]:
         increment_counter("ghidra.disasm")
