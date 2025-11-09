@@ -18,7 +18,7 @@ from .._shared import error_response
 JsonBody = Tuple[Dict[str, object] | None, JSONResponse | None]
 RouteHandler = Callable[[Request, GhidraClient], Awaitable[JSONResponse]]
 RouteDecorator = Callable[[RouteHandler], Callable[[Request], Awaitable[JSONResponse]]]
-JsonBodyValidator = Callable[[Request, str], Awaitable[JsonBody]]
+JsonBodyValidator = Callable[[Request, str], Awaitable[Dict[str, object]]]
 
 
 @dataclass(frozen=True)
@@ -29,37 +29,21 @@ class RouteDependencies:
     with_client: RouteDecorator
 
 
-async def validated_json_body(request: Request, schema: str) -> JsonBody:
+async def validated_json_body(request: Request, schema: str) -> Dict[str, object]:
     try:
         data = await request.json()
     except json.JSONDecodeError as exc:
-        return (
-            None,
-            error_response(
-                ErrorCode.INVALID_REQUEST,
-                f"Invalid JSON payload: {exc.msg}",
-            ),
-        )
+        # Re-raise to let the central error handler catch it
+        raise
 
     if not isinstance(data, dict):
-        return (
-            None,
-            error_response(
-                ErrorCode.INVALID_REQUEST,
-                "Payload must be a JSON object.",
-            ),
-        )
+        raise ValueError("Payload must be a JSON object.")
 
     valid, errors = validate_payload(schema, data)
     if not valid:
-        return (
-            None,
-            error_response(
-                ErrorCode.INVALID_REQUEST,
-                "; ".join(errors),
-            ),
-        )
-    return data, None
+        raise ValueError("; ".join(errors))
+
+    return data
 
 
 def build_with_client(

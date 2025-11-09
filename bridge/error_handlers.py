@@ -1,4 +1,5 @@
 """Centralized error handling for validation errors."""
+import json
 import logging
 from typing import Any, Dict
 
@@ -28,6 +29,14 @@ def install_error_handlers(app) -> None:
     @app.exception_handler(400)
     async def _on_bad_request(request: Request, exc: Exception) -> JSONResponse:
         log.debug("bad request: %s", exc)
+        return JSONResponse(
+            status_code=400,
+            content=make_400_response()
+        )
+
+    @app.exception_handler(json.JSONDecodeError)
+    async def _on_json_decode_error(request: Request, exc: json.JSONDecodeError) -> JSONResponse:
+        log.debug("json decode error: %s", exc)
         return JSONResponse(
             status_code=400,
             content=make_400_response()
