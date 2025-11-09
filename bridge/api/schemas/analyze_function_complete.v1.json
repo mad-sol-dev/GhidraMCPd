@@ -1,0 +1,200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AnalyzeFunctionCompleteResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address", "meta"],
+  "properties": {
+    "address": {
+      "type": "string"
+    },
+    "function": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "entry_point": {"type": "string"},
+        "address": {"type": "string"},
+        "signature": {"type": ["string", "null"]},
+        "comment": {"type": ["string", "null"]},
+        "range": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "start": {"type": "string"},
+            "end": {"type": "string"}
+          },
+          "required": ["start", "end"]
+        }
+      },
+      "required": ["entry_point", "address", "range"]
+    },
+    "disasm": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "before": {"type": "integer"},
+        "after": {"type": "integer"},
+        "max_instructions": {"type": "integer"},
+        "window": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "bytes", "text", "is_target"],
+            "properties": {
+              "address": {"type": "string"},
+              "bytes": {"type": "string"},
+              "text": {"type": "string"},
+              "is_target": {"type": "boolean"}
+            }
+          }
+        },
+        "total_instructions": {"type": "integer"},
+        "center_index": {"type": "integer"},
+        "truncated": {"type": "boolean"}
+      }
+    },
+    "decompile": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "snippet": {"type": ["string", "null"]},
+        "lines": {"type": "integer"},
+        "truncated": {"type": "boolean"},
+        "error": {"type": ["string", "null"]}
+      },
+      "required": ["enabled", "snippet", "lines", "truncated", "error"]
+    },
+    "xrefs": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "inbound": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "type", "function", "context"],
+            "properties": {
+              "address": {"type": "string"},
+              "type": {"type": ["string", "null"]},
+              "function": {"type": ["string", "null"]},
+              "context": {"type": "string"}
+            }
+          }
+        },
+        "outbound": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from_address", "to_address", "name", "type", "context"],
+            "properties": {
+              "from_address": {"type": ["string", "null"]},
+              "to_address": {"type": ["string", "null"]},
+              "name": {"type": ["string", "null"]},
+              "type": {"type": ["string", "null"]},
+              "context": {"type": "string"}
+            }
+          }
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inbound", "outbound"],
+          "properties": {
+            "inbound": {"type": "integer"},
+            "outbound": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "callgraph": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "callers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "site", "type"],
+            "properties": {
+              "name": {"type": ["string", "null"]},
+              "site": {"type": ["string", "null"]},
+              "type": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "callees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "address", "type"],
+            "properties": {
+              "name": {"type": ["string", "null"]},
+              "address": {"type": ["string", "null"]},
+              "type": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    },
+    "strings": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["address", "source", "literal", "length"],
+            "properties": {
+              "address": {"type": "string"},
+              "source": {"type": ["string", "null"]},
+              "literal": {"type": "string"},
+              "length": {"type": "integer"}
+            }
+          }
+        },
+        "limit": {"type": "integer"},
+        "source": {"type": "string"}
+      }
+    },
+    "features": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "instruction_count": {"type": "integer"},
+        "call_count": {"type": "integer"},
+        "string_reference_count": {"type": "integer"},
+        "xrefs_inbound_count": {"type": "integer"},
+        "xrefs_outbound_count": {"type": "integer"},
+        "size_bytes": {"type": ["integer", "null"]},
+        "notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "fmt", "max_result_tokens", "estimate_tokens", "truncated"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "fmt": {"type": "string"},
+        "max_result_tokens": {"type": ["integer", "null"]},
+        "estimate_tokens": {"type": "integer"},
+        "truncated": {"type": "boolean"}
+      }
+    }
+  }
+}

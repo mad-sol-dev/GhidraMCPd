@@ -5,6 +5,606 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/analyze_function_complete.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "pattern": "^(0x)?[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "fields": {
+                    "items": {
+                      "enum": [
+                        "function",
+                        "disasm",
+                        "decompile",
+                        "xrefs",
+                        "callgraph",
+                        "strings",
+                        "features"
+                      ],
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "fmt": {
+                    "enum": [
+                      "json"
+                    ],
+                    "type": "string"
+                  },
+                  "max_result_tokens": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "options": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "callgraph": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "limit": {
+                            "maximum": 256,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "decompile": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "max_lines": {
+                            "maximum": 500,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "disasm": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "after": {
+                            "maximum": 64,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "before": {
+                            "maximum": 64,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "max_instructions": {
+                            "maximum": 128,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "strings": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "limit": {
+                            "maximum": 64,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "max_cstring_len": {
+                            "maximum": 1024,
+                            "minimum": 1,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "xrefs": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "inbound_limit": {
+                            "maximum": 256,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "outbound_limit": {
+                            "maximum": 256,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "address"
+                ],
+                "title": "AnalyzeFunctionCompleteRequest",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "additionalProperties": false,
+                  "properties": {
+                    "address": {
+                      "type": "string"
+                    },
+                    "callgraph": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "callees": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "address",
+                              "type"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "callers": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "site": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "site",
+                              "type"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "decompile": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lines": {
+                          "type": "integer"
+                        },
+                        "snippet": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "snippet",
+                        "lines",
+                        "truncated",
+                        "error"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "disasm": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "after": {
+                          "type": "integer"
+                        },
+                        "before": {
+                          "type": "integer"
+                        },
+                        "center_index": {
+                          "type": "integer"
+                        },
+                        "max_instructions": {
+                          "type": "integer"
+                        },
+                        "total_instructions": {
+                          "type": "integer"
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        },
+                        "window": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "address": {
+                                "type": "string"
+                              },
+                              "bytes": {
+                                "type": "string"
+                              },
+                              "is_target": {
+                                "type": "boolean"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "address",
+                              "bytes",
+                              "text",
+                              "is_target"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "features": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "call_count": {
+                          "type": "integer"
+                        },
+                        "instruction_count": {
+                          "type": "integer"
+                        },
+                        "notes": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "size_bytes": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "string_reference_count": {
+                          "type": "integer"
+                        },
+                        "xrefs_inbound_count": {
+                          "type": "integer"
+                        },
+                        "xrefs_outbound_count": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "function": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "address": {
+                          "type": "string"
+                        },
+                        "comment": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entry_point": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "range": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "end": {
+                              "type": "string"
+                            },
+                            "start": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "start",
+                            "end"
+                          ],
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "signature": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "entry_point",
+                        "address",
+                        "range"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "meta": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "estimate_tokens": {
+                          "type": "integer"
+                        },
+                        "fields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "fmt": {
+                          "type": "string"
+                        },
+                        "max_result_tokens": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "truncated": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "fields",
+                        "fmt",
+                        "max_result_tokens",
+                        "estimate_tokens",
+                        "truncated"
+                      ],
+                      "type": "object"
+                    },
+                    "strings": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "address": {
+                                "type": "string"
+                              },
+                              "length": {
+                                "type": "integer"
+                              },
+                              "literal": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "address",
+                              "source",
+                              "literal",
+                              "length"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "xrefs": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "inbound": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "address": {
+                                "type": "string"
+                              },
+                              "context": {
+                                "type": "string"
+                              },
+                              "function": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "address",
+                              "type",
+                              "function",
+                              "context"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "outbound": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "context": {
+                                "type": "string"
+                              },
+                              "from_address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "to_address": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "from_address",
+                              "to_address",
+                              "name",
+                              "type",
+                              "context"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "summary": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "inbound": {
+                              "type": "integer"
+                            },
+                            "outbound": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "inbound",
+                            "outbound"
+                          ],
+                          "type": "object"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "meta"
+                  ],
+                  "title": "AnalyzeFunctionCompleteResponse",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "analyze_function_route",
+        "x-response-model": "analyze_function_complete.v1.json"
+      }
+    },
     "/api/disassemble_at.json": {
       "post": {
         "summary": "disassemble_at_route"

@@ -22,6 +22,12 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "DISASSEMBLE": ("disassemble", "disassemble_function", "disasmByAddr"),
     "FUNC_BY_ADDR": ("function_by_addr", "get_function_by_address", "functionMeta"),
     "GET_XREFS_TO": ("get_xrefs_to", "xrefs_to"),
+    "DECOMPILE": (
+        "decompile_function",
+        "decompileFunction",
+        "decompile_by_addr",
+        "decompileByAddr",
+    ),
 }
 
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -275,6 +281,22 @@ class GhidraClient:
         )
         lines = self._get_resolver.resolve("DISASSEMBLE", requester)
         return [] if _is_error(lines) else lines
+
+    def decompile_function(self, address: int) -> Optional[str]:
+        increment_counter("ghidra.decompile")
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="DECOMPILE",
+            params={"address": f"0x{address:08x}"},
+        )
+        lines = self._get_resolver.resolve("DECOMPILE", requester)
+        if _is_error(lines):
+            return None
+        text = "\n".join(line.rstrip("\r\n") for line in lines).strip()
+        if not text or text.startswith("ERROR"):
+            return None
+        return text
 
     def get_function_by_address(self, address: int) -> Optional[FunctionMeta]:
         increment_counter("ghidra.verify")
@@ -548,7 +570,7 @@ class GhidraClient:
     def read_bytes(self, address: int, length: int) -> Optional[bytes]:
         """
         Read raw bytes from memory.
-        
+
         Args:
             address: Starting address
             length: Number of bytes to read
@@ -572,6 +594,21 @@ class GhidraClient:
         except Exception as exc:
             logger.warning("Failed to decode bytes: %s", exc)
             return None
+
+    def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
+        increment_counter("ghidra.read_cstring")
+        lines = self._request_lines(
+            "GET",
+            "read_cstring",
+            key="READ_CSTRING",
+            params={"address": f"0x{address:08x}", "max_len": int(max_len)},
+        )
+        if _is_error(lines) or not lines:
+            return None
+        text = "\n".join(line.rstrip("\r\n") for line in lines).strip()
+        if not text or text.startswith("ERROR") or text.startswith("No program"):
+            return None
+        return text
 
     def rename_function(self, address: int, new_name: str) -> bool:
         increment_counter("ghidra.rename")

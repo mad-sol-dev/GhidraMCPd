@@ -139,6 +139,12 @@ _CASES: List[EndpointCase] = [
         },
         missing="function_addr",
     ),
+    EndpointCase(
+        id="analyze_function_complete",
+        path="/api/analyze_function_complete.json",
+        valid={"address": "0x00102004"},
+        missing="address",
+    ),
 ]
 
 
