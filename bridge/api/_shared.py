@@ -6,6 +6,8 @@ import os
 from functools import wraps
 from typing import Callable, Dict
 
+from starlette.responses import JSONResponse
+
 from ..adapters import ArchAdapter, load_optional_adapter, optional_adapter_names
 from ..adapters.arm_thumb import ARMThumbAdapter
 from ..adapters.fallback import FallbackAdapter
@@ -17,8 +19,43 @@ def envelope_ok(data: Dict[str, object]) -> Dict[str, object]:
     return {"ok": True, "data": data, "errors": []}
 
 
-def envelope_error(code: ErrorCode | str, message: str) -> Dict[str, object]:
-    return {"ok": False, "data": None, "errors": [make_error(code, message)]}
+def envelope_error(
+    code: ErrorCode,
+    message: str | None = None,
+    *,
+    recovery: tuple[str, ...] | None = None,
+    status: int | None = None,
+) -> Dict[str, object]:
+    return {
+        "ok": False,
+        "data": None,
+        "errors": [
+            make_error(
+                code,
+                message=message,
+                recovery=recovery,
+                status=status,
+            )
+        ],
+    }
+
+
+def envelope_response(payload: Dict[str, object]) -> JSONResponse:
+    status = 200
+    if not payload.get("ok"):
+        errors = payload.get("errors")
+        if isinstance(errors, list) and errors:
+            first = errors[0]
+            status = int(first.get("status", 500))
+        else:
+            status = 500
+    return JSONResponse(payload, status_code=status)
+
+
+def error_response(
+    code: ErrorCode, message: str | None = None, *, recovery: tuple[str, ...] | None = None
+) -> JSONResponse:
+    return envelope_response(envelope_error(code, message, recovery=recovery))
 
 
 def adapter_for_arch(arch: str) -> ArchAdapter:

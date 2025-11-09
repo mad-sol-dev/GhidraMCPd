@@ -13,7 +13,7 @@ from starlette.responses import JSONResponse
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ..validators import validate_payload
-from .._shared import envelope_error
+from .._shared import error_response
 
 JsonBody = Tuple[Dict[str, object] | None, JSONResponse | None]
 RouteHandler = Callable[[Request, GhidraClient], Awaitable[JSONResponse]]
@@ -35,18 +35,18 @@ async def validated_json_body(request: Request, schema: str) -> JsonBody:
     except json.JSONDecodeError as exc:
         return (
             None,
-            JSONResponse(
-                envelope_error(ErrorCode.INVALID_ARGUMENT, f"Invalid JSON payload: {exc.msg}"),
-                status_code=400,
+            error_response(
+                ErrorCode.INVALID_REQUEST,
+                f"Invalid JSON payload: {exc.msg}",
             ),
         )
 
     if not isinstance(data, dict):
         return (
             None,
-            JSONResponse(
-                envelope_error(ErrorCode.INVALID_ARGUMENT, "Payload must be a JSON object."),
-                status_code=400,
+            error_response(
+                ErrorCode.INVALID_REQUEST,
+                "Payload must be a JSON object.",
             ),
         )
 
@@ -54,9 +54,9 @@ async def validated_json_body(request: Request, schema: str) -> JsonBody:
     if not valid:
         return (
             None,
-            JSONResponse(
-                envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors)),
-                status_code=400,
+            error_response(
+                ErrorCode.INVALID_REQUEST,
+                "; ".join(errors),
             ),
         )
     return data, None

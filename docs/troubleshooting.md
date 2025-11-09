@@ -2,7 +2,7 @@
 
 ## Error reference
 
-All REST responses share the deterministic envelope shown below. Successful calls set `ok=true` and populate `data`, while errors populate `errors[]` with `code` and `message` entries for downstream tooling.
+All REST responses share the deterministic envelope shown below. Successful calls set `ok=true` and populate `data`, while errors populate `errors[]` with structured entries that include the HTTP status, a stable code, a short message, and recovery hints.
 
 ```json
 {
@@ -10,8 +10,12 @@ All REST responses share the deterministic envelope shown below. Successful call
   "data": null,
   "errors": [
     {
-      "code": "SAFETY_LIMIT",
-      "message": "strings.search.window limit exceeded: attempted 400 > allowed 256"
+      "status": 413,
+      "code": "RESULT_TOO_LARGE",
+      "message": "Result exceeds configured limits.",
+      "recovery": [
+        "Narrow the scope or reduce limits to shrink the result."
+      ]
     }
   ]
 }
@@ -21,11 +25,13 @@ See the table below for concrete error codes and HTTP status guidance.
 
 | Name | When it appears | Example payload / status |
 | --- | --- | --- |
-| `mcp_not_ready` | `POST /messages` before the SSE stream and session finish initialising | `425 Too Early` with `{"error":"mcp_not_ready"}` |
-| SSE single-stream guard | Second `GET /sse` while another stream is open, or non-GET method | `409 Conflict` (duplicate stream) or `405 Method Not Allowed` with `{"allow":"GET"}` |
-| `SAFETY_LIMIT` | Batch/search window or write count exceeds configured caps (`GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`) | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"SAFETY_LIMIT","message":"strings.search.window limit exceeded: attempted 400 > allowed 256"}]}` |
-| `INVALID_ARGUMENT` | Request parameters fail validation (negative offsets, non-integer limits, malformed hex) | `400 Bad Request` envelope with `code="INVALID_ARGUMENT"` |
-| `SCHEMA_INVALID` | JSON body violates schema (missing required fields, unexpected keys) | `400 Bad Request` envelope with `code="SCHEMA_INVALID"` |
+| `NOT_READY` | `POST /messages` before the SSE stream and session finish initialising | `425 Too Early` envelope with `code="NOT_READY"` |
+| `SSE_CONFLICT` | Second `GET /sse` while another stream is open | `409 Conflict` envelope with `code="SSE_CONFLICT"` |
+| `INVALID_REQUEST` | JSON body violates schema or parameters fail validation | `400 Bad Request` envelope with recovery hint `Check required fields and value formats.` |
+| `RESULT_TOO_LARGE` | Batch/search window or write count exceeds configured caps (`GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`) | `413 Payload Too Large` envelope with `code="RESULT_TOO_LARGE"` |
+| `TOO_MANY_REQUESTS` | Future throttling guard when concurrent request caps are exceeded | `429 Too Many Requests` envelope with `code="TOO_MANY_REQUESTS"` |
+| `UNAVAILABLE` | No program is loaded in Ghidra | `503 Service Unavailable` envelope with `code="UNAVAILABLE"` |
+| `INTERNAL` | Unexpected bridge failure | `500 Internal Server Error` envelope with `code="INTERNAL"` |
 | `WRITE_DISABLED_DRY_RUN` | Write attempted while writes are disabled or `dry_run=false` without permission | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"WRITE_DISABLED_DRY_RUN","message":"Writes are disabled while dry_run is false."}]}` |
 | `WRITE_VERIFY_FAILED` | Ghidra could not confirm a rename/comment during jump-table processing | `200 OK` with `data.errors` containing `"WRITE_VERIFY_FAILED"` |
 | `TOOL_BINDING_MISSING` | Jump-table slot read failed (adapter missing backing data) | `200 OK` with `data.errors` containing `"TOOL_BINDING_MISSING"` |

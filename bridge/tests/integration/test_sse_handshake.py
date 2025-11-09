@@ -202,7 +202,19 @@ async def test_messages_block_until_initialized() -> None:
             {"jsonrpc": "2.0", "id": 99, "method": "ping", "params": None}
         )
         assert status == 425
-        assert json.loads(body_bytes) == {"error": "mcp_not_ready"}
+        payload = json.loads(body_bytes)
+        assert payload["ok"] is False
+        assert payload["data"] is None
+        assert payload["errors"] == [
+            {
+                "status": 425,
+                "code": "NOT_READY",
+                "message": "Bridge is not ready yet.",
+                "recovery": [
+                    "Retry after the MCP bridge reports initialization complete.",
+                ],
+            }
+        ]
 
         initialize_payload = {
             "jsonrpc": "2.0",
@@ -272,13 +284,22 @@ async def test_second_sse_request_logs_rejection(caplog: pytest.LogCaptureFixtur
 
     status = next(m for m in messages if m["type"] == "http.response.start")["status"]
     assert status == 409
-    payload = b"".join(
+    payload_bytes = b"".join(
         m.get("body", b"") for m in messages if m["type"] == "http.response.body"
     )
-    assert json.loads(payload) == {
-        "error": "sse_already_active",
-        "detail": "Another client is connected.",
-    }
+    payload = json.loads(payload_bytes)
+    assert payload["ok"] is False
+    assert payload["data"] is None
+    assert payload["errors"] == [
+        {
+            "status": 409,
+            "code": "SSE_CONFLICT",
+            "message": "Server-sent events stream already active.",
+            "recovery": [
+                "Disconnect the existing SSE client before reconnecting.",
+            ],
+        }
+    ]
 
     rejection_records = [r for r in caplog.records if r.message == "sse.reject"]
     assert rejection_records, "Expected a rejection log entry"
@@ -402,10 +423,22 @@ async def test_messages_not_ready_logs_rejection(caplog: pytest.LogCaptureFixtur
 
     status = next(m for m in messages if m["type"] == "http.response.start")["status"]
     assert status == 425
-    payload = b"".join(
+    payload_bytes = b"".join(
         m.get("body", b"") for m in messages if m["type"] == "http.response.body"
     )
-    assert json.loads(payload) == {"error": "mcp_not_ready"}
+    payload = json.loads(payload_bytes)
+    assert payload["ok"] is False
+    assert payload["data"] is None
+    assert payload["errors"] == [
+        {
+            "status": 425,
+            "code": "NOT_READY",
+            "message": "Bridge is not ready yet.",
+            "recovery": [
+                "Retry after the MCP bridge reports initialization complete.",
+            ],
+        }
+    ]
 
     rejection_records = [r for r in caplog.records if r.message == "messages.not_ready"]
     assert rejection_records, "Expected a readiness rejection log entry"

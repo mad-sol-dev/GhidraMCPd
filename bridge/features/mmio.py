@@ -7,7 +7,6 @@ from typing import Dict, Iterable, List, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
-from ..utils.errors import ErrorCode
 from ..utils.hex import int_to_hex
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
 

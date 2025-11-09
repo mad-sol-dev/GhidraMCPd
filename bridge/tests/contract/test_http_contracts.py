@@ -14,6 +14,13 @@ def _assert_valid(schema_name: str, payload: dict) -> None:
 
 def _assert_envelope(payload: dict) -> None:
     _assert_valid("envelope.v1.json", payload)
+    if payload["ok"]:
+        assert isinstance(payload["data"], dict), payload
+        assert payload["errors"] == [], payload
+    else:
+        assert payload["data"] is None, payload
+        errors = payload.get("errors")
+        assert isinstance(errors, list) and errors, payload
 
 
 def test_project_info_contract(contract_client: TestClient) -> None:
@@ -46,14 +53,17 @@ def test_project_info_missing_program() -> None:
     with TestClient(app) as client:
         response = client.get("/api/project_info.json")
 
-    assert response.status_code == 404
+    assert response.status_code == 503
     body = response.json()
     assert body["ok"] is False
     _assert_envelope(body)
-    assert body["errors"] == [
+    errors = body["errors"]
+    assert errors == [
         {
-            "code": "PROGRAM_NOT_AVAILABLE",
-            "message": "No program is currently loaded or metadata is unavailable.",
+            "status": 503,
+            "code": "UNAVAILABLE",
+            "message": "Required upstream data is unavailable.",
+            "recovery": ["Ensure a program is open in Ghidra and try again."],
         }
     ]
 

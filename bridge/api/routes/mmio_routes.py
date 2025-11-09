@@ -11,7 +11,7 @@ from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_error, envelope_ok
+from .._shared import envelope_ok, envelope_response, error_response
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -39,27 +39,20 @@ def create_mmio_routes(deps: RouteDependencies) -> List[Route]:
                     writes_enabled=deps.enable_writes,
                 )
             except mmio.WritesDisabledError:
-                return JSONResponse(
-                    envelope_error(
-                        ErrorCode.WRITE_DISABLED_DRY_RUN,
-                        "Writes are disabled while dry_run is false.",
-                    ),
-                    status_code=400,
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "Writes are disabled while dry_run is false.",
+                    recovery=("Enable writes or run in dry_run mode.",),
                 )
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("mmio_annotate.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     return [Route("/api/mmio_annotate.json", mmio_annotate_route, methods=["POST"])]

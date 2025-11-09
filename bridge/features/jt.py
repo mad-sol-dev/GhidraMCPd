@@ -8,7 +8,7 @@ from ..adapters import ArchAdapter
 from ..ghidra.client import GhidraClient
 from ..utils.audit import record_jt_write
 from ..utils.config import ENABLE_WRITES
-from ..utils.errors import ErrorCode
+from ..utils.errors import DetailCode
 from ..utils.hex import int_to_hex, slot_address
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
 
@@ -75,20 +75,20 @@ def slot_check(
         errors=[],
     )
     if raw_val is None:
-        result.errors.append(ErrorCode.TOOL_BINDING_MISSING.value)
+        result.errors.append(DetailCode.TOOL_BINDING_MISSING.value)
         return result.to_dict()
     if adapter.is_instruction_sentinel(raw_val):
-        result.errors.append(ErrorCode.ARM_INSTRUCTION.value)
+        result.errors.append(DetailCode.ARM_INSTRUCTION.value)
         return result.to_dict()
     if not adapter.in_code_range(raw_val, code_min, code_max):
-        result.errors.append(ErrorCode.OUT_OF_RANGE.value)
+        result.errors.append(DetailCode.OUT_OF_RANGE.value)
         return result.to_dict()
     mode, target = adapter.probe_function(client, raw_val, code_min, code_max)
     if mode and target is not None:
         result.mode = mode
         result.target = int_to_hex(target)
     else:
-        result.errors.append(ErrorCode.NO_FUNCTION_AT_TARGET.value)
+        result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
     return result.to_dict()
 
 
@@ -138,15 +138,15 @@ def slot_process(
     )
     if result.errors or not result.target:
         if dry_run is False and not result.errors:
-            result.errors.append(ErrorCode.NO_FUNCTION_AT_TARGET.value)
+            result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
         return result.to_dict()
     if not dry_run and not writes_enabled:
-        result.errors.append(ErrorCode.WRITE_DISABLED_DRY_RUN.value)
+        result.errors.append(DetailCode.WRITE_DISABLED_DRY_RUN.value)
         _append_note(result.notes, _NOTE_WRITES_DISABLED)
         return result.to_dict()
     target_int = int(result.target, 16)
     if result.mode not in {"ARM", "Thumb"}:
-        result.errors.append(ErrorCode.NO_FUNCTION_AT_TARGET.value)
+        result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
         return result.to_dict()
     if dry_run:
         meta = client.get_function_by_address(target_int)
@@ -164,18 +164,18 @@ def slot_process(
     pre_name = pre_meta.get("name") if isinstance(pre_meta, dict) else None
     pre_comment = pre_meta.get("comment") if isinstance(pre_meta, dict) else None
     if not pre_meta:
-        result.errors.append(ErrorCode.NO_FUNCTION_AT_TARGET.value)
+        result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
         return result.to_dict()
     record_write_attempt()
     if client.rename_function(target_int, new_name):
         result.renamed = True
     else:
-        result.errors.append(ErrorCode.WRITE_VERIFY_FAILED.value)
+        result.errors.append(DetailCode.WRITE_VERIFY_FAILED.value)
     record_write_attempt()
     if client.set_decompiler_comment(target_int, comment):
         result.comment_set = True
     else:
-        result.errors.append(ErrorCode.WRITE_VERIFY_FAILED.value)
+        result.errors.append(DetailCode.WRITE_VERIFY_FAILED.value)
     meta = client.get_function_by_address(target_int)
     post_name: Optional[str] = None
     post_comment: Optional[str] = None
@@ -186,7 +186,7 @@ def slot_process(
         result.verify_name = meta.get("name")
         result.comment_present = bool(meta.get("comment")) if isinstance(meta, dict) else False
     else:
-        result.errors.append(ErrorCode.WRITE_VERIFY_FAILED.value)
+        result.errors.append(DetailCode.WRITE_VERIFY_FAILED.value)
     record_jt_write(
         slot=result.slot,
         slot_address=result.slot_addr,

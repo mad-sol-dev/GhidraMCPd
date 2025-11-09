@@ -17,11 +17,15 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["code", "message"],
+        "required": ["status", "code", "message", "recovery"],
         "properties": {
+          "status": {"type": "integer"},
           "code": {"type": "string"},
           "message": {"type": "string"},
-          "details": {"oneOf": [{"type": "object"}, {"type": "null"}]}
+          "recovery": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
         }
       }
     }

@@ -1,6 +1,6 @@
 # API Reference
 
-All endpoints use the envelope `{ok, data|null, errors[]}` and strict JSON schemas.
+All endpoints use the envelope `{ok, data|null, errors[]}` with error entries shaped as `{status, code, message, recovery[]}`, plus strict JSON schemas.
 
 - `POST /api/search_strings.json`
 - `POST /api/search_functions.json`

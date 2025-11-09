@@ -62,12 +62,19 @@ def test_search_strings_limit_exceeded(
         "/api/search_strings.json",
         json={"query": "value", "limit": 300, "offset": 0},
     )
-    assert response.status_code == 400
+    assert response.status_code == 413
     body = response.json()
     assert body["ok"] is False
     assert body["data"] is None
+    from bridge.tests.contract.test_http_contracts import _assert_envelope
+
+    _assert_envelope(body)
     errors = body["errors"]
     assert isinstance(errors, list) and errors
     first_error = errors[0]
-    assert str(first_error["code"]).endswith("SAFETY_LIMIT")
-    assert "limit exceeded" in str(first_error["message"]).lower()
+    assert first_error["status"] == 413
+    assert first_error["code"] == "RESULT_TOO_LARGE"
+    assert "limit" in first_error["message"].lower()
+    assert first_error["recovery"] == [
+        "Narrow the scope or reduce limits to shrink the result.",
+    ]

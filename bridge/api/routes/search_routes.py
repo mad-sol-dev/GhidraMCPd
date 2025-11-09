@@ -24,27 +24,21 @@ from ...utils.logging import (
     increment_counter,
     request_scope,
 )
-from .._shared import envelope_error, envelope_ok
+from .._shared import envelope_ok, envelope_response, error_response
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
 
 def _validate_pagination(limit: int, offset: int) -> JSONResponse | None:
     if limit <= 0:
-        return JSONResponse(
-            envelope_error(
-                ErrorCode.INVALID_ARGUMENT,
-                "limit must be a positive integer.",
-            ),
-            status_code=400,
+        return error_response(
+            ErrorCode.INVALID_REQUEST,
+            "limit must be a positive integer.",
         )
     if offset < 0:
-        return JSONResponse(
-            envelope_error(
-                ErrorCode.INVALID_ARGUMENT,
-                "offset must be a non-negative integer.",
-            ),
-            status_code=400,
+        return error_response(
+            ErrorCode.INVALID_REQUEST,
+            "offset must be a non-negative integer.",
         )
     return None
 
@@ -70,20 +64,15 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     limit=int(data.get("limit", 50)),
                 )
             except (KeyError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("string_xrefs.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_strings_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -103,10 +92,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 offset = int(data.get("offset", 0))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
@@ -118,16 +104,13 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     offset=offset,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("search_strings.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def strings_compact_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -146,19 +129,14 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 0))
                 offset = int(data.get("offset", 0))
             except (TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
             try:
                 enforce_batch_limit(limit, counter="strings.compact.limit")
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             increment_counter("strings.compact.calls")
 
             raw_entries: list[dict[str, object]] = []
@@ -178,18 +156,14 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 payload = strings.strings_compact_view(raw_entries)
             except (TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 
             valid, errors = validate_payload("strings_compact.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_imports_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -209,10 +183,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 offset = int(data.get("offset", 0))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
@@ -224,16 +195,13 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     offset=offset,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("search_imports.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_exports_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -253,10 +221,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 offset = int(data.get("offset", 0))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
@@ -268,16 +233,13 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     offset=offset,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("search_exports.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_xrefs_to_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -298,10 +260,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 offset = int(data.get("offset", 0))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
@@ -314,21 +273,15 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     offset=offset,
                 )
             except ValueError as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("search_xrefs_to.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_functions_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -348,10 +301,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 offset = int(data.get("offset", 0))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, offset)
             if pagination_error is not None:
                 return pagination_error
@@ -363,16 +313,13 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     offset=offset,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             valid, errors = validate_payload("search_functions.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def search_scalars_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -401,17 +348,11 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 100))
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             if limit <= 0 or page <= 0:
-                return JSONResponse(
-                    envelope_error(
-                        ErrorCode.INVALID_ARGUMENT,
-                        "limit and page must be positive integers.",
-                    ),
-                    status_code=400,
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "limit and page must be positive integers.",
                 )
             try:
                 payload = scalars.search_scalars(
@@ -422,21 +363,15 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     page=page,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             except (ValueError, TypeError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             valid, errors = validate_payload("search_scalars.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     @deps.with_client
     async def list_functions_in_range_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -457,10 +392,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 limit = int(data.get("limit", 200))
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             try:
                 payload = function_range.list_functions_in_range(
                     client,
@@ -470,21 +402,15 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     page=page,
                 )
             except SafetyLimitExceeded as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.SAFETY_LIMIT, str(exc)), status_code=400
-                )
+                return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             except (ValueError, TypeError) as exc:
-                return JSONResponse(
-                    envelope_error(ErrorCode.INVALID_ARGUMENT, str(exc)),
-                    status_code=400,
-                )
+                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             valid, errors = validate_payload("list_functions_in_range.v1.json", payload)
-            response = (
-                envelope_ok(payload)
-                if valid
-                else envelope_error(ErrorCode.SCHEMA_INVALID, "; ".join(errors))
+            if valid:
+                return envelope_response(envelope_ok(payload))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
-            return JSONResponse(response)
 
     return [
         Route("/api/string_xrefs.json", string_xrefs_route, methods=["POST"]),
