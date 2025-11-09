@@ -41,6 +41,19 @@ If you already have a local Ghidra checkout, you can still point Maven at it dir
 export GHIDRA_DIR=/path/to/ghidra_*_PUBLIC && mvn -DskipTests package
 ```
 
+The build produces `target/GhidraMCP-1.0-SNAPSHOT.jar`.
+
+**Installation:**
+
+1. Copy the JAR to Ghidra's Extensions directory:
+   ```bash
+   cp target/GhidraMCP-1.0-SNAPSHOT.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
+   ```
+
+2. Or use Ghidra's GUI: **File → Install Extensions** and select the JAR file.
+
+3. Restart Ghidra to load the extension.
+
 ## Advanced start
 
 Run the server and verify deterministic behavior:
