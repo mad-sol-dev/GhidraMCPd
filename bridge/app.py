@@ -206,8 +206,6 @@ def _guarded_sse_app(self: FastMCP) -> Starlette:
                 return envelope_response(
                     envelope_error(
                         ErrorCode.SSE_CONFLICT,
-                        "Another client is connected.",
-                        recovery=("Disconnect the active SSE client before retrying.",),
                     )
                 )
             connection_id = uuid.uuid4().hex
