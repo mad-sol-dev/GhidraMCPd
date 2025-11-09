@@ -8,6 +8,7 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
+from bridge.error_handlers import install_error_handlers
 from bridge.tests.golden.test_http_parity import GoldenStubGhidraClient
 
 
@@ -154,6 +155,7 @@ def client() -> TestClient:
         return GoldenStubGhidraClient()
 
     app = Starlette(routes=make_routes(factory, enable_writes=True))
+    install_error_handlers(app)
     with TestClient(app) as test_client:
         yield test_client
 
