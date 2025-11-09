@@ -1,7 +1,7 @@
 # Roadmap (focused on LLM efficiency)
 
 ## Phase 1 – Correctness & consistency (now)
-- GET /api/project_info.json
+- ✅ GET /api/project_info.json
 - Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based)
 - Unified error schema + enums
 - OpenAPI snapshots drift-free

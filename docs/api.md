@@ -18,6 +18,50 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** health_route
 
+## `/api/project_info.json`
+
+### GET
+
+**Summary:** project_info
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `project_info.v1.json`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  ```json
+  {
+    "program_name": "stub_program",
+    "executable_path": "/opt/programs/stub_program.bin",
+    "executable_md5": "0123456789abcdef0123456789abcdef",
+    "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "executable_format": "ELF",
+    "image_base": "0x00100000",
+    "language_id": "ARM:LE:32:v7",
+    "compiler_spec_id": "default",
+    "entry_points": [
+      "0x00100000"
+    ],
+    "memory_blocks": [
+      {
+        "name": ".text",
+        "start": "0x00100000",
+        "end": "0x0010ffff",
+        "length": 65536,
+        "rwx": "r-x",
+        "loaded": true,
+        "initialized": true
+      }
+    ],
+    "imports_count": 24,
+    "exports_count": 24
+  }
+  ```
+
+### HEAD
+
+**Summary:** project_info
+
 ## `/api/jt_scan.json`
 
 ### POST

@@ -60,6 +60,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;
 import java.util.Base64;
@@ -422,6 +423,14 @@ public class GhidraMCPPlugin extends Plugin {
             String address = qparams.get("address");
             int count = parseIntOrDefault(qparams.get("count"), 16);
             sendResponse(exchange, handleDisassembleAt(address, count));
+        });
+
+        server.createContext("/project_info", exchange -> {
+            sendResponse(exchange, getProjectInfo());
+        });
+
+        server.createContext("/projectInfo", exchange -> {
+            sendResponse(exchange, getProjectInfo());
         });
 
         server.createContext("/readBytes", exchange -> {
@@ -2164,6 +2173,214 @@ public class GhidraMCPPlugin extends Plugin {
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
+        }
+    }
+
+    private String getProjectInfo() {
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return "ERROR: No program loaded";
+        }
+
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+
+            appendJsonField(sb, "program_name", program.getDomainFile() != null
+                ? program.getDomainFile().getName()
+                : program.getName());
+            appendJsonField(sb, "executable_path", safeStringCall(program::getExecutablePath));
+            appendJsonField(sb, "executable_md5", safeStringCall(program::getExecutableMD5));
+            appendJsonField(sb, "executable_sha256", safeStringCall(program::getExecutableSHA256));
+            appendJsonField(sb, "executable_format", safeStringCall(program::getExecutableFormat));
+
+            Address imageBase = program.getImageBase();
+            appendJsonField(sb, "image_base", imageBase != null ? formatAddress(imageBase) : null);
+
+            appendJsonField(sb, "language_id", program.getLanguageID().getIdAsString());
+            appendJsonField(sb, "compiler_spec_id", program.getCompilerSpec() != null
+                ? program.getCompilerSpec().getCompilerSpecID().getIdAsString()
+                : null);
+
+            appendEntryPoints(sb, program);
+            appendMemoryBlocks(sb, program);
+            appendCounts(sb, program);
+            if (sb.charAt(sb.length() - 1) == ',') {
+                sb.setLength(sb.length() - 1);
+            }
+            sb.append('}');
+            return sb.toString();
+        }
+        catch (Exception ex) {
+            Msg.error(this, "Failed to collect project info", ex);
+            return "ERROR: Failed to collect project info";
+        }
+    }
+
+    private void appendJsonField(StringBuilder sb, String key, String value) {
+        sb.append('"').append(key).append('"').append(':');
+        if (value == null) {
+            sb.append("null");
+        }
+        else {
+            sb.append('"').append(jsonEscape(value)).append('"');
+        }
+        sb.append(',');
+    }
+
+    private void appendEntryPoints(StringBuilder sb, Program program) {
+        List<Address> entries = new ArrayList<>();
+        SymbolTable table = program.getSymbolTable();
+        SymbolIterator it = table.getExternalEntryPointIterator();
+        while (it.hasNext()) {
+            Symbol symbol = it.next();
+            if (symbol != null && symbol.getAddress() != null) {
+                Address addr = symbol.getAddress();
+                if (!entries.contains(addr)) {
+                    entries.add(addr);
+                }
+            }
+        }
+
+        if (entries.isEmpty()) {
+            Symbol[] entrySymbols = table.getSymbols("entry");
+            if (entrySymbols != null) {
+                for (Symbol symbol : entrySymbols) {
+                    if (symbol != null && symbol.getAddress() != null) {
+                        Address addr = symbol.getAddress();
+                        if (!entries.contains(addr)) {
+                            entries.add(addr);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (entries.isEmpty()) {
+            Address base = program.getImageBase();
+            if (base != null) {
+                Function func = program.getListing().getFunctionAt(base);
+                if (func != null) {
+                    Address addr = func.getEntryPoint();
+                    if (!entries.contains(addr)) {
+                        entries.add(addr);
+                    }
+                }
+            }
+        }
+
+        Collections.sort(entries);
+
+        sb.append("\"entry_points\": [");
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append('"').append(formatAddress(entries.get(i))).append('"');
+        }
+        sb.append("],");
+    }
+
+    private void appendMemoryBlocks(StringBuilder sb, Program program) {
+        List<MemoryBlock> blocks = new ArrayList<>();
+        for (MemoryBlock block : program.getMemory().getBlocks()) {
+            blocks.add(block);
+        }
+        blocks.sort((a, b) -> a.getStart().compareTo(b.getStart()));
+
+        sb.append("\"memory_blocks\":[");
+        for (int i = 0; i < blocks.size(); i++) {
+            MemoryBlock block = blocks.get(i);
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append('{');
+            appendJsonField(sb, "name", block.getName());
+            appendJsonField(sb, "start", block.getStart() != null ? formatAddress(block.getStart()) : null);
+            appendJsonField(sb, "end", block.getEnd() != null ? formatAddress(block.getEnd()) : null);
+            sb.append("\"length\":").append(block.getSize()).append(',');
+            appendJsonField(sb, "rwx", buildPermissions(block));
+            sb.append("\"loaded\":").append(block.isLoaded()).append(',');
+            sb.append("\"initialized\":").append(block.isInitialized());
+            sb.append('}');
+        }
+        sb.append("],");
+    }
+
+    private void appendCounts(StringBuilder sb, Program program) {
+        SymbolTable table = program.getSymbolTable();
+        int importCount = 0;
+        for (Symbol ignored : table.getExternalSymbols()) {
+            importCount++;
+        }
+        sb.append("\"imports_count\":").append(importCount).append(',');
+
+        int exportCount = 0;
+        SymbolIterator all = table.getAllSymbols(true);
+        while (all.hasNext()) {
+            Symbol symbol = all.next();
+            if (symbol != null && symbol.isExternalEntryPoint()) {
+                exportCount++;
+            }
+        }
+        if (exportCount > 0) {
+            sb.append("\"exports_count\":").append(exportCount).append(',');
+        }
+        else {
+            sb.append("\"exports_count\":null,");
+        }
+    }
+
+    private String buildPermissions(MemoryBlock block) {
+        StringBuilder perms = new StringBuilder();
+        perms.append(block.isRead() ? 'r' : '-');
+        perms.append(block.isWrite() ? 'w' : '-');
+        perms.append(block.isExecute() ? 'x' : '-');
+        return perms.toString();
+    }
+
+    private String formatAddress(Address address) {
+        return "0x" + address.toString();
+    }
+
+    private String jsonEscape(String input) {
+        StringBuilder escaped = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            switch (c) {
+                case '\\':
+                case '"':
+                    escaped.append('\\').append(c);
+                    break;
+                case '\n':
+                    escaped.append("\\n");
+                    break;
+                case '\r':
+                    escaped.append("\\r");
+                    break;
+                case '\t':
+                    escaped.append("\\t");
+                    break;
+                default:
+                    if (c < 0x20) {
+                        escaped.append(String.format("\\u%04x", (int) c));
+                    }
+                    else {
+                        escaped.append(c);
+                    }
+                    break;
+            }
+        }
+        return escaped.toString();
+    }
+
+    private String safeStringCall(Supplier<String> supplier) {
+        try {
+            return supplier.get();
+        }
+        catch (Exception ex) {
+            Msg.debug(this, "Failed to read program metadata: " + ex.getMessage());
+            return null;
         }
     }
 

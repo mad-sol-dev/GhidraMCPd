@@ -15,6 +15,7 @@ All endpoints use the envelope `{ok, data|null, errors[]}` and strict JSON schem
 - `POST /api/jt_scan.json`
 - `POST /api/strings_compact.json`
 - `POST /api/mmio_annotate.json`
+- `GET /api/project_info.json`
 
 See dedicated pages for parameters and invariants.
 

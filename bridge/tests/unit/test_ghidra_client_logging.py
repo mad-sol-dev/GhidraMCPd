@@ -33,6 +33,10 @@ class FakeSession:
             return FakeResponse("OK\n")
         if path in {"set_disassembly_comment", "setDisassemblyComment"}:
             return FakeResponse("OK\n")
+        if path in {"projectInfo", "project_info"}:
+            return FakeResponse(
+                '{"program_name":"fake","image_base":"0x0","language_id":"test","compiler_spec_id":null,"entry_points":[],"memory_blocks":[],"imports_count":0,"exports_count":null}'
+            )
         return FakeResponse("ERROR: not found\n", status_code=404)
 
     def close(self) -> None:  # pragma: no cover - nothing to close
@@ -55,6 +59,7 @@ def test_request_counters_are_recorded(client: GhidraClient) -> None:
         assert client.rename_function(0x1234, "new_name")
         assert client.set_decompiler_comment(0x1234, "hi")
         assert client.set_disassembly_comment(0x1234, "hi")
+        assert client.get_project_info() is not None
     assert ctx.counters["ghidra.read"] == 1
     assert ctx.counters["ghidra.disasm"] == 1
     assert ctx.counters["ghidra.verify"] == 1
@@ -62,3 +67,4 @@ def test_request_counters_are_recorded(client: GhidraClient) -> None:
     assert ctx.counters["ghidra.rename"] == 1
     assert ctx.counters["ghidra.decompiler_comment"] == 1
     assert ctx.counters["ghidra.disassembly_comment"] == 1
+    assert ctx.counters["ghidra.project_info"] == 1

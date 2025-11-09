@@ -15,6 +15,7 @@ from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
 from .memory_routes import create_memory_routes
 from .mmio_routes import create_mmio_routes
+from .project_routes import create_project_routes
 from .search_routes import create_search_routes
 
 
@@ -37,6 +38,7 @@ def make_routes(
 
     groups: Iterable[List[Route]] = (
         create_health_routes(client_factory, enable_writes, logger, semaphore),
+        create_project_routes(deps),
         create_jt_routes(deps),
         create_search_routes(deps),
         create_mmio_routes(deps),

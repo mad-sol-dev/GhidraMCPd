@@ -5,6 +5,7 @@
       "title": "GET /api/project_info.json",
       "area": "bridge, plugin",
       "depends_on": [],
+      "status": "done",
       "dod": [
         "Fields: program_name, language_id, compiler_spec, image_base, entry_point, memory_blocks[name,start,end,loaded,initialized,rwx], imports_count, exports_count",
         "Deterministic sorting of memory_blocks by start",
