@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
+from bridge.api.routes import make_routes
 from bridge.api.validators import validate_payload
 
 def _assert_valid(schema_name: str, payload: dict) -> None:
@@ -28,6 +30,32 @@ def test_project_info_contract(contract_client: TestClient) -> None:
     assert starts == sorted(starts)
     assert data["imports_count"] == 24
     assert data["exports_count"] == 24
+
+
+def test_project_info_missing_program() -> None:
+    from bridge.tests.contract import conftest as contract_conftest
+
+    class EmptyProjectStub(contract_conftest.StubGhidraClient):
+        def get_project_info(self) -> dict[str, object] | None:  # type: ignore[override]
+            return None
+
+    def factory() -> contract_conftest.StubGhidraClient:
+        return EmptyProjectStub()
+
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
+    with TestClient(app) as client:
+        response = client.get("/api/project_info.json")
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["ok"] is False
+    _assert_envelope(body)
+    assert body["errors"] == [
+        {
+            "code": "PROGRAM_NOT_AVAILABLE",
+            "message": "No program is currently loaded or metadata is unavailable.",
+        }
+    ]
 
 
 def test_jt_slot_check_contract(contract_client: TestClient) -> None:
