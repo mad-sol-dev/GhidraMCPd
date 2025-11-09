@@ -55,7 +55,7 @@
       <artifactId>Decompiler</artifactId>
       <version>${ghidra.version}</version>
       <scope>system</scope>
-      <systemPath>${ghidra.dir}/Ghidra/Features/Decompiler/lib/Decompile.jar</systemPath>
+      <systemPath>${ghidra.dir}/Ghidra/Features/Decompiler/lib/Decompiler.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>ghidra</groupId>
