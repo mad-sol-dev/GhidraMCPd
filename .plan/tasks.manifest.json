@@ -52,7 +52,8 @@
         "`queries[]` executes multiple read-only sub-ops in one call",
         "Budget-aware shortening; per-subop envelope",
         "Unit + Contract + Golden; docs"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.5",
@@ -77,7 +78,8 @@
         "`max_result_tokens` param; `result_budget.mode=auto_trim|strict`",
         "Response carries estimate_tokens, truncated, resume_cursor?",
         "Contract tests for strict (413) and auto_trim (200, truncated=true)"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.7",
@@ -101,7 +103,8 @@
       "dod": [
         "Cursor-based paging + early partial responses",
         "Resume handles documented; tests"
-      ]
+      ],
+      "status": "todo"
     },
     {
       "id": "D.9",
@@ -132,6 +135,18 @@
       "dod": [
         "POM references GHIDRA_DIR",
         "CI downloads ghidra and sets GHIDRA_DIR"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "T-202511-018",
+      "title": "Sync roadmap + plan docs with audit",
+      "area": "planning",
+      "depends_on": [],
+      "dod": [
+        "docs/ROADMAP.md reflects delivered vs. pending features",
+        ".plan/state.json and tasks.manifest.json statuses match implementation",
+        "Overview or status doc summarizes current bridge capabilities and open roadmap gaps"
       ],
       "status": "done"
     }

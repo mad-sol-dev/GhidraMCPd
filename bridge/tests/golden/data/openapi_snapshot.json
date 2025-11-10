@@ -605,6 +605,11 @@
         "x-response-model": "analyze_function_complete.v1.json"
       }
     },
+    "/api/collect.json": {
+      "post": {
+        "summary": "collect_route"
+      }
+    },
     "/api/disassemble_at.json": {
       "post": {
         "summary": "disassemble_at_route"
@@ -946,9 +951,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1048,9 +1053,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1150,9 +1155,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1255,8 +1260,8 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "minimum": 0,
+                  "page": {
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {

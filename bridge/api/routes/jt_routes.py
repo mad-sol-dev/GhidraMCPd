@@ -13,7 +13,7 @@ from ...utils.config import MAX_WRITES_PER_REQUEST
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_ok, envelope_response, error_response
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 

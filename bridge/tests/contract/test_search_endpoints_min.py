@@ -33,7 +33,7 @@ def _string_from_item(item):
     return ""
 
 def test_strings_basic_contract():
-    body = {"query": "http", "limit": 50, "offset": 0}
+    body = {"query": "http", "limit": 50, "page": 1}
     payload = post("/api/search_strings.json", body)
     assert payload["ok"] is True
     assert payload["errors"] == []
@@ -50,14 +50,14 @@ def test_strings_regex_toggle_and_errors():
     # Regex aus → wörtlich (Patternzeichen als Literal behandeln)
     literal_payload = post(
         "/api/search_strings.json",
-        {"query": r".*HTTP.*", "limit": 10, "offset": 0},
+        {"query": r".*HTTP.*", "limit": 10, "page": 1},
     )
     literal_hits = literal_payload["data"]["items"]
 
     # Regex an → Pattern greifen lassen (über Trefferliste simulieren)
     regex_payload = post(
         "/api/search_strings.json",
-        {"query": "HTTP", "limit": 10, "offset": 0},
+        {"query": "HTTP", "limit": 10, "page": 1},
     )
     regex_hits = [
         item
@@ -70,20 +70,33 @@ def test_strings_regex_toggle_and_errors():
     # Ungültiges Limit → sauberer Fehler
     r = requests.post(
         f"{BASE}/api/search_strings.json",
-        json={"query": "http", "limit": 0, "offset": 0},
+        json={"query": "http", "limit": 0, "page": 1},
         timeout=30,
     )
     assert r.status_code == 400
     dj = r.json()
     assert dj.get("ok") is False and isinstance(dj.get("errors"), list) and dj["errors"], dj
 
+    invalid_page = requests.post(
+        f"{BASE}/api/search_strings.json",
+        json={"query": "http", "limit": 10, "page": 0},
+        timeout=30,
+    )
+    assert invalid_page.status_code == 400
+    invalid_page_payload = invalid_page.json()
+    assert (
+        invalid_page_payload.get("ok") is False
+        and isinstance(invalid_page_payload.get("errors"), list)
+        and invalid_page_payload["errors"]
+    ), invalid_page_payload
+
 def test_strings_pagination_is_deterministic():
-    q = {"query": "http", "limit": 20, "offset": 0}
+    q = {"query": "http", "limit": 20, "page": 1}
     first = post("/api/search_strings.json", q)["data"]
-    q["offset"] = 20
+    q["page"] = 2
     second = post("/api/search_strings.json", q)["data"]
     # deterministische Reihenfolge: der erste Block soll sich bei erneutem Abruf nicht ändern
-    first2 = post("/api/search_strings.json", {"query": "http", "limit": 20, "offset": 0})["data"]
+    first2 = post("/api/search_strings.json", {"query": "http", "limit": 20, "page": 1})["data"]
     assert [it.get("addr") for it in first["items"]] == [
         it.get("addr") for it in first2["items"]
     ]
@@ -92,10 +105,17 @@ def test_strings_pagination_is_deterministic():
     a2 = {(it.get("addr"), _string_from_item(it)) for it in second["items"]}
     assert not (a1 & a2)
 
+    empty = post(
+        "/api/search_strings.json",
+        {"query": "http", "limit": 20, "page": max(first["page"], 1) + 100},
+    )["data"]
+    assert empty["items"] == []
+    assert empty["has_more"] is False
+
 def test_functions_basic_contract_and_section_bounds():
     data = post(
         "/api/search_functions.json",
-        {"query": "FUN_", "limit": 100, "offset": 0},
+        {"query": "FUN_", "limit": 100, "page": 1},
     )
     assert data["ok"] is True
     items = data["data"]["items"]
@@ -116,7 +136,7 @@ def test_xrefs_roundtrip_symmetry_sample():
     # Nimm eine Funktion als Anker
     funcs = post(
         "/api/search_functions.json",
-        {"query": "FUN_", "limit": 1, "offset": 0},
+        {"query": "FUN_", "limit": 1, "page": 1},
     )["data"]["items"]
     if not funcs:
         return
@@ -125,7 +145,7 @@ def test_xrefs_roundtrip_symmetry_sample():
     # Xrefs TO der Funktion erfassen
     to_list = post(
         "/api/search_xrefs_to.json",
-        {"address": faddr, "query": "call", "limit": 200, "offset": 0},
+        {"address": faddr, "query": "call", "limit": 200, "page": 1},
     )["data"]["items"]
 
     # Für einige Einträge prüfen: FROM → TO muss die Zieladresse sein
@@ -143,7 +163,7 @@ def test_search_strings_has_more_contract():
     body = {
         "query": "http",  # non-empty per schema; any non-empty token works
         "limit": 1,       # tiny for deterministic expectation
-        "offset": 0
+        "page": 1
     }
     envelope = post("/api/search_strings.json", body)
 

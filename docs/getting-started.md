@@ -56,7 +56,7 @@ The bridge enforces deterministic caps on batch-style operations to keep token u
 | --- | --- | --- | --- |
 | `disassemble_batch` | Addresses per request | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
 | `read_words` | Words per request | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
-| `search_strings`, `search_imports`, `search_exports`, `search_xrefs_to`, `strings_compact` | Window size (`offset + limit`) | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
+| `search_strings`, `search_imports`, `search_exports`, `search_xrefs_to`, `strings_compact` | Window size (`page * limit` for search APIs, `offset + limit` for compact listings) | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
 | `search_scalars_with_context` | Matches returned | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
 
 Set the environment variable before starting the server to raise the ceiling, for example:

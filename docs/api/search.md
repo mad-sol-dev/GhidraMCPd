@@ -159,5 +159,5 @@ The following endpoints support wildcard queries (return all items without filte
 
 Example:
 ```json
-{ "query": "*", "limit": 100, "offset": 0 }
+{ "query": "*", "limit": 100, "page": 1 }
 ```

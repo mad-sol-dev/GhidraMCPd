@@ -419,25 +419,19 @@ class GhidraClient:
         return [line.strip() for line in lines if line.strip()]
 
     def search_functions(self, query: str) -> List[str]:
-        """
-        Search for functions matching the query.
-        
-        Args:
-            query: Search query string
-            
-        Returns:
-            List of strings in format "function_name @ 0xaddress"
-        """
+        """Search for functions using the plaintext /functions endpoint."""
+
         increment_counter("ghidra.search_functions")
         lines = self._request_lines(
             "GET",
-            "searchFunctions",
+            "functions",
             key="SEARCH_FUNCTIONS",
-            params={"query": query, "limit": 999999},
+            params={"filter": query, "limit": 999999, "offset": 0},
         )
         if _is_error(lines):
             return []
         return [line.strip() for line in lines if line.strip()]
+
 
     def search_scalars(self, value: int) -> List[Dict[str, Any]]:
         """

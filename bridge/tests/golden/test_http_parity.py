@@ -406,3 +406,28 @@ def test_analyze_function_complete_snapshot(
     )
     assert response.status_code == 200
     snapshot_store.assert_match("analyze_function_complete", response.json())
+
+
+def test_collect_snapshot(
+    golden_client: TestClient, snapshot_store: SnapshotStore
+) -> None:
+    response = golden_client.post(
+        "/api/collect.json",
+        json={
+            "queries": [
+                {
+                    "id": "imports",
+                    "op": "search_imports",
+                    "params": {"query": "import", "limit": 2},
+                },
+                {
+                    "id": "xrefs",
+                    "op": "search_xrefs_to",
+                    "params": {"address": "0x00102004", "query": "log", "limit": 5},
+                },
+            ],
+            "result_budget": {"max_result_tokens": 2048},
+        },
+    )
+    assert response.status_code == 200
+    snapshot_store.assert_match("collect", response.json())

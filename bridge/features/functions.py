@@ -1,8 +1,15 @@
 """Function search and listing features."""
 
+from __future__ import annotations
+
+import re
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
+
+_FUNCTION_LINE = re.compile(
+    r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
+)
 
 
 def search_functions(
@@ -10,67 +17,41 @@ def search_functions(
     *,
     query: str,
     limit: int = 100,
-    offset: int = 0,
+    page: int = 1,
 ) -> Dict[str, object]:
-    """
-    Search for functions matching the query and return paginated results.
-    
-    Args:
-        client: Ghidra client instance
-        query: Search query string (use "*" or "" for all functions)
-        limit: Maximum number of results per page (capped at 500)
-        offset: Number of results to skip
-        
-    Returns:
-        Dictionary with query, total count, 1-based page, limit, and items array
-    """
-    # Cap limit at 500 maximum
-    limit = min(limit, 500) if limit > 0 else 500
-    
-    # Fetch all matching functions from Ghidra
-    # Use empty query for wildcard searches
-    search_query = "" if query in ("*", "") else query
-    raw_results = client.search_functions(search_query)
-    
-    # Parse the raw results into structured objects
-    items = []
-    for line in raw_results:
-        # Expected format: "function_name @ 0xaddress"
-        if " @ " not in line:
-            continue
-        
-        parts = line.split(" @ ", 1)
-        if len(parts) != 2:
-            continue
-            
-        name = parts[0].strip()
-        address = parts[1].strip()
-        
-        # Ensure address has 0x prefix
-        if not address.startswith("0x"):
-            address = f"0x{address}"
-            
-        items.append({
-            "name": name,
-            "address": address,
-        })
-    
-    # Calculate pagination
-    total = len(items)
-    if limit <= 0:
-        limit = total if total > 0 else 1
-        page = 1
-        paginated_items = items[offset:]
-    else:
-        page = offset // limit + 1
-        paginated_items = items[offset : offset + limit]
+    """Search for functions matching *query* and return a paginated payload."""
 
-    page = max(page, 1)
-    limit = max(limit, 1)
-    has_more = (page * limit) < total
+    limit = max(1, min(int(limit), 500))
+    page = max(1, int(page))
+    offset = (page - 1) * limit
+
+    query_str = str(query)
+    search_query = "" if query_str in {"", "*"} else query_str
+    raw_results = client.search_functions(search_query) or []
+
+    parsed_items: List[Dict[str, str]] = []
+    for line in raw_results:
+        match = _FUNCTION_LINE.match(line.strip())
+        if not match:
+            continue
+        name = match.group("name").strip()
+        addr = match.group("addr").strip()
+        if not addr.lower().startswith("0x"):
+            addr = f"0x{addr}"
+        parsed_items.append({
+            "name": name,
+            "address": addr.lower(),
+        })
+
+    total = len(parsed_items)
+    start = min(offset, total)
+    end = min(start + limit, total)
+    paginated_items = parsed_items[start:end]
+
+    has_more = end < total
 
     return {
-        "query": query,
+        "query": query_str,
         "total": total,
         "page": page,
         "limit": limit,

@@ -35,7 +35,7 @@ def test_search_strings_success(app_client: tuple[TestClient, StubGhidraClient])
 
     response = client.post(
         "/api/search_strings.json",
-        json={"query": "value", "limit": 5, "offset": 5},
+        json={"query": "value", "limit": 5, "page": 2},
     )
     assert response.status_code == 200
     body = response.json()
@@ -52,6 +52,25 @@ def test_search_strings_success(app_client: tuple[TestClient, StubGhidraClient])
     assert [item["s"] for item in items] == [f"value {idx}" for idx in range(5, 10)]
 
 
+def test_search_strings_page_beyond_range(
+    app_client: tuple[TestClient, StubGhidraClient]
+) -> None:
+    client, stub = app_client
+    _seed_strings(stub, 3)
+
+    response = client.post(
+        "/api/search_strings.json",
+        json={"query": "value", "limit": 2, "page": 5},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["items"] == []
+    assert data["has_more"] is False
+
+
 def test_search_strings_limit_exceeded(
     app_client: tuple[TestClient, StubGhidraClient]
 ) -> None:
@@ -60,7 +79,7 @@ def test_search_strings_limit_exceeded(
 
     response = client.post(
         "/api/search_strings.json",
-        json={"query": "value", "limit": 300, "offset": 0},
+        json={"query": "value", "limit": 300, "page": 1},
     )
     assert response.status_code == 413
     body = response.json()

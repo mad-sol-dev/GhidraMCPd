@@ -124,6 +124,90 @@
     "errors": [],
     "ok": true
   },
+  "collect": {
+    "data": {
+      "meta": {
+        "estimate_tokens": 23,
+        "result_budget": {
+          "consumed_tokens": 23,
+          "max_result_tokens": 2048,
+          "mode": "auto_trim",
+          "remaining_tokens": 2025
+        }
+      },
+      "queries": [
+        {
+          "id": "imports",
+          "meta": {
+            "budget": {
+              "consumed_tokens": 15,
+              "max_result_tokens": null,
+              "mode": "auto_trim"
+            },
+            "estimate_tokens": 15,
+            "max_result_tokens": null,
+            "truncated": false
+          },
+          "op": "search_imports",
+          "result": {
+            "data": {
+              "has_more": true,
+              "items": [
+                {
+                  "address": "0x20000000",
+                  "name": "import_symbol_0000"
+                },
+                {
+                  "address": "0x20000001",
+                  "name": "import_symbol_0001"
+                }
+              ],
+              "limit": 2,
+              "page": 1,
+              "query": "import",
+              "total": 16
+            },
+            "errors": [],
+            "ok": true
+          }
+        },
+        {
+          "id": "xrefs",
+          "meta": {
+            "budget": {
+              "consumed_tokens": 8,
+              "max_result_tokens": null,
+              "mode": "auto_trim"
+            },
+            "estimate_tokens": 8,
+            "max_result_tokens": null,
+            "truncated": false
+          },
+          "op": "search_xrefs_to",
+          "result": {
+            "data": {
+              "has_more": false,
+              "items": [
+                {
+                  "context": "BL log_debug",
+                  "from_address": "0x00005000",
+                  "target_address": "0x00102004"
+                }
+              ],
+              "limit": 5,
+              "page": 1,
+              "query": "log",
+              "total": 1
+            },
+            "errors": [],
+            "ok": true
+          }
+        }
+      ]
+    },
+    "errors": [],
+    "ok": true
+  },
   "jt_scan": {
     "data": {
       "items": [
@@ -259,44 +343,44 @@
     "ok": true
   },
   "project_info": {
-    "ok": true,
     "data": {
-      "program_name": "golden_stub.bin",
-      "executable_path": "/opt/golden_stub.bin",
-      "executable_md5": "0123456789abcdef0123456789abcdef",
-      "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      "executable_format": "ELF",
-      "image_base": "0x00100000",
-      "language_id": "ARM:LE:32:v7",
       "compiler_spec_id": "default",
       "entry_points": [
         "0x00100000",
         "0x00100010"
       ],
+      "executable_format": "ELF",
+      "executable_md5": "0123456789abcdef0123456789abcdef",
+      "executable_path": "/opt/golden_stub.bin",
+      "executable_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "exports_count": 16,
+      "image_base": "0x00100000",
+      "imports_count": 16,
+      "language_id": "ARM:LE:32:v7",
       "memory_blocks": [
         {
-          "name": ".text",
-          "start": "0x00100000",
           "end": "0x0010ffff",
+          "initialized": true,
           "length": 65536,
-          "rwx": "r-x",
           "loaded": true,
-          "initialized": true
+          "name": ".text",
+          "rwx": "r-x",
+          "start": "0x00100000"
         },
         {
-          "name": ".data",
-          "start": "0x00200000",
           "end": "0x00200fff",
+          "initialized": true,
           "length": 4096,
-          "rwx": "rw-",
           "loaded": true,
-          "initialized": true
+          "name": ".data",
+          "rwx": "rw-",
+          "start": "0x00200000"
         }
       ],
-      "imports_count": 16,
-      "exports_count": 16
+      "program_name": "golden_stub.bin"
     },
-    "errors": []
+    "errors": [],
+    "ok": true
   },
   "string_xrefs": {
     "data": {

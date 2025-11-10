@@ -179,6 +179,12 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 }
   ```
 
+## `/api/collect.json`
+
+### POST
+
+**Summary:** collect_route
+
 ## `/api/disassemble_at.json`
 
 ### POST
@@ -350,13 +356,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `limit` | integer | No | default=100, min=1, max=1000 |
-| `offset` | integer | No | default=0, min=0 |
+| `page` | integer | No | default=1, min=1 |
 | `query` | string | Yes |  |
 
 ```json
 {
   "limit": 100,
-  "offset": 0,
+  "page": 1,
   "query": "string"
 }
 ```
@@ -404,13 +410,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `limit` | integer | No | default=100, min=1, max=500 |
-| `offset` | integer | No | default=0, min=0 |
+| `page` | integer | No | default=1, min=1 |
 | `query` | string | Yes |  |
 
 ```json
 {
   "limit": 100,
-  "offset": 0,
+  "page": 1,
   "query": "string"
 }
 ```
@@ -458,13 +464,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `limit` | integer | No | default=100, min=1, max=1000 |
-| `offset` | integer | No | default=0, min=0 |
+| `page` | integer | No | default=1, min=1 |
 | `query` | string | Yes |  |
 
 ```json
 {
   "limit": 100,
-  "offset": 0,
+  "page": 1,
   "query": "string"
 }
 ```
@@ -518,13 +524,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `limit` | integer | No | min=1 |
-| `offset` | integer | No | min=0 |
+| `page` | integer | No | min=1 |
 | `query` | string | Yes |  |
 
 ```json
 {
   "limit": 0,
-  "offset": 0,
+  "page": 0,
   "query": "string"
 }
 ```

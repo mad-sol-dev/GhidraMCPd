@@ -7,6 +7,6 @@
   "properties": {
     "query": {"type": "string", "minLength": 1},
     "limit": {"type": "integer", "minimum": 1},
-    "offset": {"type": "integer", "minimum": 0}
+    "page": {"type": "integer", "minimum": 1}
   }
 }

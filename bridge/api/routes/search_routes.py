@@ -24,21 +24,21 @@ from ...utils.logging import (
     increment_counter,
     request_scope,
 )
-from .._shared import envelope_ok, envelope_response, error_response
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
 
-def _validate_pagination(limit: int, offset: int) -> JSONResponse | None:
+def _validate_pagination(limit: int, page: int) -> JSONResponse | None:
     if limit <= 0:
         return error_response(
             ErrorCode.INVALID_REQUEST,
             "limit must be a positive integer.",
         )
-    if offset < 0:
+    if page <= 0:
         return error_response(
             ErrorCode.INVALID_REQUEST,
-            "offset must be a non-negative integer.",
+            "page must be a positive integer.",
         )
     return None
 
@@ -84,10 +84,10 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
-                offset = int(data.get("offset", 0))
+                page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
+            pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
             try:
@@ -95,7 +95,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -121,9 +121,16 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 offset = int(data.get("offset", 0))
             except (TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
-            if pagination_error is not None:
-                return pagination_error
+            if limit <= 0:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "limit must be a positive integer.",
+                )
+            if offset < 0:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "offset must be a non-negative integer.",
+                )
             try:
                 enforce_batch_limit(limit, counter="strings.compact.limit")
             except SafetyLimitExceeded as exc:
@@ -169,10 +176,10 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
-                offset = int(data.get("offset", 0))
+                page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
+            pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
             try:
@@ -180,7 +187,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -204,10 +211,10 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
-                offset = int(data.get("offset", 0))
+                page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
+            pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
             try:
@@ -215,7 +222,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -240,10 +247,10 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 address = str(data["address"])
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
-                offset = int(data.get("offset", 0))
+                page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
+            pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
             try:
@@ -252,7 +259,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     address=address,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
             except ValueError as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
@@ -278,10 +285,10 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
-                offset = int(data.get("offset", 0))
+                page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            pagination_error = _validate_pagination(limit, offset)
+            pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
             try:
@@ -289,7 +296,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
