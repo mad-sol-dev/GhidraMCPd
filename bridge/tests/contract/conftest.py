@@ -245,6 +245,21 @@ class StubGhidraClient:
         normalized_query = query.lower()
         return [f for f in all_functions if normalized_query in f.lower()]
 
+    def list_functions_in_range(
+        self, address_min: int, address_max: int
+    ) -> List[Dict[str, object]]:
+        results: List[Dict[str, object]] = []
+        for addr, meta in sorted(self._functions.items()):
+            if address_min <= addr <= address_max:
+                results.append(
+                    {
+                        "name": meta.get("name", f"sub_{addr:08x}"),
+                        "address": f"0x{addr:08x}",
+                        "size": None,
+                    }
+                )
+        return results
+
     def search_imports(self, query: str) -> List[str]:
         normalized_query = query.lower()
         return [

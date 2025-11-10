@@ -2,7 +2,7 @@
 
 ## Phase 1 – Correctness & consistency (now)
 - ✅ GET /api/project_info.json
-- Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based) — partially shipped; `list_functions_in_range` still lacks `{query,has_more}` and compact listings continue to rely on offsets
+- ✅ Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based) — `list_functions_in_range` now aligned; compact listings continue to rely on offsets
 - ✅ Unified error schema + enums
 - OpenAPI snapshots drift-free
 

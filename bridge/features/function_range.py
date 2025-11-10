@@ -2,7 +2,7 @@
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
-from ..utils.hex import parse_hex
+from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import increment_counter
 
 
@@ -35,6 +35,9 @@ def list_functions_in_range(
     
     # Fetch all functions in range from Ghidra
     raw_results = client.list_functions_in_range(min_addr, max_addr)
+
+    # Canonical query representation for metadata parity with other search APIs
+    query = f"[{int_to_hex(min_addr)},{int_to_hex(max_addr)}]"
     
     # Sort by address for determinism
     sorted_results = sorted(raw_results, key=lambda x: parse_hex(x["address"]))
@@ -61,15 +64,17 @@ def list_functions_in_range(
     
     start = (page - 1) * limit
     end = start + limit
-    
+
     paginated_items = items[start:end]
-    
+
     increment_counter("function_range.list.results", len(paginated_items))
-    
+
     return {
+        "query": query,
         "total": total,
         "page": page,
         "limit": limit,
+        "has_more": end < total,
         "items": paginated_items,
     }
 
