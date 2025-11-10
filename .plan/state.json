@@ -241,9 +241,9 @@
       "updated_at": "2025-11-10T18:11:13+00:00"
     },
     "D.4": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "pending",
+      "status": "done",
+      "updated_at": "2025-11-10T18:30:00+00:00"
     },
     "D.5": {
       "commit": "pending",
@@ -251,9 +251,9 @@
       "updated_at": "2025-11-09T12:29:55+00:00"
     },
     "D.6": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "pending",
+      "status": "done",
+      "updated_at": "2025-11-10T18:30:00+00:00"
     },
     "D.7": {
       "commit": null,

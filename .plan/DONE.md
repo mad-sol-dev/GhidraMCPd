@@ -22,3 +22,5 @@
 - 2025-11-09 **D.5** — Unified error schema + enums (structured envelope, docs, tests) _commit:pending_
 - 2025-11-10 **T-202511-018** — Sync roadmap + plan docs with audit (ROADMAP.md, .plan statuses, overview snapshot) _commit:pending_
 - 2025-11-10 **D.3** — Unify search metadata (range query/has_more parity) _commit:pending_
+- 2025-11-10 **D.4** — POST /api/collect.json multi-query collector (per-subop envelopes, docs, tests) _commit:pending_
+- 2025-11-10 **D.6** — Server-side result budgeting (collector auto-trim/strict enforcement, docs/tests) _commit:pending_

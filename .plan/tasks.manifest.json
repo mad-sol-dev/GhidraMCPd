@@ -52,7 +52,8 @@
         "`queries[]` executes multiple read-only sub-ops in one call",
         "Budget-aware shortening; per-subop envelope",
         "Unit + Contract + Golden; docs"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.5",
@@ -77,7 +78,8 @@
         "`max_result_tokens` param; `result_budget.mode=auto_trim|strict`",
         "Response carries estimate_tokens, truncated, resume_cursor?",
         "Contract tests for strict (413) and auto_trim (200, truncated=true)"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.7",
