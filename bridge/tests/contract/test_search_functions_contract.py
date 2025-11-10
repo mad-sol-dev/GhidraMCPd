@@ -12,7 +12,7 @@ def test_search_functions_normalizes_addresses(contract_client: TestClient) -> N
 
     response = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "Reset", "limit": 5, "offset": 0},
+        json={"query": "Reset", "limit": 5, "page": 1},
     )
 
     assert response.status_code == 200

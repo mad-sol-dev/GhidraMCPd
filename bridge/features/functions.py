@@ -17,12 +17,13 @@ def search_functions(
     *,
     query: str,
     limit: int = 100,
-    offset: int = 0,
+    page: int = 1,
 ) -> Dict[str, object]:
     """Search for functions matching *query* and return a paginated payload."""
 
     limit = max(1, min(int(limit), 500))
-    offset = max(0, int(offset))
+    page = max(1, int(page))
+    offset = (page - 1) * limit
 
     query_str = str(query)
     search_query = "" if query_str in {"", "*"} else query_str
@@ -47,7 +48,6 @@ def search_functions(
     end = min(start + limit, total)
     paginated_items = parsed_items[start:end]
 
-    page = (start // limit) + 1 if limit else 1
     has_more = end < total
 
     return {

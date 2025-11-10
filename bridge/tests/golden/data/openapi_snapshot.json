@@ -946,9 +946,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1048,9 +1048,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1150,9 +1150,9 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "default": 0,
-                    "minimum": 0,
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {
@@ -1255,8 +1255,8 @@
                     "minimum": 1,
                     "type": "integer"
                   },
-                  "offset": {
-                    "minimum": 0,
+                  "page": {
+                    "minimum": 1,
                     "type": "integer"
                   },
                   "query": {

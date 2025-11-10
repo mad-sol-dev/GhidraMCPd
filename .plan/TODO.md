@@ -5,7 +5,7 @@
 
 ## NOW
 - {D.3} Unify search metadata
-  DoD: All search endpoints return {query,total,page,limit,has_more,items}; 1-based `page`; edge case tests (0/limit/last). Note: `list_functions_in_range` still lacks `{query,has_more}` and requests accept `offset`.
+  DoD: All search endpoints return {query,total,page,limit,has_more,items}; 1-based `page`; edge case tests (0/limit/last). Note: `list_functions_in_range` still lacks `{query,has_more}` and `strings_compact` remains offset-based.
 
 ## NEXT
 - {D.4} POST /api/collect.json (multi-query collector, read-only)

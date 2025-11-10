@@ -76,7 +76,7 @@ _CASES: List[EndpointCase] = [
         valid={
             "query": "value",
             "limit": 5,
-            "offset": 0,
+            "page": 1,
         },
         missing="query",
     ),
@@ -95,7 +95,7 @@ _CASES: List[EndpointCase] = [
         valid={
             "query": "import",
             "limit": 10,
-            "offset": 0,
+            "page": 1,
         },
         missing="query",
     ),
@@ -105,7 +105,7 @@ _CASES: List[EndpointCase] = [
         valid={
             "query": "export",
             "limit": 10,
-            "offset": 0,
+            "page": 1,
         },
         missing="query",
     ),
@@ -116,7 +116,7 @@ _CASES: List[EndpointCase] = [
             "address": "0x00100000",
             "query": "xref",
             "limit": 10,
-            "offset": 0,
+            "page": 1,
         },
         missing="address",
     ),
@@ -126,7 +126,7 @@ _CASES: List[EndpointCase] = [
         valid={
             "query": "func",
             "limit": 10,
-            "offset": 0,
+            "page": 1,
         },
         missing="query",
     ),

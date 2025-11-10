@@ -147,7 +147,7 @@ echo "\n== Function search =="
 search_body="$tmp_dir/search.json"
 status=$(http_status_body POST "$BRIDGE_BASE/api/search_functions.json" "$search_body" \
   -H 'content-type: application/json' \
-  --data '{"query":"Reset","limit":5,"offset":0}' --max-time 5)
+  --data '{"query":"Reset","limit":5,"page":1}' --max-time 5)
 if [[ "$status" != "200" ]]; then
   fail "search_functions returned HTTP $status"
 else

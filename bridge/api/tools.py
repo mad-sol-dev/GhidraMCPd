@@ -216,9 +216,9 @@ def register_tools(
         client,
         query: str,
         limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
     ) -> Dict[str, object]:
-        request_payload = {"query": query, "limit": limit, "offset": offset}
+        request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload("search_strings.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -233,7 +233,7 @@ def register_tools(
                     client,
                     query=query,
                     limit=int(limit),
-                    offset=int(offset),
+                    page=int(page),
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -295,11 +295,11 @@ def register_tools(
         client,
         query: str,
         limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
     ) -> Dict[str, object]:
         """Search imported symbols matching a query with pagination support."""
 
-        request_payload = {"query": query, "limit": limit, "offset": offset}
+        request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload(
             "search_imports.request.v1.json", request_payload
         )
@@ -316,7 +316,7 @@ def register_tools(
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -332,11 +332,11 @@ def register_tools(
         client,
         query: str,
         limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
     ) -> Dict[str, object]:
         """Search exported symbols matching a query with pagination support."""
 
-        request_payload = {"query": query, "limit": limit, "offset": offset}
+        request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload(
             "search_exports.request.v1.json", request_payload
         )
@@ -353,7 +353,7 @@ def register_tools(
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -370,7 +370,7 @@ def register_tools(
         address: str,
         query: str,
         limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
     ) -> Dict[str, object]:
         """Search cross-references to an address with pagination support."""
 
@@ -378,7 +378,7 @@ def register_tools(
             "address": address,
             "query": query,
             "limit": limit,
-            "offset": offset,
+            "page": page,
         }
         valid, errors = validate_payload(
             "search_xrefs_to.request.v1.json", request_payload
@@ -397,7 +397,7 @@ def register_tools(
                     address=address,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
         except ValueError as exc:
             return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
@@ -415,21 +415,21 @@ def register_tools(
         client,
         query: str,
         limit: int = 100,
-        offset: int = 0,
+        page: int = 1,
     ) -> Dict[str, object]:
         """
         Search for functions matching a query with pagination support.
-        
+
         Args:
             query: Search query string (function name pattern)
             limit: Maximum number of results to return (default: 100)
-            offset: Number of results to skip for pagination (default: 0)
-            
+            page: 1-based page number for pagination (default: 1)
+
         Returns:
             Dictionary with query, total count, page, limit, and items array.
             Each item contains name and address fields.
         """
-        request_payload = {"query": query, "limit": limit, "offset": offset}
+        request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload("search_functions.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -444,7 +444,7 @@ def register_tools(
                     client,
                     query=query,
                     limit=limit,
-                    offset=offset,
+                    page=page,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))

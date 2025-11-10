@@ -11,7 +11,7 @@ def search_xrefs_to(
     address: str,
     query: str,
     limit: int = 100,
-    offset: int = 0,
+    page: int = 1,
 ) -> Dict[str, object]:
     """Search cross-references to ``address`` and return a paginated response.
     
@@ -20,7 +20,7 @@ def search_xrefs_to(
         address: Target address as hex string
         query: Search query string (use "*" or "" for all xrefs)
         limit: Maximum number of results per page
-        offset: Number of results to skip
+        page: 1-based page number for pagination
         
     Returns:
         Dictionary with query, total count, page, limit, items array, and has_more flag
@@ -52,15 +52,14 @@ def search_xrefs_to(
         )
 
     total = len(items)
-    if limit <= 0:
-        limit = total if total > 0 else 1
-        page = 1
-        paginated_items = items[offset:]
-    else:
-        page = offset // limit + 1
-        paginated_items = items[offset : offset + limit]
+    limit = max(int(limit), 1)
+    page = max(int(page), 1)
+    offset = (page - 1) * limit
+    start = min(offset, total)
+    end = min(start + limit, total)
+    paginated_items = items[start:end]
 
-    has_more = (page * limit) < total
+    has_more = end < total
 
     return {
         "query": query,
