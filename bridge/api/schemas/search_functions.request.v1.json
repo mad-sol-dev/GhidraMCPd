@@ -18,6 +18,14 @@
       "type": "integer",
       "minimum": 1,
       "default": 1
+    },
+    "rank": {
+      "type": "string",
+      "enum": ["simple"]
+    },
+    "k": {
+      "type": "integer",
+      "minimum": 1
     }
   },
   "additionalProperties": false

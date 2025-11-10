@@ -14,7 +14,7 @@
   - **strict:** 413 RESULT_TOO_LARGE response with recovery hints (reduce fields/limit/k).
 
 ## Phase 3 – Relevance & Scaling
-- rank=simple & k (opt-in)
+- ✅ rank=simple & k (opt-in)
 - Cursor streaming for large sets (pending — no cursor/resume plumbing yet)
 - 5-minute short-term cache per {digest,query}
 

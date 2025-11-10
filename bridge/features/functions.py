@@ -12,12 +12,48 @@ _FUNCTION_LINE = re.compile(
 )
 
 
+def _rank_functions_simple(
+    items: List[Dict[str, str]], query: str
+) -> List[Dict[str, str]]:
+    """Apply a simple heuristic scoring to *items* and return a new ordering."""
+
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return list(items)
+
+    scored: List[tuple[int, int, Dict[str, str]]] = []
+    for index, item in enumerate(items):
+        name = item.get("name", "")
+        address = item.get("address", "")
+        name_normalized = name.lower()
+        address_normalized = address.lower()
+
+        score = 0
+        if name_normalized == normalized_query:
+            score += 400
+        if name_normalized.startswith(normalized_query):
+            score += 200
+        if normalized_query in name_normalized:
+            score += 100
+        if address_normalized == normalized_query:
+            score += 350
+        elif normalized_query in address_normalized:
+            score += 150
+
+        scored.append((-score, index, item))
+
+    scored.sort()
+    return [entry[2] for entry in scored]
+
+
 def search_functions(
     client: GhidraClient,
     *,
     query: str,
     limit: int = 100,
     page: int = 1,
+    rank: str | None = None,
+    k: int | None = None,
 ) -> Dict[str, object]:
     """Search for functions matching *query* and return a paginated payload."""
 
@@ -43,10 +79,17 @@ def search_functions(
             "address": addr.lower(),
         })
 
-    total = len(parsed_items)
+    ranked_items = parsed_items
+    if rank == "simple":
+        ranked_items = _rank_functions_simple(parsed_items, query_str)
+        if k is not None:
+            k = max(1, int(k))
+            ranked_items = ranked_items[:k]
+
+    total = len(ranked_items)
     start = min(offset, total)
     end = min(start + limit, total)
-    paginated_items = parsed_items[start:end]
+    paginated_items = ranked_items[start:end]
 
     has_more = end < total
 

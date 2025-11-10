@@ -1058,6 +1058,16 @@
                     "minimum": 1,
                     "type": "integer"
                   },
+                  "rank": {
+                    "enum": [
+                      "simple"
+                    ],
+                    "type": "string"
+                  },
+                  "k": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
                   "query": {
                     "minLength": 0,
                     "type": "string"
