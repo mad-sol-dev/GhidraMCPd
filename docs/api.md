@@ -384,8 +384,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "name": "string"
     }
   ],
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string",
   "total": 0
 }
@@ -438,8 +438,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "name": "string"
     }
   ],
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string",
   "total": 0
 }
@@ -492,8 +492,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "name": "string"
     }
   ],
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string",
   "total": 0
 }
@@ -523,8 +523,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 ```json
 {
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string"
 }
 ```
@@ -549,8 +549,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   "items": [
     "\u2026"
   ],
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string",
   "total": 0
 }
