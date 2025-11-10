@@ -5,7 +5,7 @@ def test_search_exports_basic(contract_client: TestClient) -> None:
 
     response = contract_client.post(
         "/api/search_exports.json",
-        json={"query": "export", "limit": 10, "offset": 0},
+        json={"query": "export", "limit": 10, "page": 1},
     )
 
     assert response.status_code == 200
@@ -28,15 +28,15 @@ def test_search_exports_basic(contract_client: TestClient) -> None:
 
 
 def test_search_exports_pagination(contract_client: TestClient) -> None:
-    """Results should paginate deterministically across offsets."""
+    """Results should paginate deterministically across pages."""
 
     first = contract_client.post(
         "/api/search_exports.json",
-        json={"query": "export", "limit": 5, "offset": 0},
+        json={"query": "export", "limit": 5, "page": 1},
     )
     second = contract_client.post(
         "/api/search_exports.json",
-        json={"query": "export", "limit": 5, "offset": 5},
+        json={"query": "export", "limit": 5, "page": 2},
     )
 
     assert first.status_code == 200
@@ -72,10 +72,10 @@ def test_search_exports_validates_schema(contract_client: TestClient) -> None:
     assert invalid_limit.status_code == 400
 
 
-def test_search_exports_negative_offset(contract_client: TestClient) -> None:
+def test_search_exports_invalid_page(contract_client: TestClient) -> None:
     response = contract_client.post(
         "/api/search_exports.json",
-        json={"query": "test", "limit": 10, "offset": -1},
+        json={"query": "test", "limit": 10, "page": 0},
     )
 
     assert response.status_code == 400
@@ -85,8 +85,22 @@ def test_search_exports_negative_offset(contract_client: TestClient) -> None:
 def test_search_exports_zero_limit(contract_client: TestClient) -> None:
     response = contract_client.post(
         "/api/search_exports.json",
-        json={"query": "test", "limit": 0},
+        json={"query": "test", "limit": 0, "page": 1},
     )
 
     assert response.status_code == 400
     assert response.json()["ok"] is False
+
+
+def test_search_exports_page_beyond_results(contract_client: TestClient) -> None:
+    response = contract_client.post(
+        "/api/search_exports.json",
+        json={"query": "export", "limit": 5, "page": 999},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["items"] == []
+    assert data["has_more"] is False

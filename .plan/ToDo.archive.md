@@ -159,7 +159,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 **Goal:** Avoid information loss by searching the complete set of strings on the Ghidra side *before* applying pagination. This fixes a critical flaw where filtering only happens on a limited page of results.
 **DoD:** _commit:cf6f65e_
 - A new endpoint `/api/search_strings.json` and a corresponding MCP tool `search_strings` are created.
-- The endpoint requires a `query` parameter and supports optional `limit` and `offset` for the *results*.
+- The endpoint requires a `query` parameter and supports optional `limit` and `page` for the *results*.
 - The implementation calls the Java plugin's `/strings` endpoint, passing the `query` as the `filter` URL parameter.
 - The response payload must include pagination metadata: `query`, `total_results`, `page`, and `limit`, in addition to the `items` list. This enables the LLM to make informed decisions about refining its search.
 - New JSON schemas (`search_strings.request.v1.json` and `search_strings.v1.json`) are created and used for validation.
@@ -172,7 +172,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 **Goal:** Expose the existing server-side search for functions through a deterministic endpoint with informed pagination.
 **DoD:** _commit:b1554dc_
 - A new endpoint `/api/search_functions.json` and a corresponding MCP tool `search_functions` are created.
-- The endpoint requires a `query` parameter and supports optional `limit` and `offset`.
+- The endpoint requires a `query` parameter and supports optional `limit` and `page`.
 - It calls the Java plugin's `/searchFunctions` endpoint.
 - The response payload must include pagination metadata: `query`, `total_results`, `page`, and `limit`, in addition to the `items` list of function objects.
 - New JSON schemas (`search_functions.request.v1.json` and `search_functions.v1.json`) are created and used for validation.
@@ -302,7 +302,7 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 
 - [✅] **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
   - **Problem:** `openapi.json` hat für `/api/search_*.json` kein JSON-Schema.
-  - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/offset` im Schema definiert; `response_model` vorhanden. _commit:98b8e59_
+  - **DoD:** Für `search_{strings,functions,imports,exports}.json` sind `query/limit/page` im Schema definiert; `response_model` vorhanden. _commit:98b8e59_
   - **Tests:**
     - `jq` auf `openapi.json`: `paths["/api/search_strings.json"].post.requestBody.content["application/json"].schema != null`.
   - **What changed:** OpenAPI now embeds request/response schemas for search endpoints and updates the golden snapshot.
