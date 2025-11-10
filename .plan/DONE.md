@@ -20,3 +20,4 @@
 - 2025-11-09 **T-202511-017** — Sync .plan manifest and API docs drift gate checks
 - 2025-11-09 **D.2** — POST /api/analyze_function_complete.json composite dossier (disasm/decompile/xrefs/callgraph/strings/features, schema+docs+tests) _commit:dac950b_
 - 2025-11-09 **D.5** — Unified error schema + enums (structured envelope, docs, tests) _commit:pending_
+- 2025-11-10 **T-202511-018** — Sync roadmap + plan docs with audit (ROADMAP.md, .plan statuses, overview snapshot) _commit:pending_

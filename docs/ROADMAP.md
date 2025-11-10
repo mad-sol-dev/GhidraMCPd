@@ -2,7 +2,7 @@
 
 ## Phase 1 – Correctness & consistency (now)
 - ✅ GET /api/project_info.json
-- Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based)
+- Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based) — partially shipped; `list_functions_in_range` still lacks `{query,has_more}` and requests accept `offset`
 - ✅ Unified error schema + enums
 - OpenAPI snapshots drift-free
 
@@ -15,7 +15,7 @@
 
 ## Phase 3 – Relevance & Scaling
 - rank=simple & k (opt-in)
-- ✅ Cursor streaming for large sets
+- Cursor streaming for large sets (pending — no cursor/resume plumbing yet)
 - 5-minute short-term cache per {digest,query}
 
 ## Principles
