@@ -4,6 +4,7 @@ import asyncio
 import logging
 from time import perf_counter
 from typing import Callable, List
+from urllib.parse import urljoin
 
 import httpx
 
@@ -37,15 +38,17 @@ def create_health_routes(
                         "reachable": False,
                     }
                     start = perf_counter()
+                    probe_path = "projectInfo"
+                    probe_url = urljoin(client.base_url, probe_path)
                     try:
-                        response = client._session.get(client.base_url, timeout=2.0)
+                        response = client._session.get(probe_url, timeout=2.0)
                     except httpx.HTTPError as exc:
                         duration_ms = (perf_counter() - start) * 1000.0
                         logger.warning(
                             "ghidra.request",
                             extra={
                                 "method": "GET",
-                                "path": "/",
+                                "path": f"/{probe_path}",
                                 "duration_ms": duration_ms,
                                 "error": str(exc),
                             },
@@ -57,12 +60,12 @@ def create_health_routes(
                             "ghidra.request",
                             extra={
                                 "method": "GET",
-                                "path": "/",
+                                "path": f"/{probe_path}",
                                 "status_code": response.status_code,
                                 "duration_ms": duration_ms,
                             },
                         )
-                        upstream["reachable"] = response.is_success
+                        upstream["reachable"] = response.status_code == 200
                         upstream["status_code"] = response.status_code
                     payload = {
                         "service": "ghidra-mcp-bridge",
