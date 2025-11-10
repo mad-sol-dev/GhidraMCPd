@@ -83,7 +83,31 @@ def test_search_functions_validates_schema(contract_client: TestClient) -> None:
         "/api/search_functions.json",
         json={"query": "test", "limit": "invalid"},
     )
-    
+
+    assert response.status_code == 400
+
+    # Invalid rank option
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "test", "rank": "advanced"},
+    )
+
+    assert response.status_code == 400
+
+    # k without rank
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "test", "k": 5},
+    )
+
+    assert response.status_code == 400
+
+    # Invalid k value
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "test", "rank": "simple", "k": 0},
+    )
+
     assert response.status_code == 400
 
 
@@ -123,3 +147,49 @@ def test_search_functions_page_beyond_results(contract_client: TestClient) -> No
     data = payload["data"]
     assert data["items"] == []
     assert data["has_more"] is False
+
+
+def test_search_functions_simple_rank_trims_before_pagination(
+    contract_client: TestClient,
+) -> None:
+    """Heuristic ranking trims to k before pagination and keeps ordering stable."""
+
+    first_page = contract_client.post(
+        "/api/search_functions.json",
+        json={
+            "query": "func",
+            "limit": 2,
+            "page": 1,
+            "rank": "simple",
+            "k": 3,
+        },
+    )
+
+    second_page = contract_client.post(
+        "/api/search_functions.json",
+        json={
+            "query": "func",
+            "limit": 2,
+            "page": 2,
+            "rank": "simple",
+            "k": 3,
+        },
+    )
+
+    assert first_page.status_code == 200
+    assert second_page.status_code == 200
+
+    first_payload = first_page.json()["data"]
+    second_payload = second_page.json()["data"]
+
+    assert first_payload["total"] == 3
+    assert second_payload["total"] == 3
+    assert first_payload["items"]
+    assert second_payload["items"]
+    assert [item["name"] for item in first_payload["items"]] == [
+        "func_0000",
+        "func_0001",
+    ]
+    assert [item["name"] for item in second_payload["items"]] == ["func_0002"]
+    assert first_payload["has_more"] is True
+    assert second_payload["has_more"] is False
