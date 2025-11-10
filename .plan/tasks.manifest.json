@@ -101,7 +101,8 @@
       "dod": [
         "Cursor-based paging + early partial responses",
         "Resume handles documented; tests"
-      ]
+      ],
+      "status": "todo"
     },
     {
       "id": "D.9",
@@ -132,6 +133,18 @@
       "dod": [
         "POM references GHIDRA_DIR",
         "CI downloads ghidra and sets GHIDRA_DIR"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "T-202511-018",
+      "title": "Sync roadmap + plan docs with audit",
+      "area": "planning",
+      "depends_on": [],
+      "dod": [
+        "docs/ROADMAP.md reflects delivered vs. pending features",
+        ".plan/state.json and tasks.manifest.json statuses match implementation",
+        "Overview or status doc summarizes current bridge capabilities and open roadmap gaps"
       ],
       "status": "done"
     }
