@@ -1,8 +1,15 @@
 """Function search and listing features."""
 
+from __future__ import annotations
+
+import re
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
+
+_FUNCTION_LINE = re.compile(
+    r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
+)
 
 
 def search_functions(
@@ -14,40 +21,28 @@ def search_functions(
 ) -> Dict[str, object]:
     """Search for functions matching *query* and return a paginated payload."""
 
-    # Requests are validated but we defensively clamp the limit to the schema bounds.
     limit = max(1, min(int(limit), 500))
-    offset = max(int(offset), 0)
+    offset = max(0, int(offset))
 
-    # Normalize wildcard searches to match Ghidra's behaviour.
-    search_query = "" if query in ("", "*") else query
+    query_str = str(query)
+    search_query = "" if query_str in {"", "*"} else query_str
     raw_results = client.search_functions(search_query) or []
 
-    # Parse raw strings into structured name/address pairs while ensuring 0x prefix.
     parsed_items: List[Dict[str, str]] = []
     for line in raw_results:
-        line = line.strip()
-        if " @ " in line:
-            parts = line.rsplit(" @ ", 1)
-        elif " at " in line:
-            parts = line.rsplit(" at ", 1)
-        else:
+        match = _FUNCTION_LINE.match(line.strip())
+        if not match:
             continue
-
-        if len(parts) != 2:
-            continue
-
-        name, addr = parts
-        addr = addr.strip()
-        if addr and not addr.lower().startswith("0x"):
+        name = match.group("name").strip()
+        addr = match.group("addr").strip()
+        if not addr.lower().startswith("0x"):
             addr = f"0x{addr}"
-
         parsed_items.append({
-            "name": name.strip(),
-            "address": addr.lower() if addr else addr,
+            "name": name,
+            "address": addr.lower(),
         })
 
     total = len(parsed_items)
-
     start = min(offset, total)
     end = min(start + limit, total)
     paginated_items = parsed_items[start:end]
@@ -56,7 +51,7 @@ def search_functions(
     has_more = end < total
 
     return {
-        "query": query,
+        "query": query_str,
         "total": total,
         "page": page,
         "limit": limit,
