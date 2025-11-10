@@ -288,6 +288,45 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
+
+            rank_raw = data.get("rank")
+            rank: str | None
+            if rank_raw is None:
+                rank = None
+            elif isinstance(rank_raw, str):
+                rank = rank_raw
+            else:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "rank must be a string.",
+                )
+
+            if rank is not None and rank not in {"simple"}:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "rank must be one of: simple.",
+                )
+
+            k_raw = data.get("k")
+            k: int | None = None
+            if k_raw is not None:
+                try:
+                    k = int(k_raw)
+                except (TypeError, ValueError):
+                    return error_response(
+                        ErrorCode.INVALID_REQUEST,
+                        "k must be a positive integer.",
+                    )
+                if k <= 0:
+                    return error_response(
+                        ErrorCode.INVALID_REQUEST,
+                        "k must be a positive integer.",
+                    )
+                if rank != "simple":
+                    return error_response(
+                        ErrorCode.INVALID_REQUEST,
+                        'k requires rank="simple".',
+                    )
             pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
@@ -297,6 +336,8 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     query=query,
                     limit=limit,
                     page=page,
+                    rank=rank,
+                    k=k,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))

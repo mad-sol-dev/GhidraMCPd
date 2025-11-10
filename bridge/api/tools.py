@@ -416,6 +416,9 @@ def register_tools(
         query: str,
         limit: int = 100,
         page: int = 1,
+        *,
+        rank: str | None = None,
+        k: int | None = None,
     ) -> Dict[str, object]:
         """
         Search for functions matching a query with pagination support.
@@ -424,12 +427,18 @@ def register_tools(
             query: Search query string (function name pattern)
             limit: Maximum number of results to return (default: 100)
             page: 1-based page number for pagination (default: 1)
+            rank: Optional ranking mode ("simple") applied before pagination
+            k: Optional cap on ranked results prior to pagination
 
         Returns:
             Dictionary with query, total count, page, limit, and items array.
             Each item contains name and address fields.
         """
         request_payload = {"query": query, "limit": limit, "page": page}
+        if rank is not None:
+            request_payload["rank"] = rank
+        if k is not None:
+            request_payload["k"] = k
         valid, errors = validate_payload("search_functions.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -445,6 +454,8 @@ def register_tools(
                     query=query,
                     limit=limit,
                     page=page,
+                    rank=rank,
+                    k=k,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))

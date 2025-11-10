@@ -199,7 +199,32 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
     query = str(params.get("query", ""))
     limit = int(params.get("limit", 100))
     page = int(params.get("page", 1))
-    return functions.search_functions(client, query=query, limit=limit, page=page)
+    rank_param = params.get("rank")
+    rank: str | None
+    if rank_param is None:
+        rank = None
+    else:
+        rank = str(rank_param)
+        if rank not in {"simple"}:
+            raise ValueError("rank must be one of: simple")
+
+    k_param = params.get("k")
+    k: int | None = None
+    if k_param is not None:
+        k = int(k_param)
+        if k <= 0:
+            raise ValueError("k must be a positive integer")
+        if rank != "simple":
+            raise ValueError('k requires rank="simple"')
+
+    return functions.search_functions(
+        client,
+        query=query,
+        limit=limit,
+        page=page,
+        rank=rank,
+        k=k,
+    )
 
 
 def _op_search_xrefs_to(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
