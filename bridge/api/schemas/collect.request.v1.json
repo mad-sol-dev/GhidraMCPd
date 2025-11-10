@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:collect.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["queries"],
+  "properties": {
+    "queries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/query"}
+    },
+    "result_budget": {"$ref": "#/$defs/result_budget"},
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "op"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "op": {"type": "string", "minLength": 1},
+        "params": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "max_result_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "result_budget": {"$ref": "#/$defs/result_budget"}
+      }
+    },
+    "result_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_result_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "mode": {
+          "type": "string",
+          "enum": ["auto_trim", "strict"],
+          "default": "auto_trim"
+        }
+      }
+    }
+  }
+}

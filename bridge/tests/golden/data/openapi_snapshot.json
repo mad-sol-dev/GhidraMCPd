@@ -605,6 +605,11 @@
         "x-response-model": "analyze_function_complete.v1.json"
       }
     },
+    "/api/collect.json": {
+      "post": {
+        "summary": "collect_route"
+      }
+    },
     "/api/disassemble_at.json": {
       "post": {
         "summary": "disassemble_at_route"

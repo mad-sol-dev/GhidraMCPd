@@ -11,6 +11,7 @@ from ...utils.config import ENABLE_WRITES
 from ._common import RouteDependencies, build_with_client, validated_json_body
 from .._shared import adapter_for_arch
 from .analysis_routes import create_analysis_routes
+from .collect_routes import create_collect_routes
 from .disasm_routes import create_disasm_routes
 from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
@@ -42,6 +43,7 @@ def make_routes(
         create_project_routes(deps),
         create_jt_routes(deps),
         create_search_routes(deps),
+        create_collect_routes(deps),
         create_mmio_routes(deps),
         create_disasm_routes(deps),
         create_memory_routes(deps),

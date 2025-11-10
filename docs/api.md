@@ -179,6 +179,12 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 }
   ```
 
+## `/api/collect.json`
+
+### POST
+
+**Summary:** collect_route
+
 ## `/api/disassemble_at.json`
 
 ### POST
