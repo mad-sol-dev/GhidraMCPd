@@ -38,15 +38,15 @@ def _post(path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     (
         (
             "/api/search_functions.json",
-            {"query": "", "limit": 1, "offset": 0},
+            {"query": "", "limit": 1, "page": 1},
         ),
         (
             "/api/search_imports.json",
-            {"query": "a", "limit": 1, "offset": 0},
+            {"query": "a", "limit": 1, "page": 1},
         ),
         (
             "/api/search_exports.json",
-            {"query": "a", "limit": 1, "offset": 0},
+            {"query": "a", "limit": 1, "page": 1},
         ),
         (
             "/api/search_scalars.json",

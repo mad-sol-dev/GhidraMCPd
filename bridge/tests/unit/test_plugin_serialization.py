@@ -35,8 +35,10 @@ async def _exercise_serialization(caplog: pytest.LogCaptureFixture) -> None:
     semaphore = RecordingSemaphore()
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/":
+        if request.url.path == "/projectInfo":
             return httpx.Response(200, text="ok\n")
+        if request.url.path == "/":
+            return httpx.Response(404, text="not found\n")
         return httpx.Response(404, text="not found\n")
 
     mock_transport = httpx.MockTransport(handler)
@@ -64,7 +66,7 @@ async def _exercise_serialization(caplog: pytest.LogCaptureFixture) -> None:
     assert len(ghidra_logs) >= 2
     for record in ghidra_logs:
         assert getattr(record, "method", None) == "GET"
-        assert getattr(record, "path", None) in {"/", "read_dword"}
+        assert getattr(record, "path", None) in {"/projectInfo", "read_dword"}
         duration = getattr(record, "duration_ms", 0.0)
         assert isinstance(duration, float)
         assert duration >= 0.0

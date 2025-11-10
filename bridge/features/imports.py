@@ -8,7 +8,7 @@ def search_imports(
     *,
     query: str,
     limit: int = 100,
-    offset: int = 0,
+    page: int = 1,
 ) -> Dict[str, object]:
     """Search for imported symbols matching ``query`` and return paginated results."""
 
@@ -28,17 +28,14 @@ def search_imports(
         items.append({"name": name, "address": address})
 
     total = len(items)
-    if limit <= 0:
-        limit = total if total > 0 else 1
-        page = 1
-        paginated_items = items[offset:]
-    else:
-        page = offset // limit + 1
-        paginated_items = items[offset : offset + limit]
+    limit = max(int(limit), 1)
+    page = max(int(page), 1)
+    offset = (page - 1) * limit
+    start = min(offset, total)
+    end = min(start + limit, total)
+    paginated_items = items[start:end]
 
-    page = max(page, 1)
-    limit = max(limit, 1)
-    has_more = (page * limit) < total
+    has_more = end < total
 
     return {
         "query": query,

@@ -8,7 +8,7 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
     """Test that search_functions returns correct structure."""
     response = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "func", "limit": 10, "offset": 0},
+        json={"query": "func", "limit": 10, "page": 1},
     )
     
     assert response.status_code == 200
@@ -33,17 +33,17 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
 
 
 def test_search_functions_pagination(contract_client: TestClient) -> None:
-    """Test that offset pagination works correctly."""
+    """Test that page-based pagination works correctly."""
     # First page
     response1 = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "func", "limit": 5, "offset": 0},
+        json={"query": "func", "limit": 5, "page": 1},
     )
     
     # Second page
     response2 = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "func", "limit": 5, "offset": 5},
+        json={"query": "func", "limit": 5, "page": 2},
     )
     
     assert response1.status_code == 200
@@ -87,11 +87,11 @@ def test_search_functions_validates_schema(contract_client: TestClient) -> None:
     assert response.status_code == 400
 
 
-def test_search_functions_negative_offset(contract_client: TestClient) -> None:
-    """Test that negative offset is rejected."""
+def test_search_functions_invalid_page(contract_client: TestClient) -> None:
+    """Test that invalid page values are rejected."""
     response = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "test", "limit": 10, "offset": -1},
+        json={"query": "test", "limit": 10, "page": 0},
     )
     
     assert response.status_code == 400
@@ -103,9 +103,23 @@ def test_search_functions_zero_limit(contract_client: TestClient) -> None:
     """Test that zero or negative limit is rejected."""
     response = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "test", "limit": 0},
+        json={"query": "test", "limit": 0, "page": 1},
     )
-    
+
     assert response.status_code == 400
     payload = response.json()
     assert payload["ok"] is False
+
+
+def test_search_functions_page_beyond_results(contract_client: TestClient) -> None:
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "func", "limit": 5, "page": 999},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["items"] == []
+    assert data["has_more"] is False

@@ -3,11 +3,13 @@
   "$id": "urn:schema:list-functions-in-range.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["total", "page", "limit", "items"],
+  "required": ["query", "total", "page", "limit", "has_more", "items"],
   "properties": {
+    "query": {"type": "string"},
     "total": {"type": "integer", "minimum": 0},
     "page": {"type": "integer", "minimum": 1},
     "limit": {"type": "integer", "minimum": 1},
+    "has_more": {"type": "boolean"},
     "items": {
       "type": "array",
       "items": {
