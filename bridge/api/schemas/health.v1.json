@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:health.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["service", "writes_enabled", "ghidra"],
+  "properties": {
+    "service": {"type": "string"},
+    "writes_enabled": {"type": "boolean"},
+    "ghidra": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_url", "reachable"],
+      "properties": {
+        "base_url": {"type": "string"},
+        "reachable": {"type": "boolean"},
+        "status_code": {"type": "integer"},
+        "error": {"type": "string"}
+      }
+    }
+  }
+}

@@ -5,9 +5,10 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
+from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from bridge.app import create_app
+from bridge.app import build_api_app, create_app
 
 
 _DATA_DIR = Path(__file__).parent / "data"
@@ -80,3 +81,44 @@ def test_openapi_snapshot_drift() -> None:
 
     snapshot = _load_snapshot()
     assert normalized == snapshot, "OpenAPI schema drift detected"
+
+
+def test_openapi_documents_all_routes() -> None:
+    app = build_api_app()
+    expected_methods: Dict[str, set[str]] = {}
+    for route in app.router.routes:
+        if not isinstance(route, Route) or route.path == "/openapi.json":
+            continue
+        methods = {method for method in (route.methods or set()) if method != "OPTIONS"}
+        expected_methods[route.path] = methods
+
+    with TestClient(app) as client:
+        response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+    paths = schema.get("paths", {})
+
+    assert set(paths) == set(expected_methods), "OpenAPI is missing registered routes"
+
+    for path, methods in expected_methods.items():
+        path_item = paths.get(path)
+        assert isinstance(path_item, dict), f"Path {path} missing from OpenAPI"
+        for method in sorted(methods):
+            operation = path_item.get(method.lower())
+            assert operation is not None, f"{method} {path} missing from OpenAPI"
+            if method == "POST":
+                assert (
+                    "requestBody" in operation
+                ), f"POST {path} is missing a requestBody schema"
+            responses = operation.get("responses")
+            assert (
+                isinstance(responses, dict) and "200" in responses
+            ), f"{method} {path} is missing a 200 response"
+            payload_schema = (
+                responses["200"]
+                .get("content", {})
+                .get("application/json", {})
+                .get("schema")
+            )
+            assert payload_schema is not None, f"{method} {path} missing response schema"
