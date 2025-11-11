@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:write-bytes.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address", "data"],
+  "properties": {
+    "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+    "data": {"type": "string"},
+    "encoding": {"type": "string", "enum": ["base64"], "default": "base64"},
+    "dry_run": {"type": "boolean", "default": true}
+  }
+}
