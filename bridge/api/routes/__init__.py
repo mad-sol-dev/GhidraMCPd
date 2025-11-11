@@ -12,6 +12,7 @@ from ._common import RouteDependencies, build_with_client, validated_json_body
 from .._shared import adapter_for_arch
 from .analysis_routes import create_analysis_routes
 from .collect_routes import create_collect_routes
+from .datatypes_routes import create_datatype_routes
 from .disasm_routes import create_disasm_routes
 from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
@@ -48,6 +49,7 @@ def make_routes(
         create_disasm_routes(deps),
         create_memory_routes(deps),
         create_analysis_routes(deps),
+        create_datatype_routes(deps),
     )
 
     routes: List[Route] = []

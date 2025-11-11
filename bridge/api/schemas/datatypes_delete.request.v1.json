@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:datatypes-delete.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "path"],
+  "properties": {
+    "kind": {"type": "string", "enum": ["structure", "union"]},
+    "path": {"type": "string", "pattern": "^/.*"},
+    "dry_run": {"type": "boolean", "default": true}
+  }
+}

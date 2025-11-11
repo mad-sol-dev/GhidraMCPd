@@ -836,6 +836,538 @@
         "x-response-model": "collect.v1.json"
       }
     },
+    "/api/datatypes/create.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$defs": {
+                  "field": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "length": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "type": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "$id": "urn:schema:datatypes-create.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "category": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "dry_run": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "fields": {
+                    "items": {
+                      "$ref": "#/$defs/field"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "kind": {
+                    "enum": [
+                      "structure",
+                      "union"
+                    ],
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "category",
+                  "fields"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$defs": {
+                    "field": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "length": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "offset": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "$id": "urn:schema:datatypes-create.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "datatype": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "category": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "fields": {
+                          "items": {
+                            "$ref": "#/$defs/field"
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "structure",
+                            "union"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "path": {
+                          "pattern": "^/.*",
+                          "type": "string"
+                        },
+                        "size": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "category",
+                        "path",
+                        "fields"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "dry_run": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "enum": [
+                        "structure",
+                        "union"
+                      ],
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "path": {
+                      "pattern": "^/.*",
+                      "type": "string"
+                    },
+                    "written": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "dry_run",
+                    "written",
+                    "notes",
+                    "errors",
+                    "datatype"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "create_route",
+        "x-response-model": "datatypes_create.v1.json"
+      }
+    },
+    "/api/datatypes/delete.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:datatypes-delete.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "dry_run": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "enum": [
+                      "structure",
+                      "union"
+                    ],
+                    "type": "string"
+                  },
+                  "path": {
+                    "pattern": "^/.*",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "path"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:datatypes-delete.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "datatype": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "structure",
+                            "union"
+                          ],
+                          "type": "string"
+                        },
+                        "path": {
+                          "pattern": "^/.*",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "path"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "dry_run": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "enum": [
+                        "structure",
+                        "union"
+                      ],
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "path": {
+                      "pattern": "^/.*",
+                      "type": "string"
+                    },
+                    "written": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "dry_run",
+                    "written",
+                    "notes",
+                    "errors",
+                    "datatype"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "delete_route",
+        "x-response-model": "datatypes_delete.v1.json"
+      }
+    },
+    "/api/datatypes/update.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$defs": {
+                  "field": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "length": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "type": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "$id": "urn:schema:datatypes-update.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "dry_run": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "fields": {
+                    "items": {
+                      "$ref": "#/$defs/field"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "kind": {
+                    "enum": [
+                      "structure",
+                      "union"
+                    ],
+                    "type": "string"
+                  },
+                  "path": {
+                    "pattern": "^/.*",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "path",
+                  "fields"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$defs": {
+                    "field": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "length": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "offset": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "type": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "$id": "urn:schema:datatypes-update.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "datatype": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "category": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "fields": {
+                          "items": {
+                            "$ref": "#/$defs/field"
+                          },
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": [
+                            "structure",
+                            "union"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "path": {
+                          "pattern": "^/.*",
+                          "type": "string"
+                        },
+                        "size": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "path",
+                        "fields"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "dry_run": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "kind": {
+                      "enum": [
+                        "structure",
+                        "union"
+                      ],
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "path": {
+                      "pattern": "^/.*",
+                      "type": "string"
+                    },
+                    "written": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path",
+                    "dry_run",
+                    "written",
+                    "notes",
+                    "errors",
+                    "datatype"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "update_route",
+        "x-response-model": "datatypes_update.v1.json"
+      }
+    },
     "/api/disassemble_at.json": {
       "post": {
         "requestBody": {

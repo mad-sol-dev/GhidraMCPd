@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:datatypes-delete.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "path", "dry_run", "written", "notes", "errors", "datatype"],
+  "properties": {
+    "kind": {"type": "string", "enum": ["structure", "union"]},
+    "path": {"type": "string", "pattern": "^/.*"},
+    "dry_run": {"type": "boolean"},
+    "written": {"type": "boolean"},
+    "notes": {"type": "array", "items": {"type": "string"}},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "datatype": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "enum": ["structure", "union"]},
+        "path": {"type": "string", "pattern": "^/.*"}
+      },
+      "required": ["kind", "path"]
+    }
+  }
+}

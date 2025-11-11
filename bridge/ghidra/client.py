@@ -64,6 +64,11 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "WRITE_BYTES": ("writeBytes",),
     "REBUILD_CODE_UNITS": ("rebuildCodeUnits",),
     "REBASE_PROGRAM": ("rebaseProgram", "rebase_program"),
+    "CREATE_STRUCTURE": ("createStructure", "create_structure"),
+    "UPDATE_STRUCTURE": ("updateStructure", "update_structure"),
+    "CREATE_UNION": ("createUnion", "create_union"),
+    "UPDATE_UNION": ("updateUnion", "update_union"),
+    "DELETE_DATATYPE": ("deleteDataType", "delete_datatype"),
 }
 
 
@@ -159,6 +164,16 @@ class CursorPageResult(Generic[T]):
     has_more: bool
     cursor: Optional[str]
     error: Optional[str] = None
+
+
+@dataclass(slots=True)
+class DataTypeOperationResult:
+    """Canonicalised response returned by data-type management calls."""
+
+    ok: bool
+    error: Optional[str] = None
+    datatype: Optional[Dict[str, Any]] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 class GhidraClient:
@@ -398,6 +413,104 @@ class GhidraClient:
         if not text or text.startswith("ERROR"):
             return None
         return text
+
+    # ------------------------------------------------------------------
+    # data-type helpers
+    # ------------------------------------------------------------------
+
+    def _request_datatype_operation(
+        self,
+        key: str,
+        path: str,
+        data: Dict[str, Any],
+    ) -> DataTypeOperationResult:
+        requester = EndpointRequester(self, "POST", key=key, data=data)
+        lines = self._post_resolver.resolve(key, requester)
+        if _is_error(lines):
+            return DataTypeOperationResult(False, error=lines[0])
+        text = "\n".join(line for line in lines if line is not None).strip()
+        if not text:
+            return DataTypeOperationResult(False, error="empty response")
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning(
+                "datatype operation returned invalid JSON",
+                extra={"path": path, "payload_preview": text[:256]},
+            )
+            return DataTypeOperationResult(False, error="invalid json payload")
+        if not isinstance(payload, dict):
+            return DataTypeOperationResult(False, error="invalid response payload")
+
+        ok_field = payload.get("ok")
+        if ok_field is None:
+            ok_field = payload.get("success")
+        if isinstance(ok_field, str):
+            ok = ok_field.lower() in {"true", "1", "yes", "ok", "success"}
+        else:
+            ok = bool(ok_field)
+
+        error = payload.get("error")
+        if error is None and not ok:
+            message = payload.get("message")
+            if isinstance(message, str) and message:
+                error = message
+
+        datatype = payload.get("datatype")
+        if datatype is not None and not isinstance(datatype, dict):
+            datatype = None
+
+        return DataTypeOperationResult(ok, error, datatype, details=payload)
+
+    def create_structure(
+        self,
+        *,
+        name: str,
+        category: str,
+        fields: List[Mapping[str, Any]],
+    ) -> DataTypeOperationResult:
+        data = {
+            "name": name,
+            "category": category,
+            "fields": json.dumps(list(fields)),
+        }
+        return self._request_datatype_operation("CREATE_STRUCTURE", "createStructure", data)
+
+    def update_structure(
+        self,
+        *,
+        path: str,
+        fields: List[Mapping[str, Any]],
+    ) -> DataTypeOperationResult:
+        data = {"path": path, "fields": json.dumps(list(fields))}
+        return self._request_datatype_operation("UPDATE_STRUCTURE", "updateStructure", data)
+
+    def create_union(
+        self,
+        *,
+        name: str,
+        category: str,
+        fields: List[Mapping[str, Any]],
+    ) -> DataTypeOperationResult:
+        data = {
+            "name": name,
+            "category": category,
+            "fields": json.dumps(list(fields)),
+        }
+        return self._request_datatype_operation("CREATE_UNION", "createUnion", data)
+
+    def update_union(
+        self,
+        *,
+        path: str,
+        fields: List[Mapping[str, Any]],
+    ) -> DataTypeOperationResult:
+        data = {"path": path, "fields": json.dumps(list(fields))}
+        return self._request_datatype_operation("UPDATE_UNION", "updateUnion", data)
+
+    def delete_datatype(self, *, kind: str, path: str) -> DataTypeOperationResult:
+        data = {"kind": kind, "path": path}
+        return self._request_datatype_operation("DELETE_DATATYPE", "deleteDataType", data)
 
     def get_function_by_address(self, address: int) -> Optional[FunctionMeta]:
         increment_counter("ghidra.verify")
@@ -961,4 +1074,10 @@ class GhidraClient:
         self.close()
 
 
-__all__ = ["GhidraClient", "ENDPOINT_CANDIDATES", "POST_ENDPOINT_CANDIDATES"]
+__all__ = [
+    "CursorPageResult",
+    "DataTypeOperationResult",
+    "ENDPOINT_CANDIDATES",
+    "GhidraClient",
+    "POST_ENDPOINT_CANDIDATES",
+]

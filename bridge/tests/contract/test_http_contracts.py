@@ -200,6 +200,70 @@ def test_analyze_function_complete_contract(contract_client: TestClient) -> None
     assert data["meta"]["fmt"] == "json"
 
 
+def test_datatypes_create_contract(contract_client_writable: TestClient) -> None:
+    response = contract_client_writable.post(
+        "/api/datatypes/create.json",
+        json={
+            "kind": "structure",
+            "name": "Widget",
+            "category": "/structs",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+            ],
+            "dry_run": False,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    _assert_envelope(body)
+    data = body["data"]
+    _assert_valid("datatypes_create.v1.json", data)
+    assert data["written"] is True
+    assert data["datatype"]["kind"] == "structure"
+
+
+def test_datatypes_update_contract(contract_client_writable: TestClient) -> None:
+    response = contract_client_writable.post(
+        "/api/datatypes/update.json",
+        json={
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+            ],
+            "dry_run": False,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    _assert_envelope(body)
+    data = body["data"]
+    _assert_valid("datatypes_update.v1.json", data)
+    assert data["datatype"]["path"] == "/structs/Packet"
+
+
+def test_datatypes_delete_contract(contract_client_writable: TestClient) -> None:
+    response = contract_client_writable.post(
+        "/api/datatypes/delete.json",
+        json={
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "dry_run": False,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    _assert_envelope(body)
+    data = body["data"]
+    _assert_valid("datatypes_delete.v1.json", data)
+    assert data["datatype"] == {"kind": "structure", "path": "/structs/Packet"}
+
+
 class _CountingStub(StubGhidraClient):
     def __init__(self) -> None:
         super().__init__()

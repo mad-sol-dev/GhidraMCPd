@@ -146,6 +146,44 @@ _CASES: List[EndpointCase] = [
         valid={"address": "0x00102004"},
         missing="address",
     ),
+    EndpointCase(
+        id="datatypes_create",
+        path="/api/datatypes/create.json",
+        valid={
+            "kind": "structure",
+            "name": "Widget",
+            "category": "/structs",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+            ],
+            "dry_run": True,
+        },
+        missing="name",
+    ),
+    EndpointCase(
+        id="datatypes_update",
+        path="/api/datatypes/update.json",
+        valid={
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4}
+            ],
+            "dry_run": True,
+        },
+        missing="path",
+    ),
+    EndpointCase(
+        id="datatypes_delete",
+        path="/api/datatypes/delete.json",
+        valid={
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "dry_run": True,
+        },
+        missing="path",
+    ),
 ]
 
 
