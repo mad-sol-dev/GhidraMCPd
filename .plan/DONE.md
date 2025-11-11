@@ -19,11 +19,11 @@
 - 2025-11-09 **T-202511-016** — Extend contract coverage for search pagination hints
 - 2025-11-09 **T-202511-017** — Sync .plan manifest and API docs drift gate checks
 - 2025-11-09 **D.2** — POST /api/analyze_function_complete.json composite dossier (disasm/decompile/xrefs/callgraph/strings/features, schema+docs+tests) _commit:dac950b_
-- 2025-11-09 **D.5** — Unified error schema + enums (structured envelope, docs, tests) _commit:pending_
-- 2025-11-10 **T-202511-018** — Sync roadmap + plan docs with audit (ROADMAP.md, .plan statuses, overview snapshot) _commit:pending_
-- 2025-11-10 **D.3** — Unify search metadata (range query/has_more parity) _commit:pending_
-- 2025-11-10 **D.4** — POST /api/collect.json multi-query collector (per-subop envelopes, docs, tests) _commit:pending_
-- 2025-11-10 **D.6** — Server-side result budgeting (collector auto-trim/strict enforcement, docs/tests) _commit:pending_
+- 2025-11-09 **D.5** — Unified error schema + enums (structured envelope, docs, tests) _commit:bafb7d4_
+- 2025-11-10 **T-202511-018** — Sync roadmap + plan docs with audit (ROADMAP.md, .plan statuses, overview snapshot) _commit:401e453_
+- 2025-11-10 **D.3** — Unify search metadata (range query/has_more parity) _commit:d46412d_
+- 2025-11-10 **D.4** — POST /api/collect.json multi-query collector (per-subop envelopes, docs, tests) _commit:0545ca4_
+- 2025-11-10 **D.6** — Server-side result budgeting (collector auto-trim/strict enforcement, docs/tests) _commit:0545ca4_
 - 2025-11-10 **D.7** — rank=simple & k heuristic prefilter (opt-in, docs/tests) _commit:5c50273_
-- 2025-11-11 **D.8** — Cursor streaming for large sets (cursor/resume plumbing, docs/tests) _commit:pending_
-- 2025-11-12 **D.9** — 5-min short cache per {digest,query} (TTL caching layer, metrics, docs/tests) _commit:pending_
+- 2025-11-11 **D.8** — Cursor streaming for large sets (cursor/resume plumbing, docs/tests) _commit:01a634c_
+- 2025-11-12 **D.9** — 5-min short cache per {digest,query} (TTL caching layer, metrics, docs/tests) _commit:af5291a_
