@@ -185,11 +185,95 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** collect_route
 
+#### Request body
+- Schema ID: `urn:schema:collect.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `metadata` | object | No |  |
+| `queries` | array<object> | Yes |  |
+| `result_budget` | object | No |  |
+
+```json
+{
+  "metadata": {},
+  "queries": [
+    "\u2026"
+  ],
+  "result_budget": "\u2026"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:collect.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `meta` | object | No |  |
+| `queries` | array<object> | Yes |  |
+
+  ```json
+  {
+  "meta": {
+    "estimate_tokens": 0,
+    "result_budget": {
+      "consumed_tokens": 0,
+      "max_result_tokens": 0,
+      "mode": "string",
+      "remaining_tokens": 0
+    }
+  },
+  "queries": [
+    "\u2026"
+  ]
+}
+  ```
+
 ## `/api/disassemble_at.json`
 
 ### POST
 
 **Summary:** disassemble_at_route
+
+#### Request body
+- Schema ID: `urn:schema:disassemble-at.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `count` | integer | No | default=16, min=1, max=128 |
+
+```json
+{
+  "address": "0x0",
+  "count": 16
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:disassemble-at.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `items` | array<object> | Yes |  |
+
+  ```json
+  {
+  "items": [
+    {
+      "address": "0x0",
+      "bytes": "string",
+      "text": "string"
+    }
+  ]
+}
+  ```
 
 ## `/api/health.json`
 
@@ -197,9 +281,57 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** health_route
 
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:health.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `ghidra` | object | Yes |  |
+| `service` | string | Yes |  |
+| `writes_enabled` | boolean | Yes |  |
+
+  ```json
+  {
+  "ghidra": {
+    "base_url": "string",
+    "error": "string",
+    "reachable": false,
+    "status_code": 0
+  },
+  "service": "string",
+  "writes_enabled": false
+}
+  ```
+
 ### HEAD
 
 **Summary:** health_route
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:health.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `ghidra` | object | Yes |  |
+| `service` | string | Yes |  |
+| `writes_enabled` | boolean | Yes |  |
+
+  ```json
+  {
+  "ghidra": {
+    "base_url": "string",
+    "error": "string",
+    "reachable": false,
+    "status_code": 0
+  },
+  "service": "string",
+  "writes_enabled": false
+}
+  ```
 
 ## `/api/jt_scan.json`
 
@@ -207,11 +339,116 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** jt_scan_route
 
+#### Request body
+- Schema ID: `urn:schema:jt-scan.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `arch` | string | No |  |
+| `code_max` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `code_min` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `count` | integer | Yes | min=1, max=256 |
+| `jt_base` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `start` | integer | Yes | min=0 |
+
+```json
+{
+  "arch": "string",
+  "code_max": "0x0",
+  "code_min": "0x0",
+  "count": 0,
+  "jt_base": "0x0",
+  "start": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:jt-scan.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `items` | array<object> | Yes |  |
+| `range` | object | Yes |  |
+| `summary` | object | Yes |  |
+
+  ```json
+  {
+  "items": [
+    "\u2026"
+  ],
+  "range": {
+    "count": 0,
+    "start": 0
+  },
+  "summary": {
+    "invalid": 0,
+    "total": 0,
+    "valid": 0
+  }
+}
+  ```
+
 ## `/api/jt_slot_check.json`
 
 ### POST
 
 **Summary:** jt_slot_check_route
+
+#### Request body
+- Schema ID: `urn:schema:jt-slot-check.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `arch` | string | No |  |
+| `code_max` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `code_min` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `jt_base` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `slot_index` | integer | Yes | min=0 |
+
+```json
+{
+  "arch": "string",
+  "code_max": "0x0",
+  "code_min": "0x0",
+  "jt_base": "0x0",
+  "slot_index": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:jt-slot-check.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `errors` | array<string> | Yes |  |
+| `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
+| `notes` | array<string> | No |  |
+| `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `slot` | integer | Yes | min=0 |
+| `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `target` | object | Yes |  |
+
+  ```json
+  {
+  "errors": [
+    "string"
+  ],
+  "mode": "ARM",
+  "notes": [
+    "string"
+  ],
+  "raw": "0x0",
+  "slot": 0,
+  "slot_addr": "0x0",
+  "target": "0x0"
+}
+  ```
 
 ## `/api/jt_slot_process.json`
 
@@ -219,17 +456,195 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** jt_slot_process_route
 
+#### Request body
+- Schema ID: `urn:schema:jt-slot-process.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `arch` | string | No |  |
+| `code_max` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `code_min` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `comment` | string | No |  |
+| `dry_run` | boolean | No |  |
+| `jt_base` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `rename_pattern` | string | No |  |
+| `slot_index` | integer | Yes | min=0 |
+
+```json
+{
+  "arch": "string",
+  "code_max": "0x0",
+  "code_min": "0x0",
+  "comment": "string",
+  "dry_run": false,
+  "jt_base": "0x0",
+  "rename_pattern": "string",
+  "slot_index": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:jt-slot-process.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `errors` | array<string> | Yes |  |
+| `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
+| `notes` | array<string> | No |  |
+| `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `slot` | integer | Yes | min=0 |
+| `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `target` | object | Yes |  |
+| `verify` | object | Yes |  |
+| `writes` | object | Yes |  |
+
+  ```json
+  {
+  "errors": [
+    "string"
+  ],
+  "mode": "ARM",
+  "notes": [
+    "string"
+  ],
+  "raw": "0x0",
+  "slot": 0,
+  "slot_addr": "0x0",
+  "target": "0x0",
+  "verify": {
+    "comment_present": false,
+    "name": "string"
+  },
+  "writes": {
+    "comment_set": false,
+    "renamed": false
+  }
+}
+  ```
+
 ## `/api/list_functions_in_range.json`
 
 ### POST
 
 **Summary:** list_functions_in_range_route
 
+#### Request body
+- Schema ID: `urn:schema:list-functions-in-range.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address_max` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `address_min` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `limit` | integer | No | default=200, min=1, max=500 |
+| `page` | integer | No | default=1, min=1 |
+
+```json
+{
+  "address_max": "0x0",
+  "address_min": "0x0",
+  "limit": 200,
+  "page": 1
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:list-functions-in-range.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
+| `items` | array<object> | Yes |  |
+| `limit` | integer | Yes | min=1 |
+| `page` | integer | Yes | min=1 |
+| `query` | string | Yes |  |
+| `total` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "has_more": false,
+  "items": [
+    {
+      "address": "0x0",
+      "name": "string",
+      "size": 0
+    }
+  ],
+  "limit": 0,
+  "page": 0,
+  "query": "string",
+  "total": 0
+}
+  ```
+
 ## `/api/mmio_annotate.json`
 
 ### POST
 
 **Summary:** mmio_annotate_route
+
+#### Request body
+- Schema ID: `urn:schema:mmio-annotate.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `dry_run` | boolean | No |  |
+| `function_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `max_samples` | integer | No | min=1, max=256 |
+
+```json
+{
+  "dry_run": false,
+  "function_addr": "0x0",
+  "max_samples": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:mmio-annotate.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `annotated` | integer | Yes | min=0 |
+| `bitwise_and` | integer | Yes | min=0 |
+| `bitwise_or` | integer | Yes | min=0 |
+| `function` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `notes` | array<string> | No |  |
+| `reads` | integer | Yes | min=0 |
+| `samples` | array<object> | Yes |  |
+| `toggles` | integer | Yes | min=0 |
+| `writes` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "annotated": 0,
+  "bitwise_and": 0,
+  "bitwise_or": 0,
+  "function": "0x0",
+  "notes": [
+    "string"
+  ],
+  "reads": 0,
+  "samples": [
+    {
+      "addr": "0x0",
+      "address_abs": "0x0",
+      "op": "READ",
+      "target": "0x0"
+    }
+  ],
+  "toggles": 0,
+  "writes": 0
+}
+  ```
 
 ## `/api/project_info.json`
 
@@ -342,6 +757,43 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 ### POST
 
 **Summary:** read_bytes_route
+
+#### Request body
+- Schema ID: `urn:schema:read-bytes.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `length` | integer | Yes | min=1, max=4096 |
+
+```json
+{
+  "address": "0x0",
+  "length": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:read-bytes.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `data` | string | Yes |  |
+| `encoding` | string | Yes | enum=['base64'] |
+| `length` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "address": "0x0",
+  "data": "string",
+  "encoding": "base64",
+  "length": 0
+}
+  ```
 
 ## `/api/search_exports.json`
 
@@ -523,6 +975,64 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** search_scalars_route
 
+#### Request body
+- Schema ID: `urn:schema:search-scalars.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `cursor` | string | No |  |
+| `limit` | integer | No | default=100, min=1, max=500 |
+| `page` | integer | No | default=1, min=1 |
+| `resume_cursor` | string | No |  |
+| `value` | object | Yes |  |
+
+```json
+{
+  "cursor": "string",
+  "limit": 100,
+  "page": 1,
+  "resume_cursor": "string",
+  "value": "0x0"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:search-scalars.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `cursor` | string | No |  |
+| `has_more` | boolean | Yes |  |
+| `items` | array<object> | Yes |  |
+| `limit` | integer | Yes | min=1 |
+| `page` | integer | Yes | min=1 |
+| `query` | string | Yes |  |
+| `resume_cursor` | string | No |  |
+| `total` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "cursor": "string",
+  "has_more": false,
+  "items": [
+    {
+      "address": "0x0",
+      "context": "string",
+      "function": "string",
+      "value": "0x0"
+    }
+  ],
+  "limit": 0,
+  "page": 0,
+  "query": "string",
+  "resume_cursor": "string",
+  "total": 0
+}
+  ```
+
 ## `/api/search_strings.json`
 
 ### POST
@@ -580,11 +1090,104 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** search_xrefs_to_route
 
+#### Request body
+- Schema ID: `search_xrefs_to.request.v1.json`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `limit` | integer | No | default=100, min=1, max=1000 |
+| `page` | integer | No | default=1, min=1 |
+| `query` | string | Yes |  |
+
+```json
+{
+  "address": "0x0",
+  "limit": 100,
+  "page": 1,
+  "query": "string"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `search_xrefs_to.v1.json`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `has_more` | boolean | Yes |  |
+| `items` | array<object> | Yes |  |
+| `limit` | integer | Yes | min=1 |
+| `page` | integer | Yes | min=1 |
+| `query` | string | Yes |  |
+| `total` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "has_more": false,
+  "items": [
+    {
+      "context": "string",
+      "from_address": "0x0",
+      "target_address": "0x0"
+    }
+  ],
+  "limit": 0,
+  "page": 0,
+  "query": "string",
+  "total": 0
+}
+  ```
+
 ## `/api/string_xrefs.json`
 
 ### POST
 
 **Summary:** string_xrefs_route
+
+#### Request body
+- Schema ID: `urn:schema:string-xrefs.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `limit` | integer | No | min=1, max=256 |
+| `string_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+
+```json
+{
+  "limit": 0,
+  "string_addr": "0x0"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:string-xrefs.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `callers` | array<object> | Yes |  |
+| `count` | integer | Yes | min=0 |
+| `string` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+
+  ```json
+  {
+  "callers": [
+    {
+      "addr": "0x0",
+      "arg_index": 0,
+      "context": "string",
+      "hint": "string"
+    }
+  ],
+  "count": 0,
+  "string": "0x0"
+}
+  ```
 
 ## `/api/strings_compact.json`
 
@@ -592,12 +1195,101 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 **Summary:** strings_compact_route
 
+#### Request body
+- Schema ID: `urn:schema:strings-compact.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `limit` | integer | Yes | min=1 |
+| `offset` | integer | No | min=0 |
+
+```json
+{
+  "limit": 0,
+  "offset": 0
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:strings-compact.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `items` | array<object> | Yes |  |
+| `total` | integer | Yes | min=0 |
+
+  ```json
+  {
+  "items": [
+    {
+      "addr": "0x0",
+      "refs": 0,
+      "s": "string"
+    }
+  ],
+  "total": 0
+}
+  ```
+
 ## `/state`
 
 ### GET
 
 **Summary:** state
 
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:state.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `active_sse` | string | Yes |  |
+| `bridge_ready` | boolean | Yes |  |
+| `connects` | integer | Yes | min=0 |
+| `last_init_ts` | string | Yes |  |
+| `ready` | boolean | Yes |  |
+| `session_ready` | boolean | Yes |  |
+
+  ```json
+  {
+  "active_sse": "string",
+  "bridge_ready": false,
+  "connects": 0,
+  "last_init_ts": "string",
+  "ready": false,
+  "session_ready": false
+}
+  ```
+
 ### HEAD
 
 **Summary:** state
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:state.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `active_sse` | string | Yes |  |
+| `bridge_ready` | boolean | Yes |  |
+| `connects` | integer | Yes | min=0 |
+| `last_init_ts` | string | Yes |  |
+| `ready` | boolean | Yes |  |
+| `session_ready` | boolean | Yes |  |
+
+  ```json
+  {
+  "active_sse": "string",
+  "bridge_ready": false,
+  "connects": 0,
+  "last_init_ts": "string",
+  "ready": false,
+  "session_ready": false
+}
+  ```
