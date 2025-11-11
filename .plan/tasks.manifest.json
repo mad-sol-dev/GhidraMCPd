@@ -119,6 +119,94 @@
       "status": "done"
     },
     {
+      "id": "R.1",
+      "title": "Batch project analysis lanes",
+      "area": "bridge",
+      "depends_on": [
+        "D.2",
+        "D.4"
+      ],
+      "dod": [
+        "Collector accepts multi-program project batches with deterministic envelopes",
+        "Contract coverage + docs outlining batch workflows"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.2",
+      "title": "Enhanced search ranking/context windows",
+      "area": "analyzer",
+      "depends_on": [
+        "D.7"
+      ],
+      "dod": [
+        "Ranking heuristics expose adjustable context windows",
+        "Golden samples prove deterministic ordering at new limits"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.3",
+      "title": "`include_literals` plumbing",
+      "area": "bridge",
+      "depends_on": [
+        "D.2"
+      ],
+      "dod": [
+        "Read/search endpoints accept include_literals flag",
+        "Docs cover defaults + impact on result budgets"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.4",
+      "title": "Expanded audit logging",
+      "area": "platform",
+      "depends_on": [
+        "D.6"
+      ],
+      "dod": [
+        "Write/rebase/datatypes flows emit structured JSONL traces",
+        "CI enforces audit log schema coverage"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.5",
+      "title": "CORS/origin whitelist",
+      "area": "platform",
+      "depends_on": [],
+      "dod": [
+        "Configurable origin whitelist enforced for bridge endpoints",
+        "Docs cover deployment toggles + failure modes"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.6",
+      "title": "Docker/CI packaging",
+      "area": "build",
+      "depends_on": [],
+      "dod": [
+        "Deterministic Docker image published for CI/local runs",
+        "CI pipeline exercises container smoke tests"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.7",
+      "title": "MCP tool UX docs",
+      "area": "docs",
+      "depends_on": [
+        "T-202511-018"
+      ],
+      "dod": [
+        "End-to-end MCP tool walkthrough with screenshots",
+        "Failure drill + troubleshooting appendix"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "HK-OPENAPI-RENDERER",
       "title": "Fix OpenAPI renderer combinators",
       "area": "docs",

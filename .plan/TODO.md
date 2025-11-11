@@ -4,13 +4,17 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- _None (tracking downstream follow-ups)._ 
+- {R.1} Batch project analysis lanes for multi-program dossiers
+- {R.2} Enhanced search ranking + expanded context windows
 
 ## NEXT
-- _None (blocked on later roadmap items)._ 
+- {R.3} `include_literals` plumbing across read/search APIs
+- {R.4} Expanded audit logging for write/rebase/datatypes flows
 
 ## LATER
-- {D.9} 5-min short-term cache per {digest,query}
+- {R.5} CORS/origin whitelist controls for bridge endpoints
+- {R.6} Docker images + CI packaging handoff
+- {R.7} MCP tool UX docs (flows, screenshots, failure drills)
 
 ## DONE
 - [x] {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.
@@ -22,6 +26,7 @@
 - [x] {D.6} Result budgeting — request/query `max_result_tokens`, auto-trim (200) vs strict (413) enforcement, coverage + docs refreshed.
 - [x] {D.7} rank=simple & k — heuristic prefilter enabled as opt-in, stable ordering, docs/tests added.
 - [x] {D.8} Cursor streaming for very large sets — cursor/resume plumbing landed with docs/tests.
+- [x] {D.9} 5-min short-term cache per {digest,query}.
 - [x] OpenAPI renderer fixed — gen_api_md.py handles 3.1 unions/combinators, docs regenerated.
 - [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
 
