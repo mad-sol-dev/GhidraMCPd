@@ -1961,6 +1961,108 @@
         "x-response-model": "project_info.v1.json"
       }
     },
+    "/api/project_rebase.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:project-rebase.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "confirm": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "dry_run": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "new_base": {
+                    "pattern": "^(0x)?[0-9a-fA-F]+$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "new_base"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:project-rebase.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "dry_run": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "offset": {
+                      "pattern": "^-?0x[0-9a-fA-F]+$",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "previous_base": {
+                      "pattern": "^-?0x[0-9a-fA-F]+$",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "project_info": {
+                      "type": "object"
+                    },
+                    "rebased": {
+                      "type": "boolean"
+                    },
+                    "requested_base": {
+                      "pattern": "^-?0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "dry_run",
+                    "rebased",
+                    "notes",
+                    "errors",
+                    "requested_base",
+                    "previous_base",
+                    "offset",
+                    "project_info"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "project_rebase",
+        "x-response-model": "project_rebase.v1.json"
+      }
+    },
     "/api/read_bytes.json": {
       "post": {
         "requestBody": {

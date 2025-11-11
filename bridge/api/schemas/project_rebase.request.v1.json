@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:project-rebase.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["new_base"],
+  "properties": {
+    "new_base": {
+      "type": "string",
+      "pattern": "^(0x)?[0-9a-fA-F]+$"
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": true
+    },
+    "confirm": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
