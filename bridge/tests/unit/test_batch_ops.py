@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from bridge.features import batch_ops
+from bridge.ghidra.client import CursorPageResult
 
 
 @dataclass
@@ -23,9 +24,19 @@ class StubClient:
         """Return pre-configured byte data."""
         return self.read_results.get(address)
     
-    def search_scalars(self, value: int) -> List[Dict[str, object]]:
+    def search_scalars(
+        self,
+        value: int,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: Optional[str] = None,
+    ) -> CursorPageResult[Dict[str, object]]:
         """Return pre-configured scalar search results."""
-        return self.scalar_results.get("items", [])
+        items = list(self.scalar_results.get("items", []))
+        has_more = bool(self.scalar_results.get("has_more", False))
+        resume = self.scalar_results.get("cursor") if has_more else None
+        return CursorPageResult(items, has_more, resume)
 
 
 def test_disassemble_batch_single_address():

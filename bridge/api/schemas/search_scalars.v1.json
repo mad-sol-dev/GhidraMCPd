@@ -6,7 +6,7 @@
   "required": ["query", "total", "page", "limit", "items", "has_more"],
   "properties": {
     "query": {"type": "string"},
-    "total": {"type": "integer", "minimum": 0},
+    "total": {"type": ["integer", "null"], "minimum": 0},
     "page": {"type": "integer", "minimum": 1},
     "limit": {"type": "integer", "minimum": 1},
     "items": {
@@ -23,6 +23,8 @@
         }
       }
     },
-    "has_more": {"type": "boolean"}
+    "has_more": {"type": "boolean"},
+    "resume_cursor": {"type": ["string", "null"], "minLength": 1},
+    "cursor": {"type": ["string", "null"], "minLength": 1}
   }
 }

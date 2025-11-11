@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import CursorPageResult, GhidraClient
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
@@ -54,6 +54,8 @@ def search_functions(
     page: int = 1,
     rank: str | None = None,
     k: int | None = None,
+    cursor: Optional[str] = None,
+    resume_cursor: Optional[str] = None,
 ) -> Dict[str, object]:
     """Search for functions matching *query* and return a paginated payload."""
 
@@ -63,41 +65,125 @@ def search_functions(
 
     query_str = str(query)
     search_query = "" if query_str in {"", "*"} else query_str
-    raw_results = client.search_functions(search_query) or []
+    cursor_token = resume_cursor or cursor
+    request_offset = 0 if cursor_token else offset
 
-    parsed_items: List[Dict[str, str]] = []
-    for line in raw_results:
-        match = _FUNCTION_LINE.match(line.strip())
-        if not match:
-            continue
-        name = match.group("name").strip()
-        addr = match.group("addr").strip()
-        if not addr.lower().startswith("0x"):
-            addr = f"0x{addr}"
-        parsed_items.append({
-            "name": name,
-            "address": addr.lower(),
-        })
+    def _fetch_page(
+        *,
+        limit: int,
+        offset: int,
+        cursor: Optional[str],
+    ) -> CursorPageResult[str]:
+        """Invoke the client search API while tolerating legacy signatures."""
+
+        try:
+            result = client.search_functions(
+                search_query,
+                limit=limit,
+                offset=offset,
+                cursor=cursor,
+            )
+        except TypeError as exc:
+            if cursor:
+                raise ValueError(
+                    "resume_cursor is not supported by the configured client",
+                ) from exc
+            legacy_lines = client.search_functions(search_query)
+            lines = [str(line).strip() for line in legacy_lines if str(line).strip()]
+            sliced = lines[offset : offset + limit]
+            has_more = len(lines) > offset + limit
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        if isinstance(result, CursorPageResult):
+            return result
+
+        if isinstance(result, list):
+            lines = [str(line).strip() for line in result if str(line).strip()]
+            sliced = lines[offset : offset + limit]
+            has_more = len(lines) > offset + limit
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        raise TypeError("search_functions returned an unexpected result type")
+
+    page_result = _fetch_page(limit=limit, offset=request_offset, cursor=cursor_token)
+
+    def _parse_lines(lines: Optional[List[str]]) -> List[Dict[str, str]]:
+        parsed: List[Dict[str, str]] = []
+        if not lines:
+            return parsed
+        for line in lines:
+            if not isinstance(line, str):
+                continue
+            match = _FUNCTION_LINE.match(line.strip())
+            if not match:
+                continue
+            name = match.group("name").strip()
+            addr = match.group("addr").strip()
+            if not addr.lower().startswith("0x"):
+                addr = f"0x{addr}"
+            parsed.append({
+                "name": name,
+                "address": addr.lower(),
+            })
+        return parsed
+
+    parsed_items = _parse_lines(page_result.items)
 
     ranked_items = parsed_items
+    computed_total: Optional[int] = None
+    computed_cursor: Optional[str] = page_result.cursor
+    has_more = page_result.has_more
+
+    if page_result.error and not parsed_items:
+        has_more = False
+        computed_cursor = None
+
     if rank == "simple":
-        ranked_items = _rank_functions_simple(parsed_items, query_str)
+        if cursor_token:
+            raise ValueError("cursor pagination cannot be combined with rank")
+
+        aggregated_lines: List[Dict[str, str]] = []
+        fetch_cursor: Optional[str] = None
+        fetch_offset = 0
+        safety = 0
+        while True:
+            next_page = _fetch_page(limit=limit, offset=fetch_offset, cursor=fetch_cursor)
+            aggregated_lines.extend(_parse_lines(next_page.items))
+            if next_page.error and not next_page.items:
+                break
+            if not next_page.has_more:
+                break
+            safety += 1
+            if safety > 1000:  # pragma: no cover - defensive guard
+                raise RuntimeError("cursor pagination did not converge for rank=simple")
+            if next_page.cursor:
+                fetch_cursor = next_page.cursor
+                fetch_offset = 0
+            else:
+                fetch_offset += len(next_page.items or [])
+
+        ranked_items = _rank_functions_simple(aggregated_lines, query_str)
         if k is not None:
             k = max(1, int(k))
             ranked_items = ranked_items[:k]
-
-    total = len(ranked_items)
-    start = min(offset, total)
-    end = min(start + limit, total)
-    paginated_items = ranked_items[start:end]
-
-    has_more = end < total
+        computed_total = len(ranked_items)
+        start = min(offset, computed_total)
+        end = min(start + limit, computed_total)
+        paginated_items = ranked_items[start:end]
+        has_more = end < computed_total
+        computed_cursor = None
+    else:
+        paginated_items = ranked_items
+        if not has_more and not cursor_token:
+            computed_total = request_offset + len(paginated_items)
 
     return {
         "query": query_str,
-        "total": total,
+        "total": computed_total,
         "page": page,
         "limit": limit,
         "items": paginated_items,
         "has_more": has_more,
+        "resume_cursor": computed_cursor,
+        "cursor": computed_cursor,
     }

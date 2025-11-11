@@ -199,6 +199,7 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
     query = str(params.get("query", ""))
     limit = int(params.get("limit", 100))
     page = int(params.get("page", 1))
+    cursor_param = params.get("resume_cursor") or params.get("cursor")
     rank_param = params.get("rank")
     rank: str | None
     if rank_param is None:
@@ -216,6 +217,8 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
             raise ValueError("k must be a positive integer")
         if rank != "simple":
             raise ValueError('k requires rank="simple"')
+    if cursor_param is not None and rank is not None:
+        raise ValueError("cursor pagination cannot be combined with rank")
 
     return functions.search_functions(
         client,
@@ -224,6 +227,7 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
         page=page,
         rank=rank,
         k=k,
+        resume_cursor=str(cursor_param) if cursor_param is not None else None,
     )
 
 
@@ -246,11 +250,19 @@ def _op_search_scalars(client: GhidraClient, params: Mapping[str, object]) -> Ma
     query = str(params.get("query", value))
     limit = int(params.get("limit", 50))
     page = int(params.get("page", 1))
+    cursor_param = params.get("resume_cursor") or params.get("cursor")
     if limit <= 0:
         raise ValueError("limit must be positive")
     if page <= 0:
         raise ValueError("page must be positive")
-    return scalars.search_scalars(client, value=value, query=query, limit=limit, page=page)
+    return scalars.search_scalars(
+        client,
+        value=value,
+        query=query,
+        limit=limit,
+        page=page,
+        resume_cursor=str(cursor_param) if cursor_param is not None else None,
+    )
 
 
 def _op_search_scalars_with_context(

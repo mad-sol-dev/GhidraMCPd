@@ -1,5 +1,5 @@
 """Scalar value search helpers."""
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex, parse_hex
@@ -13,6 +13,8 @@ def search_scalars(
     query: str,
     limit: int,
     page: int,
+    cursor: Optional[str] = None,
+    resume_cursor: Optional[str] = None,
 ) -> Dict[str, object]:
     """
     Search for scalar values in the binary and return paginated results.
@@ -34,52 +36,53 @@ def search_scalars(
     else:
         value_int = int(value)
     
-    # Fetch all matching scalars from Ghidra
-    raw_results = client.search_scalars(value_int)
-    
-    # Sort by address for determinism
-    sorted_results = sorted(raw_results, key=lambda x: parse_hex(x["address"]))
-    
-    # Build items list
+    cursor_token = resume_cursor or cursor
+    request_offset = 0 if cursor_token else max(0, (page - 1) * limit)
+
+    page_result = client.search_scalars(
+        value_int,
+        limit=limit,
+        offset=request_offset,
+        cursor=cursor_token,
+    )
+
+    raw_items = page_result.items if page_result.items is not None else []
+
     items: List[Dict[str, object]] = []
-    for entry in sorted_results:
-        addr_str = entry.get("address", "")
-        if not addr_str.startswith("0x"):
+    for entry in raw_items:
+        if not isinstance(entry, dict):
+            continue
+        addr_str = str(entry.get("address", ""))
+        if not addr_str.lower().startswith("0x"):
             addr_str = f"0x{addr_str}"
-        
         items.append({
-            "address": addr_str,
+            "address": addr_str.lower(),
             "value": int_to_hex(value_int),
             "function": entry.get("function"),
             "context": entry.get("context"),
         })
-    
-    # Calculate pagination
-    total = len(items)
-    if page < 1:
-        page = 1
-    if limit <= 0:
-        limit = total if total > 0 else 1
 
-    page = max(page, 1)
-    limit = max(limit, 1)
+    # Sort current slice for determinism without materialising all results
+    items.sort(key=lambda item: parse_hex(item["address"]))
 
-    start = (page - 1) * limit
-    end = start + limit
+    increment_counter("scalars.search.results", len(items))
 
-    paginated_items = items[start:end]
-
-    increment_counter("scalars.search.results", len(paginated_items))
-
-    has_more = (page * limit) < total
+    has_more = page_result.has_more
+    total: Optional[int] = None
+    if page_result.error and not items:
+        has_more = False
+    if not has_more and not cursor_token:
+        total = request_offset + len(items)
 
     return {
         "query": query,
         "total": total,
         "page": page,
         "limit": limit,
-        "items": paginated_items,
+        "items": items,
         "has_more": has_more,
+        "resume_cursor": page_result.cursor,
+        "cursor": page_result.cursor,
     }
 
 

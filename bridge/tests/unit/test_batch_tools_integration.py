@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from bridge.api.tools import register_tools
+from bridge.ghidra.client import CursorPageResult
 from mcp.server.fastmcp import FastMCP
 
 
@@ -22,9 +23,16 @@ class MockGhidraClient:
             return b'\x00\x20\x00\xB8'
         return None
     
-    def search_scalars(self, value: int) -> List[Dict[str, object]]:
+    def search_scalars(
+        self,
+        value: int,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: Optional[str] = None,
+    ) -> CursorPageResult[Dict[str, object]]:
         """Return mock scalar results."""
-        return []
+        return CursorPageResult([], False, None)
     
     def close(self) -> None:
         """No-op close."""
