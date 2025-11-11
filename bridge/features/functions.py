@@ -6,6 +6,12 @@ import re
 from typing import Dict, List, Optional
 
 from ..ghidra.client import CursorPageResult, GhidraClient
+from ..utils.cache import (
+    build_search_cache_key,
+    get_program_digest,
+    get_search_cache,
+    normalize_search_query,
+)
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
@@ -65,8 +71,29 @@ def search_functions(
 
     query_str = str(query)
     search_query = "" if query_str in {"", "*"} else query_str
+    normalized_query = normalize_search_query(search_query)
     cursor_token = resume_cursor or cursor
     request_offset = 0 if cursor_token else offset
+
+    cache_key = None
+    digest = get_program_digest(client)
+    cache = get_search_cache()
+    if digest:
+        cache_key = build_search_cache_key(
+            program_digest=digest,
+            endpoint="functions",
+            normalized_query=normalized_query,
+            options={
+                "limit": limit,
+                "page": page,
+                "cursor": cursor_token,
+                "rank": rank,
+                "k": k,
+            },
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
 
     def _fetch_page(
         *,
@@ -105,7 +132,14 @@ def search_functions(
 
         raise TypeError("search_functions returned an unexpected result type")
 
-    page_result = _fetch_page(limit=limit, offset=request_offset, cursor=cursor_token)
+    had_error = False
+    try:
+        page_result = _fetch_page(limit=limit, offset=request_offset, cursor=cursor_token)
+    except Exception:
+        if cache_key is not None:
+            cache.invalidate(cache_key)
+        raise
+    had_error = bool(page_result.error)
 
     def _parse_lines(lines: Optional[List[str]]) -> List[Dict[str, str]]:
         parsed: List[Dict[str, str]] = []
@@ -147,7 +181,13 @@ def search_functions(
         fetch_offset = 0
         safety = 0
         while True:
-            next_page = _fetch_page(limit=limit, offset=fetch_offset, cursor=fetch_cursor)
+            try:
+                next_page = _fetch_page(limit=limit, offset=fetch_offset, cursor=fetch_cursor)
+            except Exception:
+                if cache_key is not None:
+                    cache.invalidate(cache_key)
+                raise
+            had_error = had_error or bool(next_page.error)
             aggregated_lines.extend(_parse_lines(next_page.items))
             if next_page.error and not next_page.items:
                 break
@@ -177,7 +217,7 @@ def search_functions(
         if not has_more and not cursor_token:
             computed_total = request_offset + len(paginated_items)
 
-    return {
+    result = {
         "query": query_str,
         "total": computed_total,
         "page": page,
@@ -187,3 +227,8 @@ def search_functions(
         "resume_cursor": computed_cursor,
         "cursor": computed_cursor,
     }
+
+    if cache_key is not None and not had_error:
+        cache.set(cache_key, result)
+
+    return result

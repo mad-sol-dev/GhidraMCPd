@@ -6,6 +6,9 @@ from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
 from bridge.api.validators import validate_payload
+from bridge.error_handlers import install_error_handlers
+from bridge.tests.contract.conftest import StubGhidraClient
+from bridge.utils.cache import get_search_cache
 
 def _assert_valid(schema_name: str, payload: dict) -> None:
     valid, errors = validate_payload(schema_name, payload)
@@ -195,6 +198,70 @@ def test_analyze_function_complete_contract(contract_client: TestClient) -> None
     data = body["data"]
     _assert_valid("analyze_function_complete.v1.json", data)
     assert data["meta"]["fmt"] == "json"
+
+
+class _CountingStub(StubGhidraClient):
+    def __init__(self) -> None:
+        super().__init__()
+        self.function_calls = 0
+
+    def search_functions(
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: str | None = None,
+    ):
+        self.function_calls += 1
+        return super().search_functions(query, limit=limit, offset=offset, cursor=cursor)
+
+
+class _ContractClock:
+    def __init__(self, start: float = 5_000.0) -> None:
+        self._value = start
+
+    def now(self) -> float:
+        return self._value
+
+    def advance(self, seconds: float) -> None:
+        self._value += seconds
+
+
+def test_search_cache_contract_behaviour() -> None:
+    cache = get_search_cache()
+    cache.clear()
+    clock = _ContractClock()
+    cache.set_clock(clock.now)
+
+    stub = _CountingStub()
+
+    def factory() -> StubGhidraClient:
+        return stub
+
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
+    install_error_handlers(app)
+
+    try:
+        with TestClient(app) as client:
+            body = {"query": "reset", "limit": 4, "page": 1}
+
+            first = client.post("/api/search_functions.json", json=body)
+            assert first.status_code == 200
+            assert stub.function_calls == 1
+
+            second = client.post("/api/search_functions.json", json=body)
+            assert second.status_code == 200
+            assert stub.function_calls == 1
+
+            clock.advance(301)
+
+            third = client.post("/api/search_functions.json", json=body)
+            assert third.status_code == 200
+            assert stub.function_calls == 2
+    finally:
+        cache.reset_clock()
+        cache.clear()
 
 
 @pytest.mark.parametrize(

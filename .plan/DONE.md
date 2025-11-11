@@ -26,3 +26,4 @@
 - 2025-11-10 **D.6** — Server-side result budgeting (collector auto-trim/strict enforcement, docs/tests) _commit:pending_
 - 2025-11-10 **D.7** — rank=simple & k heuristic prefilter (opt-in, docs/tests) _commit:5c50273_
 - 2025-11-11 **D.8** — Cursor streaming for large sets (cursor/resume plumbing, docs/tests) _commit:pending_
+- 2025-11-12 **D.9** — 5-min short cache per {digest,query} (TTL caching layer, metrics, docs/tests) _commit:pending_

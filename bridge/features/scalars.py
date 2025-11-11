@@ -2,6 +2,12 @@
 from typing import Dict, List, Optional, Union
 
 from ..ghidra.client import GhidraClient
+from ..utils.cache import (
+    build_search_cache_key,
+    get_program_digest,
+    get_search_cache,
+    normalize_search_query,
+)
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import enforce_batch_limit, increment_counter, SafetyLimitExceeded
 
@@ -35,16 +41,44 @@ def search_scalars(
         value_int = parse_hex(value)
     else:
         value_int = int(value)
-    
+
+    limit = int(limit)
+    page = int(page)
     cursor_token = resume_cursor or cursor
     request_offset = 0 if cursor_token else max(0, (page - 1) * limit)
 
-    page_result = client.search_scalars(
-        value_int,
-        limit=limit,
-        offset=request_offset,
-        cursor=cursor_token,
-    )
+    normalized_query = normalize_search_query(query)
+
+    cache_key = None
+    digest = get_program_digest(client)
+    cache = get_search_cache()
+    if digest:
+        cache_key = build_search_cache_key(
+            program_digest=digest,
+            endpoint="scalars",
+            normalized_query=normalized_query,
+            options={
+                "limit": limit,
+                "page": page,
+                "cursor": cursor_token,
+                "value": value_int,
+            },
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+
+    try:
+        page_result = client.search_scalars(
+            value_int,
+            limit=limit,
+            offset=request_offset,
+            cursor=cursor_token,
+        )
+    except Exception:
+        if cache_key is not None:
+            cache.invalidate(cache_key)
+        raise
 
     raw_items = page_result.items if page_result.items is not None else []
 
@@ -74,7 +108,7 @@ def search_scalars(
     if not has_more and not cursor_token:
         total = request_offset + len(items)
 
-    return {
+    result = {
         "query": query,
         "total": total,
         "page": page,
@@ -84,6 +118,11 @@ def search_scalars(
         "resume_cursor": page_result.cursor,
         "cursor": page_result.cursor,
     }
+
+    if cache_key is not None and not page_result.error:
+        cache.set(cache_key, result)
+
+    return result
 
 
 __all__ = ["search_scalars"]
