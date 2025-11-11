@@ -286,6 +286,19 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
                 page = int(data.get("page", 1))
+                cursor_token_raw = data.get("resume_cursor")
+                if cursor_token_raw is None:
+                    cursor_token_raw = data.get("cursor")
+                cursor_token: str | None
+                if cursor_token_raw is None:
+                    cursor_token = None
+                elif isinstance(cursor_token_raw, str):
+                    cursor_token = cursor_token_raw
+                else:
+                    return error_response(
+                        ErrorCode.INVALID_REQUEST,
+                        "cursor must be a string if provided.",
+                    )
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 
@@ -327,6 +340,11 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                         ErrorCode.INVALID_REQUEST,
                         'k requires rank="simple".',
                     )
+            if cursor_token is not None and rank is not None:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "cursor pagination cannot be combined with rank.",
+                )
             pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
@@ -338,6 +356,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     page=page,
                     rank=rank,
                     k=k,
+                    resume_cursor=cursor_token,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -371,6 +390,19 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     query_value = int_to_hex(normalized_value)
                 limit = int(data.get("limit", 100))
                 page = int(data.get("page", 1))
+                cursor_token_raw = data.get("resume_cursor")
+                if cursor_token_raw is None:
+                    cursor_token_raw = data.get("cursor")
+                cursor_token: str | None
+                if cursor_token_raw is None:
+                    cursor_token = None
+                elif isinstance(cursor_token_raw, str):
+                    cursor_token = cursor_token_raw
+                else:
+                    return error_response(
+                        ErrorCode.INVALID_REQUEST,
+                        "cursor must be a string if provided.",
+                    )
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             if limit <= 0 or page <= 0:
@@ -385,6 +417,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     query=query_value,
                     limit=limit,
                     page=page,
+                    resume_cursor=cursor_token,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))

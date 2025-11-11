@@ -8,7 +8,7 @@
       "type": "string"
     },
     "total": {
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 0
     },
     "page": {
@@ -36,7 +36,15 @@
         "additionalProperties": false
       }
     },
-    "has_more": {"type": "boolean"}
+    "has_more": {"type": "boolean"},
+    "resume_cursor": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "cursor": {
+      "type": ["string", "null"],
+      "minLength": 1
+    }
   },
   "additionalProperties": false
 }

@@ -7,6 +7,7 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
+from bridge.ghidra.client import CursorPageResult
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 
@@ -227,8 +228,16 @@ class StubGhidraClient:
     def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
         return self._string_lookup.get(address)
 
-    def search_functions(self, query: str) -> List[str]:
+    def search_functions(
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: Optional[str] = None,
+    ) -> CursorPageResult[str]:
         """Return a predictable list of functions for testing."""
+
         all_functions = [
             "Reset at 0000ABCD",
             "reset_handler @ 00FF10",
@@ -237,13 +246,26 @@ class StubGhidraClient:
             f"func_{i:04d} @ 0x{0x00400000 + i * 0x100:08x}"
             for i in range(20)
         )
-        # Add the functions from self._functions as well
         for addr, meta in self._functions.items():
             all_functions.append(f"{meta['name']} @ 0x{addr:08x}")
 
-        # Simple filter by query
         normalized_query = query.lower()
-        return [f for f in all_functions if normalized_query in f.lower()]
+        filtered = [f for f in all_functions if normalized_query in f.lower()]
+
+        # Stable ordering to mimic plugin behaviour.
+        filtered.sort()
+
+        start = max(0, offset)
+        if cursor:
+            try:
+                start = max(0, int(cursor))
+            except ValueError:
+                start = max(0, offset)
+        end = start + max(1, limit)
+        page_items = filtered[start:end]
+        has_more = end < len(filtered)
+        next_cursor = str(end) if has_more else None
+        return CursorPageResult(page_items, has_more, next_cursor)
 
     def list_functions_in_range(
         self, address_min: int, address_max: int

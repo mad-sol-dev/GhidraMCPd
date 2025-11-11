@@ -66,13 +66,14 @@ def test_has_more_contract_for_searches(path: str, payload: Dict[str, Any]) -> N
 
     page = int(data["page"])
     limit = int(data["limit"])
-    total = int(data["total"])
+    total_raw = data["total"]
 
     assert page >= 1, f"page must be >= 1 for {path}, got {page}"
     assert limit >= 1, f"limit must be >= 1 for {path}, got {limit}"
-    assert total >= 0, f"total must be >= 0 for {path}, got {total}"
-
-    expected = (page * limit) < total
-    assert (
-        data["has_more"] == expected
-    ), f"has_more mismatch for {path}: expected {expected} but got {data['has_more']}"
+    if total_raw is not None:
+        assert isinstance(total_raw, int), f"total must be int or null for {path}"
+        assert total_raw >= 0, f"total must be >= 0 for {path}, got {total_raw}"
+        expected = (page * limit) < total_raw
+        assert (
+            data["has_more"] == expected
+        ), f"has_more mismatch for {path}: expected {expected} but got {data['has_more']}"

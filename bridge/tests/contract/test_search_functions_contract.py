@@ -20,7 +20,9 @@ def test_search_functions_normalizes_addresses(contract_client: TestClient) -> N
     assert payload["ok"] is True
 
     data = payload["data"]
-    assert data["total"] >= 1
+    total = data["total"]
+    if total is not None:
+        assert total >= 1
     assert data["items"], "Expected at least one search result"
 
     address_pattern = re.compile(r"^0x[0-9a-fA-F]+$")

@@ -5,7 +5,18 @@ import ast
 import json
 from dataclasses import dataclass, field
 import logging
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    TypeVar,
+)
 from urllib.parse import urljoin
 
 import httpx
@@ -16,6 +27,9 @@ from .whitelist import DEFAULT_WHITELIST, WhitelistEntry
 from ..utils.logging import current_request, increment_counter, scoped_timer
 
 logger = logging.getLogger("ghidra.bridge.client")
+
+
+T = TypeVar("T")
 
 
 ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -130,6 +144,16 @@ def _has_confirm_true(
     return _matches(params) or _matches(data)
 
 
+@dataclass(slots=True)
+class CursorPageResult(Generic[T]):
+    """Structured payload returned by cursor-aware plugin endpoints."""
+
+    items: List[T]
+    has_more: bool
+    cursor: Optional[str]
+    error: Optional[str] = None
+
+
 class GhidraClient:
     """Small wrapper that handles whitelist enforcement and alias resolution."""
 
@@ -226,6 +250,76 @@ class GhidraClient:
         text = response.text
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
+
+    def _request_cursor_page(
+        self,
+        method: str,
+        path: str,
+        *,
+        key: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        item_parser: Optional[Callable[[Any], Optional[T]]] = None,
+    ) -> CursorPageResult[T]:
+        """Request a cursor-enabled endpoint and parse the JSON envelope."""
+
+        raw_lines = self._request_lines(
+            method,
+            path,
+            key=key,
+            params=params,
+            data=data,
+        )
+        if _is_error(raw_lines):
+            error = raw_lines[0]
+            return CursorPageResult([], False, None, error=error)
+
+        text = "\n".join(line for line in raw_lines if line is not None).strip()
+        if not text:
+            return CursorPageResult([], False, None)
+
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "cursor endpoint returned invalid JSON",
+                extra={
+                    "path": path,
+                    "error": str(exc),
+                    "payload_preview": text[:256],
+                },
+            )
+            return CursorPageResult([], False, None, error="invalid json payload")
+
+        items_raw = payload.get("items", [])
+        if not isinstance(items_raw, list):
+            logger.warning(
+                "cursor endpoint returned non-list items",
+                extra={"path": path, "items_type": type(items_raw).__name__},
+            )
+            items_raw = []
+
+        parsed_items: List[T] = []
+        if item_parser is None:
+            parsed_items = [item for item in items_raw if item is not None]
+        else:
+            for raw_item in items_raw:
+                try:
+                    parsed = item_parser(raw_item)
+                except Exception:  # pragma: no cover - defensive guard
+                    logger.exception("item parser raised", extra={"path": path})
+                    continue
+                if parsed is not None:
+                    parsed_items.append(parsed)
+
+        has_more = bool(payload.get("has_more"))
+        cursor_val = payload.get("cursor")
+        if not isinstance(cursor_val, str):
+            cursor_val = None
+        error_val = payload.get("error")
+        if error_val is not None and not isinstance(error_val, str):
+            error_val = str(error_val)
+        return CursorPageResult(parsed_items, has_more, cursor_val, error=error_val)
 
     # ------------------------------------------------------------------
     # public helpers
@@ -418,58 +512,134 @@ class GhidraClient:
             return []
         return [line.strip() for line in lines if line.strip()]
 
-    def search_functions(self, query: str) -> List[str]:
-        """Search for functions using the plaintext /functions endpoint."""
+    def search_functions(
+        self,
+        query: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: Optional[str] = None,
+    ) -> CursorPageResult[str]:
+        """Search for functions using the cursor-aware /searchFunctions endpoint."""
 
         increment_counter("ghidra.search_functions")
-        lines = self._request_lines(
+        params: Dict[str, Any] = {
+            "query": query,
+            "limit": max(1, int(limit)),
+            "offset": max(0, int(offset)),
+        }
+        if cursor:
+            params["cursor"] = cursor
+
+        def _ensure_str(item: Any) -> Optional[str]:
+            if isinstance(item, str):
+                stripped = item.strip()
+                return stripped if stripped else None
+            return None
+
+        result = self._request_cursor_page(
             "GET",
-            "functions",
+            "searchFunctions",
             key="SEARCH_FUNCTIONS",
-            params={"filter": query, "limit": 999999, "offset": 0},
+            params=params,
+            item_parser=_ensure_str,
         )
-        if _is_error(lines):
-            return []
-        return [line.strip() for line in lines if line.strip()]
+
+        # Fallback to legacy endpoint if plugin predates cursor support
+        if result.error and not result.items:
+            legacy_lines = self._request_lines(
+                "GET",
+                "functions",
+                key="SEARCH_FUNCTIONS",
+                params={"filter": query, "limit": 999999, "offset": 0},
+            )
+            if _is_error(legacy_lines):
+                return CursorPageResult([], False, None, error=legacy_lines[0])
+            legacy_items = [line.strip() for line in legacy_lines if line.strip()]
+            has_more = len(legacy_items) > max(0, int(offset)) + max(1, int(limit))
+            sliced = legacy_items[offset : offset + limit]
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        return result
 
 
-    def search_scalars(self, value: int) -> List[Dict[str, Any]]:
-        """
-        Search for scalar values in the binary.
-        
-        Args:
-            value: Integer value to search for
-            
-        Returns:
-            List of dicts with address, value, function, and context
-        """
+    def search_scalars(
+        self,
+        value: int,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        cursor: Optional[str] = None,
+    ) -> CursorPageResult[Dict[str, Any]]:
+        """Search for scalar values via the cursor-aware endpoint."""
+
         increment_counter("ghidra.search_scalars")
-        lines = self._request_lines(
+        params: Dict[str, Any] = {
+            "value": f"0x{value:x}",
+            "limit": max(1, int(limit)),
+            "offset": max(0, int(offset)),
+        }
+        if cursor:
+            params["cursor"] = cursor
+
+        def _parse_scalar(item: Any) -> Optional[Dict[str, Any]]:
+            if isinstance(item, str):
+                stripped = item.strip()
+                if not stripped:
+                    return None
+                if ":" in stripped:
+                    address_part, rest = stripped.split(":", 1)
+                    address = address_part.strip()
+                    context = rest.strip()
+                else:
+                    address = stripped
+                    context = ""
+                return {
+                    "address": address,
+                    "context": context,
+                }
+            if isinstance(item, Mapping):  # pragma: no cover - defensive future-proofing
+                return {
+                    "address": str(item.get("address", "")),
+                    "context": str(item.get("context", "")),
+                }
+            return None
+
+        result = self._request_cursor_page(
             "GET",
             "searchScalars",
             key="SEARCH_SCALARS",
-            params={"value": f"0x{value:x}", "limit": 999999},
+            params=params,
+            item_parser=_parse_scalar,
         )
-        if _is_error(lines):
-            return []
-        results: List[Dict[str, Any]] = []
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
-                continue
-            # Expected format: "address: value [function] context"
-            parts = stripped.split(None, 1)
-            if not parts:
-                continue
-            address = parts[0].rstrip(":")
-            rest = parts[1] if len(parts) > 1 else ""
-            results.append({
-                "address": address,
-                "value": f"0x{value:x}",
-                "function": None,
-                "context": rest,
-            })
-        return results
+
+        if result.error and not result.items:
+            lines = self._request_lines(
+                "GET",
+                "searchScalars",
+                key="SEARCH_SCALARS",
+                params={"value": f"0x{value:x}", "limit": 999999},
+            )
+            if _is_error(lines):
+                return CursorPageResult([], False, None, error=lines[0])
+            parsed: List[Dict[str, Any]] = []
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if ":" in stripped:
+                    address_part, rest = stripped.split(":", 1)
+                    address = address_part.strip()
+                    context = rest.strip()
+                else:
+                    address = stripped
+                    context = ""
+                parsed.append({"address": address, "context": context})
+            sliced = parsed[offset : offset + limit]
+            has_more = len(parsed) > offset + limit
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        return result
 
     def list_functions_in_range(self, address_min: int, address_max: int) -> List[Dict[str, Any]]:
         """

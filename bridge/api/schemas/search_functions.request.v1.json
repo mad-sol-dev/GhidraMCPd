@@ -19,6 +19,14 @@
       "minimum": 1,
       "default": 1
     },
+    "cursor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resume_cursor": {
+      "type": "string",
+      "minLength": 1
+    },
     "rank": {
       "type": "string",
       "enum": ["simple"]

@@ -10,7 +10,6 @@
 - _None (blocked on later roadmap items)._ 
 
 ## LATER
-- {D.8} Cursor streaming for very large sets — revert to todo until cursor/resume plumbing lands
 - {D.9} 5-min short-term cache per {digest,query}
 
 ## DONE
@@ -22,6 +21,7 @@
 - [x] {T-202511-018} Sync roadmap + plan docs with audit — ROADMAP.md updated, `.plan` statuses aligned, overview captures current capabilities.
 - [x] {D.6} Result budgeting — request/query `max_result_tokens`, auto-trim (200) vs strict (413) enforcement, coverage + docs refreshed.
 - [x] {D.7} rank=simple & k — heuristic prefilter enabled as opt-in, stable ordering, docs/tests added.
+- [x] {D.8} Cursor streaming for very large sets — cursor/resume plumbing landed with docs/tests.
 - [x] OpenAPI renderer fixed — gen_api_md.py handles 3.1 unions/combinators, docs regenerated.
 - [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
 

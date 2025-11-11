@@ -1047,6 +1047,14 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": false,
                 "properties": {
+                  "cursor": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "k": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
                   "limit": {
                     "default": 100,
                     "maximum": 500,
@@ -1058,18 +1066,18 @@
                     "minimum": 1,
                     "type": "integer"
                   },
+                  "query": {
+                    "minLength": 0,
+                    "type": "string"
+                  },
                   "rank": {
                     "enum": [
                       "simple"
                     ],
                     "type": "string"
                   },
-                  "k": {
-                    "minimum": 1,
-                    "type": "integer"
-                  },
-                  "query": {
-                    "minLength": 0,
+                  "resume_cursor": {
+                    "minLength": 1,
                     "type": "string"
                   }
                 },
@@ -1091,6 +1099,13 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "cursor": {
+                      "minLength": 1,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "has_more": {
                       "type": "boolean"
                     },
@@ -1125,9 +1140,19 @@
                     "query": {
                       "type": "string"
                     },
+                    "resume_cursor": {
+                      "minLength": 1,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "total": {
                       "minimum": 0,
-                      "type": "integer"
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
