@@ -56,6 +56,9 @@ _SSE_LOGGER = logging.getLogger("bridge.sse")
 _REQUEST_SCHEMA_MAP = {
     "/api/analyze_function_complete.json": "analyze_function_complete.request.v1.json",
     "/api/collect.json": "collect.request.v1.json",
+    "/api/datatypes/create.json": "datatypes_create.request.v1.json",
+    "/api/datatypes/update.json": "datatypes_update.request.v1.json",
+    "/api/datatypes/delete.json": "datatypes_delete.request.v1.json",
     "/api/disassemble_at.json": "disassemble_at.request.v1.json",
     "/api/jt_scan.json": "jt_scan.request.v1.json",
     "/api/jt_slot_check.json": "jt_slot_check.request.v1.json",
@@ -78,6 +81,9 @@ _REQUEST_SCHEMA_MAP = {
 _RESPONSE_SCHEMA_MAP = {
     "/api/analyze_function_complete.json": "analyze_function_complete.v1.json",
     "/api/collect.json": "collect.v1.json",
+    "/api/datatypes/create.json": "datatypes_create.v1.json",
+    "/api/datatypes/update.json": "datatypes_update.v1.json",
+    "/api/datatypes/delete.json": "datatypes_delete.v1.json",
     "/api/disassemble_at.json": "disassemble_at.v1.json",
     "/api/health.json": "health.v1.json",
     "/api/jt_scan.json": "jt_scan.v1.json",

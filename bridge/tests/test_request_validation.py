@@ -57,6 +57,28 @@ def _valid_payloads() -> dict[str, dict[str, object]]:
             "dry_run": True,
             "max_samples": 2,
         },
+        "/api/datatypes/create.json": {
+            "kind": "structure",
+            "name": "Widget",
+            "category": "/structs",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4}
+            ],
+            "dry_run": True,
+        },
+        "/api/datatypes/update.json": {
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "fields": [
+                {"name": "id", "type": "uint32", "offset": 0, "length": 4}
+            ],
+            "dry_run": True,
+        },
+        "/api/datatypes/delete.json": {
+            "kind": "structure",
+            "path": "/structs/Packet",
+            "dry_run": True,
+        },
     }
 
 

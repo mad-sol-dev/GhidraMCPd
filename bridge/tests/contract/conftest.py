@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
-from bridge.ghidra.client import CursorPageResult
+from bridge.ghidra.client import CursorPageResult, DataTypeOperationResult
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 from bridge.utils import config
@@ -141,6 +141,167 @@ class StubGhidraClient:
             "imports_count": len(self._imports),
             "exports_count": len(self._exports),
         }
+        self._datatypes: Dict[str, Dict[str, object]] = {
+            "/structs/Packet": {
+                "kind": "structure",
+                "name": "Packet",
+                "category": "/structs",
+                "path": "/structs/Packet",
+                "fields": [
+                    {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                    {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+                ],
+                "size": 6,
+            },
+            "/unions/Payload": {
+                "kind": "union",
+                "name": "Payload",
+                "category": "/unions",
+                "path": "/unions/Payload",
+                "fields": [
+                    {"name": "raw", "type": "uint32", "length": 4},
+                    {"name": "ptr", "type": "pointer", "length": 8},
+                ],
+                "size": 8,
+            },
+        }
+
+    def _normalize_category(self, category: str) -> str:
+        value = str(category or "").strip()
+        if not value:
+            return "/"
+        if not value.startswith("/"):
+            value = f"/{value}"
+        if value != "/":
+            value = value.rstrip("/")
+        return value or "/"
+
+    def _datatype_path(self, category: str, name: str) -> str:
+        category = self._normalize_category(category)
+        if category == "/":
+            return f"/{name}"
+        return f"{category}/{name}"
+
+    def _prepare_fields(self, fields: List[Dict[str, object]]) -> List[Dict[str, object]]:
+        prepared: List[Dict[str, object]] = []
+        for field in fields:
+            entry: Dict[str, object] = {
+                "name": str(field.get("name", "")),
+                "type": str(field.get("type", "")),
+            }
+            if "offset" in field:
+                entry["offset"] = int(field.get("offset", 0))
+            if "length" in field:
+                entry["length"] = int(field.get("length", 0))
+            prepared.append(entry)
+        return prepared
+
+    def _estimate_size(self, kind: str, fields: List[Dict[str, object]]) -> int:
+        size = 0
+        for field in fields:
+            length = int(field.get("length", 0) or 0)
+            if kind == "structure":
+                offset = int(field.get("offset", 0) or 0)
+                size = max(size, offset + length)
+            else:
+                size = max(size, length)
+        return size
+
+    def create_structure(
+        self,
+        *,
+        name: str,
+        category: str,
+        fields: List[Dict[str, object]],
+    ) -> DataTypeOperationResult:
+        category_norm = self._normalize_category(category)
+        path = self._datatype_path(category_norm, name)
+        prepared = self._prepare_fields(fields)
+        payload = {
+            "kind": "structure",
+            "name": name,
+            "category": category_norm,
+            "path": path,
+            "fields": prepared,
+            "size": self._estimate_size("structure", prepared),
+        }
+        self._datatypes[path] = payload
+        return DataTypeOperationResult(True, datatype=dict(payload))
+
+    def update_structure(
+        self,
+        *,
+        path: str,
+        fields: List[Dict[str, object]],
+    ) -> DataTypeOperationResult:
+        existing = self._datatypes.get(path)
+        if existing is None:
+            return DataTypeOperationResult(False, error="datatype not found")
+        prepared = self._prepare_fields(fields)
+        payload = dict(existing)
+        payload.update(
+            {
+                "kind": "structure",
+                "path": path,
+                "fields": prepared,
+                "size": self._estimate_size("structure", prepared),
+            }
+        )
+        self._datatypes[path] = payload
+        return DataTypeOperationResult(True, datatype=dict(payload))
+
+    def create_union(
+        self,
+        *,
+        name: str,
+        category: str,
+        fields: List[Dict[str, object]],
+    ) -> DataTypeOperationResult:
+        category_norm = self._normalize_category(category)
+        path = self._datatype_path(category_norm, name)
+        prepared = self._prepare_fields(fields)
+        payload = {
+            "kind": "union",
+            "name": name,
+            "category": category_norm,
+            "path": path,
+            "fields": prepared,
+            "size": self._estimate_size("union", prepared),
+        }
+        self._datatypes[path] = payload
+        return DataTypeOperationResult(True, datatype=dict(payload))
+
+    def update_union(
+        self,
+        *,
+        path: str,
+        fields: List[Dict[str, object]],
+    ) -> DataTypeOperationResult:
+        existing = self._datatypes.get(path)
+        if existing is None:
+            return DataTypeOperationResult(False, error="datatype not found")
+        prepared = self._prepare_fields(fields)
+        payload = dict(existing)
+        payload.update(
+            {
+                "kind": "union",
+                "path": path,
+                "fields": prepared,
+                "size": self._estimate_size("union", prepared),
+            }
+        )
+        self._datatypes[path] = payload
+        return DataTypeOperationResult(True, datatype=dict(payload))
+
+    def delete_datatype(self, *, kind: str, path: str) -> DataTypeOperationResult:
+        existing = self._datatypes.pop(path, None)
+        if existing is None:
+            return DataTypeOperationResult(False, error="datatype not found")
+        payload = {
+            "kind": existing.get("kind", kind),
+            "path": path,
+        }
+        return DataTypeOperationResult(True, datatype=payload)
 
     def read_dword(self, address: int) -> Optional[int]:
         index = (address - self._jt_base) // 4
