@@ -607,45 +607,1076 @@
     },
     "/api/collect.json": {
       "post": {
-        "summary": "collect_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$defs": {
+                  "query": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "max_result_tokens": {
+                        "minimum": 0,
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "metadata": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "op": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "params": {
+                        "additionalProperties": true,
+                        "default": {},
+                        "type": "object"
+                      },
+                      "result_budget": {
+                        "$ref": "#/$defs/result_budget"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "op"
+                    ],
+                    "type": "object"
+                  },
+                  "result_budget": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "max_result_tokens": {
+                        "minimum": 0,
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "mode": {
+                        "default": "auto_trim",
+                        "enum": [
+                          "auto_trim",
+                          "strict"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "$id": "urn:schema:collect.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "metadata": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "queries": {
+                    "items": {
+                      "$ref": "#/$defs/query"
+                    },
+                    "maxItems": 256,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "result_budget": {
+                    "$ref": "#/$defs/result_budget"
+                  }
+                },
+                "required": [
+                  "queries"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$defs": {
+                    "query_result": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "meta": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "budget": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "consumed_tokens": {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                "max_result_tokens": {
+                                  "minimum": 0,
+                                  "type": [
+                                    "integer",
+                                    "null"
+                                  ]
+                                },
+                                "mode": {
+                                  "type": "string"
+                                },
+                                "remaining_tokens": {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "estimate_tokens": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "max_result_tokens": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "notes": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "truncated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "op": {
+                          "type": "string"
+                        },
+                        "result": {
+                          "$ref": "urn:schema:envelope.v1"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "op",
+                        "result"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "$id": "urn:schema:collect.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "meta": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "estimate_tokens": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "result_budget": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "consumed_tokens": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "max_result_tokens": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "mode": {
+                              "type": "string"
+                            },
+                            "remaining_tokens": {
+                              "minimum": 0,
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "queries": {
+                      "items": {
+                        "$ref": "#/$defs/query_result"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "queries"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "collect_route",
+        "x-response-model": "collect.v1.json"
       }
     },
     "/api/disassemble_at.json": {
       "post": {
-        "summary": "disassemble_at_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:disassemble-at.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "count": {
+                    "default": 16,
+                    "maximum": 128,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "address"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:disassemble-at.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "bytes": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "address",
+                          "bytes",
+                          "text"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "disassemble_at_route",
+        "x-response-model": "disassemble_at.v1.json"
       }
     },
     "/api/health.json": {
       "get": {
-        "summary": "health_route"
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:health.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ghidra": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "base_url": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        },
+                        "reachable": {
+                          "type": "boolean"
+                        },
+                        "status_code": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "base_url",
+                        "reachable"
+                      ],
+                      "type": "object"
+                    },
+                    "service": {
+                      "type": "string"
+                    },
+                    "writes_enabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "service",
+                    "writes_enabled",
+                    "ghidra"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "health_route",
+        "x-response-model": "health.v1.json"
       },
       "head": {
-        "summary": "health_route"
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:health.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "ghidra": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "base_url": {
+                          "type": "string"
+                        },
+                        "error": {
+                          "type": "string"
+                        },
+                        "reachable": {
+                          "type": "boolean"
+                        },
+                        "status_code": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "base_url",
+                        "reachable"
+                      ],
+                      "type": "object"
+                    },
+                    "service": {
+                      "type": "string"
+                    },
+                    "writes_enabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "service",
+                    "writes_enabled",
+                    "ghidra"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "health_route",
+        "x-response-model": "health.v1.json"
       }
     },
     "/api/jt_scan.json": {
       "post": {
-        "summary": "jt_scan_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:jt-scan.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "arch": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "code_max": {
+                    "description": "Upper bound (exclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "code_min": {
+                    "description": "Lower bound (inclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "count": {
+                    "maximum": 256,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "jt_base": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "start": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "jt_base",
+                  "start",
+                  "count",
+                  "code_min",
+                  "code_max"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:jt-scan.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "urn:schema:jt-slot-check.v1"
+                      },
+                      "type": "array"
+                    },
+                    "range": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "count": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "start": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "start",
+                        "count"
+                      ],
+                      "type": "object"
+                    },
+                    "summary": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "invalid": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "total": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "valid": {
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "valid",
+                        "invalid"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "range",
+                    "summary",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "jt_scan_route",
+        "x-response-model": "jt_scan.v1.json"
       }
     },
     "/api/jt_slot_check.json": {
       "post": {
-        "summary": "jt_slot_check_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:jt-slot-check.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "arch": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "code_max": {
+                    "description": "Upper bound (exclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "code_min": {
+                    "description": "Lower bound (inclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "jt_base": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "slot_index": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "jt_base",
+                  "slot_index",
+                  "code_min",
+                  "code_max"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:jt-slot-check.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "mode": {
+                      "enum": [
+                        "ARM",
+                        "Thumb",
+                        "none"
+                      ],
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "raw": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "slot": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "slot_addr": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "target": {
+                      "oneOf": [
+                        {
+                          "pattern": "^0x[0-9a-fA-F]+$",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "slot_addr",
+                    "raw",
+                    "mode",
+                    "target",
+                    "errors"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "jt_slot_check_route",
+        "x-response-model": "jt_slot_check.v1.json"
       }
     },
     "/api/jt_slot_process.json": {
       "post": {
-        "summary": "jt_slot_process_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:jt-slot-process.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "arch": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "code_max": {
+                    "description": "Upper bound (exclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "code_min": {
+                    "description": "Lower bound (inclusive) for valid code addresses.",
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "comment": {
+                    "type": "string"
+                  },
+                  "dry_run": {
+                    "type": "boolean"
+                  },
+                  "jt_base": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "rename_pattern": {
+                    "type": "string"
+                  },
+                  "slot_index": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "jt_base",
+                  "slot_index",
+                  "code_min",
+                  "code_max"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:jt-slot-process.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "mode": {
+                      "enum": [
+                        "ARM",
+                        "Thumb",
+                        "none"
+                      ],
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "raw": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "slot": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "slot_addr": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "target": {
+                      "oneOf": [
+                        {
+                          "pattern": "^0x[0-9a-fA-F]+$",
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "verify": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "comment_present": {
+                          "type": "boolean"
+                        },
+                        "name": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "comment_present"
+                      ],
+                      "type": "object"
+                    },
+                    "writes": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "comment_set": {
+                          "type": "boolean"
+                        },
+                        "renamed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "renamed",
+                        "comment_set"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "slot_addr",
+                    "raw",
+                    "mode",
+                    "target",
+                    "errors",
+                    "writes",
+                    "verify"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "jt_slot_process_route",
+        "x-response-model": "jt_slot_process.v1.json"
       }
     },
     "/api/list_functions_in_range.json": {
       "post": {
-        "summary": "list_functions_in_range_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:list-functions-in-range.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "address_max": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "address_min": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "limit": {
+                    "default": 200,
+                    "maximum": 500,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "address_min",
+                  "address_max"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:list-functions-in-range.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "address"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total",
+                    "page",
+                    "limit",
+                    "has_more",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "list_functions_in_range_route",
+        "x-response-model": "list_functions_in_range.v1.json"
       }
     },
     "/api/mmio_annotate.json": {
       "post": {
-        "summary": "mmio_annotate_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:mmio-annotate.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "dry_run": {
+                    "type": "boolean"
+                  },
+                  "function_addr": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "max_samples": {
+                    "maximum": 256,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "function_addr"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:mmio-annotate.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "annotated": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "bitwise_and": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "bitwise_or": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "function": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "reads": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "samples": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "addr": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "address_abs": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "op": {
+                            "enum": [
+                              "READ",
+                              "WRITE",
+                              "OR",
+                              "AND",
+                              "TOGGLE"
+                            ],
+                            "type": "string"
+                          },
+                          "target": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "addr",
+                          "op",
+                          "target"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "toggles": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "writes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "function",
+                    "reads",
+                    "writes",
+                    "bitwise_or",
+                    "bitwise_and",
+                    "toggles",
+                    "annotated",
+                    "samples"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "mmio_annotate_route",
+        "x-response-model": "mmio_annotate.v1.json"
       }
     },
     "/api/project_info.json": {
@@ -932,7 +1963,76 @@
     },
     "/api/read_bytes.json": {
       "post": {
-        "summary": "read_bytes_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:read-bytes.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "length": {
+                    "maximum": 4096,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "address",
+                  "length"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:read-bytes.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "address": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "string"
+                    },
+                    "encoding": {
+                      "enum": [
+                        "base64"
+                      ],
+                      "type": "string"
+                    },
+                    "length": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "length",
+                    "encoding",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "read_bytes_route",
+        "x-response-model": "read_bytes.v1.json"
       }
     },
     "/api/search_exports.json": {
@@ -1278,7 +2378,150 @@
     },
     "/api/search_scalars.json": {
       "post": {
-        "summary": "search_scalars_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:search-scalars.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "cursor": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "limit": {
+                    "default": 100,
+                    "maximum": 500,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "resume_cursor": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "value": {
+                    "oneOf": [
+                      {
+                        "pattern": "^0x[0-9A-Fa-f]+$",
+                        "type": "string"
+                      },
+                      {
+                        "minimum": 0,
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:search-scalars.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cursor": {
+                      "minLength": 1,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "context": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "function": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "value": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "address",
+                          "value"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "resume_cursor": {
+                      "minLength": 1,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total",
+                    "page",
+                    "limit",
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "search_scalars_route",
+        "x-response-model": "search_scalars.v1.json"
       }
     },
     "/api/search_strings.json": {
@@ -1368,25 +2611,397 @@
     },
     "/api/search_xrefs_to.json": {
       "post": {
-        "summary": "search_xrefs_to_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "search_xrefs_to.request.v1.json",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "limit": {
+                    "default": 100,
+                    "maximum": 1000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "page": {
+                    "default": 1,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "query": {
+                    "minLength": 0,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "address",
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "search_xrefs_to.v1.json",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "context": {
+                            "type": "string"
+                          },
+                          "from_address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "target_address": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "from_address",
+                          "context",
+                          "target_address"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "limit": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "page": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "query": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "total",
+                    "page",
+                    "limit",
+                    "items",
+                    "has_more"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "search_xrefs_to_route",
+        "x-response-model": "search_xrefs_to.v1.json"
       }
     },
     "/api/string_xrefs.json": {
       "post": {
-        "summary": "string_xrefs_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:string-xrefs.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "maximum": 256,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "string_addr": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "string_addr"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:string-xrefs.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "callers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "addr": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "arg_index": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "context": {
+                            "type": "string"
+                          },
+                          "hint": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "addr",
+                          "context"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "count": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "string": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "string",
+                    "count",
+                    "callers"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "string_xrefs_route",
+        "x-response-model": "string_xrefs.v1.json"
       }
     },
     "/api/strings_compact.json": {
       "post": {
-        "summary": "strings_compact_route"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:strings-compact.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "offset": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "limit"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:strings-compact.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "addr": {
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "refs": {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "s": {
+                            "maxLength": 120,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "s",
+                          "addr",
+                          "refs"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "total": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "items"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "strings_compact_route",
+        "x-response-model": "strings_compact.v1.json"
       }
     },
     "/state": {
       "get": {
-        "summary": "state"
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:state.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "active_sse": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "bridge_ready": {
+                      "type": "boolean"
+                    },
+                    "connects": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "last_init_ts": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "session_ready": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "bridge_ready",
+                    "session_ready",
+                    "ready",
+                    "active_sse",
+                    "connects",
+                    "last_init_ts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "state",
+        "x-response-model": "state.v1.json"
       },
       "head": {
-        "summary": "state"
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:state.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "active_sse": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "bridge_ready": {
+                      "type": "boolean"
+                    },
+                    "connects": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "last_init_ts": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "session_ready": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "bridge_ready",
+                    "session_ready",
+                    "ready",
+                    "active_sse",
+                    "connects",
+                    "last_init_ts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "state",
+        "x-response-model": "state.v1.json"
       }
     }
   }

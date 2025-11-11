@@ -54,20 +54,46 @@ _SSE_LOGGER = logging.getLogger("bridge.sse")
 
 
 _REQUEST_SCHEMA_MAP = {
-    "/api/search_strings.json": "search_strings.request.v1.json",
+    "/api/analyze_function_complete.json": "analyze_function_complete.request.v1.json",
+    "/api/collect.json": "collect.request.v1.json",
+    "/api/disassemble_at.json": "disassemble_at.request.v1.json",
+    "/api/jt_scan.json": "jt_scan.request.v1.json",
+    "/api/jt_slot_check.json": "jt_slot_check.request.v1.json",
+    "/api/jt_slot_process.json": "jt_slot_process.request.v1.json",
+    "/api/list_functions_in_range.json": "list_functions_in_range.request.v1.json",
+    "/api/mmio_annotate.json": "mmio_annotate.request.v1.json",
+    "/api/read_bytes.json": "read_bytes.request.v1.json",
+    "/api/search_exports.json": "search_exports.request.v1.json",
     "/api/search_functions.json": "search_functions.request.v1.json",
     "/api/search_imports.json": "search_imports.request.v1.json",
-    "/api/search_exports.json": "search_exports.request.v1.json",
-    "/api/analyze_function_complete.json": "analyze_function_complete.request.v1.json",
+    "/api/search_scalars.json": "search_scalars.request.v1.json",
+    "/api/search_strings.json": "search_strings.request.v1.json",
+    "/api/search_xrefs_to.json": "search_xrefs_to.request.v1.json",
+    "/api/string_xrefs.json": "string_xrefs.request.v1.json",
+    "/api/strings_compact.json": "strings_compact.request.v1.json",
 }
 
 _RESPONSE_SCHEMA_MAP = {
-    "/api/search_strings.json": "search_strings.v1.json",
+    "/api/analyze_function_complete.json": "analyze_function_complete.v1.json",
+    "/api/collect.json": "collect.v1.json",
+    "/api/disassemble_at.json": "disassemble_at.v1.json",
+    "/api/health.json": "health.v1.json",
+    "/api/jt_scan.json": "jt_scan.v1.json",
+    "/api/jt_slot_check.json": "jt_slot_check.v1.json",
+    "/api/jt_slot_process.json": "jt_slot_process.v1.json",
+    "/api/list_functions_in_range.json": "list_functions_in_range.v1.json",
+    "/api/mmio_annotate.json": "mmio_annotate.v1.json",
+    "/api/project_info.json": "project_info.v1.json",
+    "/api/read_bytes.json": "read_bytes.v1.json",
+    "/api/search_exports.json": "search_exports.v1.json",
     "/api/search_functions.json": "search_functions.v1.json",
     "/api/search_imports.json": "search_imports.v1.json",
-    "/api/search_exports.json": "search_exports.v1.json",
-    "/api/project_info.json": "project_info.v1.json",
-    "/api/analyze_function_complete.json": "analyze_function_complete.v1.json",
+    "/api/search_scalars.json": "search_scalars.v1.json",
+    "/api/search_strings.json": "search_strings.v1.json",
+    "/api/search_xrefs_to.json": "search_xrefs_to.v1.json",
+    "/api/string_xrefs.json": "string_xrefs.v1.json",
+    "/api/strings_compact.json": "strings_compact.v1.json",
+    "/state": "state.v1.json",
 }
 
 
