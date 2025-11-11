@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import json
 from dataclasses import dataclass, field
 import logging
@@ -57,6 +58,11 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
         "set_disassembly_comment",
         "setDisassemblyComment",
     ),
+    "START_TRANSACTION": ("startTransaction",),
+    "COMMIT_TRANSACTION": ("commitTransaction",),
+    "ROLLBACK_TRANSACTION": ("rollbackTransaction",),
+    "WRITE_BYTES": ("writeBytes",),
+    "REBUILD_CODE_UNITS": ("rebuildCodeUnits",),
 }
 
 
@@ -808,6 +814,88 @@ class GhidraClient:
             "SET_DISASSEMBLY_COMMENT", requester
         )
         return not _is_error(response)
+
+    def _begin_transaction(self, name: str) -> Optional[str]:
+        requester = EndpointRequester(
+            self,
+            "POST",
+            key="START_TRANSACTION",
+            data={"name": name},
+        )
+        response = self._post_resolver.resolve("START_TRANSACTION", requester)
+        if _is_error(response) or not response:
+            return None
+        token = response[0].strip()
+        return token or None
+
+    def _commit_transaction(self, token: str) -> bool:
+        requester = EndpointRequester(
+            self,
+            "POST",
+            key="COMMIT_TRANSACTION",
+            data={"transaction": token},
+        )
+        response = self._post_resolver.resolve("COMMIT_TRANSACTION", requester)
+        return not _is_error(response)
+
+    def _rollback_transaction(self, token: str) -> None:
+        requester = EndpointRequester(
+            self,
+            "POST",
+            key="ROLLBACK_TRANSACTION",
+            data={"transaction": token},
+        )
+        self._post_resolver.resolve("ROLLBACK_TRANSACTION", requester)
+
+    def write_bytes(self, address: int, data: bytes) -> bool:
+        """Write raw bytes to the active program and rebuild affected code."""
+
+        increment_counter("ghidra.write_bytes")
+
+        transaction = self._begin_transaction("write_bytes")
+        if not transaction:
+            return False
+
+        encoded = base64.b64encode(data).decode("ascii")
+        address_hex = f"0x{address:08x}"
+        committed = False
+        try:
+            write_requester = EndpointRequester(
+                self,
+                "POST",
+                key="WRITE_BYTES",
+                data={
+                    "transaction": transaction,
+                    "address": address_hex,
+                    "encoding": "base64",
+                    "data": encoded,
+                },
+            )
+            write_response = self._post_resolver.resolve("WRITE_BYTES", write_requester)
+            if _is_error(write_response):
+                return False
+
+            rebuild_requester = EndpointRequester(
+                self,
+                "POST",
+                key="REBUILD_CODE_UNITS",
+                data={
+                    "transaction": transaction,
+                    "address": address_hex,
+                    "length": len(data),
+                },
+            )
+            rebuild_response = self._post_resolver.resolve(
+                "REBUILD_CODE_UNITS", rebuild_requester
+            )
+            if _is_error(rebuild_response):
+                return False
+
+            committed = self._commit_transaction(transaction)
+            return committed
+        finally:
+            if transaction and not committed:
+                self._rollback_transaction(transaction)
 
     def close(self) -> None:
         self._session.close()

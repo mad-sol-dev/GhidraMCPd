@@ -11,6 +11,7 @@ All endpoints use the envelope `{ok, data|null, errors[]}` with error entries sh
 - `POST /api/list_functions_in_range.json`
 - `POST /api/disassemble_at.json`
 - `POST /api/read_bytes.json`
+- `POST /api/write_bytes.json`
 - `POST /api/jt_slot_check.json`
 - `POST /api/jt_scan.json`
 - `POST /api/strings_compact.json`

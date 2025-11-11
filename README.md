@@ -73,6 +73,11 @@ curl -i -X POST http://localhost:8000/sse
 
 curl -i http://localhost:8000/messages
 # before readiness → HTTP/1.1 425 Too Early + {"error":"mcp_not_ready"}
+
+curl -sS -X POST http://localhost:8000/api/write_bytes.json \
+  -H 'content-type: application/json' \
+  -d '{"address":"0x00400000","data":"AAEC","dry_run":true}'
+# → {"ok":true,"data":{"written":false,...,"notes":["dry-run enabled: no bytes written", ...]},"errors":[]}
 ```
 
 ## API index
@@ -88,6 +93,7 @@ curl -i http://localhost:8000/messages
 * `/api/list_functions_in_range.json`
 * `/api/disassemble_at.json`
 * `/api/read_bytes.json`
+* `/api/write_bytes.json`
 * `/api/jt_slot_check.json`
 * `/api/jt_slot_process.json`
 * `/api/jt_scan.json`

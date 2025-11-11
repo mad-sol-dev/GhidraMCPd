@@ -2894,6 +2894,100 @@
         "x-response-model": "strings_compact.v1.json"
       }
     },
+    "/api/write_bytes.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$id": "urn:schema:write-bytes.request.v1",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "address": {
+                    "pattern": "^0x[0-9a-fA-F]+$",
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "string"
+                  },
+                  "dry_run": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "encoding": {
+                    "default": "base64",
+                    "enum": [
+                      "base64"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "address",
+                  "data"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:write-bytes.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "address": {
+                      "pattern": "^0x[0-9a-fA-F]+$",
+                      "type": "string"
+                    },
+                    "dry_run": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "length": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "written": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "length",
+                    "dry_run",
+                    "written",
+                    "notes",
+                    "errors"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "write_bytes_route",
+        "x-response-model": "write_bytes.v1.json"
+      }
+    },
     "/state": {
       "get": {
         "responses": {
