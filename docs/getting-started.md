@@ -32,6 +32,8 @@ Set environment variables before starting the server to adjust safety limits and
 
 - `GHIDRA_MCP_ENABLE_WRITES` (default `false`)
   - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations.
+- `GHIDRA_MCP_ENABLE_PROJECT_REBASE` (default `false`)
+  - Enables `/api/project_rebase.json` to mutate the program image base when `dry_run=false` and the request includes `confirm=true`. Without the flag, the endpoint only reports what would change.
 - `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (default `2`)
   - Caps the number of writes a single call may perform. Surpassing the cap raises `SafetyLimitExceeded`.
 - `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` (default `256`)

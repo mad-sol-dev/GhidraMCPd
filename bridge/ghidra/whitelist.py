@@ -74,5 +74,6 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         WhitelistEntry("POST", "ROLLBACK_TRANSACTION", ("rollbackTransaction",)),
         WhitelistEntry("POST", "WRITE_BYTES", ("writeBytes",)),
         WhitelistEntry("POST", "REBUILD_CODE_UNITS", ("rebuildCodeUnits",)),
+        WhitelistEntry("POST", "REBASE_PROGRAM", ("rebaseProgram", "rebase_program")),
     ),
 }

@@ -10,6 +10,7 @@ from bridge.api.routes import make_routes
 from bridge.ghidra.client import CursorPageResult
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
+from bridge.utils import config
 
 
 _RUN_CONTRACT_TESTS = env_flag("RUN_CONTRACT_TESTS", default=not in_ci())
@@ -207,6 +208,67 @@ class StubGhidraClient:
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         return True
 
+    def rebase_program(
+        self,
+        *,
+        new_base: int,
+        offset: Optional[int] = None,
+        confirm: bool = False,
+    ) -> tuple[bool, list[str]]:
+        if not confirm:
+            return False, ["ERROR: confirmation required"]
+
+        try:
+            current_base = int(str(self._project_info["image_base"]), 16)
+        except (KeyError, TypeError, ValueError):
+            current_base = None
+
+        if offset is None and current_base is not None:
+            offset = new_base - current_base
+
+        if current_base is not None and offset is not None:
+            delta = offset
+        elif current_base is not None:
+            delta = new_base - current_base
+        else:
+            delta = offset or 0
+
+        self._project_info["image_base"] = f"0x{new_base:08x}"
+
+        if delta:
+            updated_entry_points: list[str] = []
+            for entry in self._project_info.get("entry_points", []):
+                try:
+                    value = int(str(entry), 16)
+                except (TypeError, ValueError):
+                    updated_entry_points.append(str(entry))
+                else:
+                    updated_entry_points.append(f"0x{value + delta:08x}")
+            if updated_entry_points:
+                self._project_info["entry_points"] = updated_entry_points
+
+            blocks: list[Dict[str, object]] = []
+            for block in self._project_info.get("memory_blocks", []):
+                if not isinstance(block, dict):
+                    continue
+                start = block.get("start")
+                end = block.get("end")
+                try:
+                    start_value = int(str(start), 16)
+                    end_value = int(str(end), 16)
+                except (TypeError, ValueError):
+                    blocks.append(dict(block))
+                    continue
+                updated = dict(block)
+                updated["start"] = f"0x{start_value + delta:08x}"
+                updated["end"] = f"0x{end_value + delta:08x}"
+                blocks.append(updated)
+            if blocks:
+                self._project_info["memory_blocks"] = blocks
+
+        message = f"Rebased by {delta:+#x}" if delta else "Rebase applied"
+        return True, [message]
+
     def list_strings_compact(
         self, *, limit: int = 50, offset: int = 0
     ) -> List[Dict[str, object]]:
@@ -326,3 +388,21 @@ def contract_client() -> TestClient:
     app = Starlette(routes=make_routes(factory, enable_writes=False))
     install_error_handlers(app)
     return TestClient(app)
+
+
+@pytest.fixture()
+def contract_client_writable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    monkeypatch.setattr(config, "ENABLE_PROJECT_REBASE", True)
+
+    def factory() -> StubGhidraClient:
+        return StubGhidraClient()
+
+    app = Starlette(routes=make_routes(factory, enable_writes=True))
+    install_error_handlers(app)
+    client = TestClient(app)
+    try:
+        yield client
+    finally:
+        client.close()

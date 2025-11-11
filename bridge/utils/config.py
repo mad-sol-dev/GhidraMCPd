@@ -33,6 +33,9 @@ def _env_int(name: str, *, default: int) -> int:
 ENABLE_WRITES: Final[bool] = _env_bool("GHIDRA_MCP_ENABLE_WRITES", default=False)
 MAX_WRITES_PER_REQUEST: Final[int] = _env_int("GHIDRA_MCP_MAX_WRITES_PER_REQUEST", default=2)
 MAX_ITEMS_PER_BATCH: Final[int] = _env_int("GHIDRA_MCP_MAX_ITEMS_PER_BATCH", default=256)
+ENABLE_PROJECT_REBASE: Final[bool] = _env_bool(
+    "GHIDRA_MCP_ENABLE_PROJECT_REBASE", default=False
+)
 
 _audit_log_env = os.getenv("GHIDRA_MCP_AUDIT_LOG", "").strip()
 AUDIT_LOG_PATH: Final[Optional[Path]] = (
@@ -43,6 +46,7 @@ AUDIT_LOG_PATH: Final[Optional[Path]] = (
 __all__ = [
     "AUDIT_LOG_PATH",
     "ENABLE_WRITES",
+    "ENABLE_PROJECT_REBASE",
     "MAX_ITEMS_PER_BATCH",
     "MAX_WRITES_PER_REQUEST",
 ]
