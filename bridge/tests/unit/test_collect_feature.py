@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+import bridge.features.collect as collect
 from bridge.features.collect import execute_collect
 from bridge.utils.errors import ErrorCode
 from bridge.utils.logging import SafetyLimitExceeded
@@ -127,3 +128,69 @@ def test_execute_collect_unsupported_op() -> None:
     assert result["ok"] is False
     error = result["errors"][0]
     assert error["code"] == ErrorCode.INVALID_REQUEST.value
+
+
+def test_search_scalars_with_context_rejects_invalid_context_lines() -> None:
+    client = StubClient()
+    with pytest.raises(ValueError):
+        collect._op_search_scalars_with_context(
+            client, {"value": 0x10, "context_lines": -1}
+        )
+    with pytest.raises(ValueError):
+        collect._op_search_scalars_with_context(
+            client, {"value": 0x10, "context_lines": 17}
+        )
+
+
+def test_search_scalars_with_context_rejects_non_positive_limit() -> None:
+    client = StubClient()
+    with pytest.raises(ValueError):
+        collect._op_search_scalars_with_context(client, {"value": 0x10, "limit": 0})
+
+
+@pytest.mark.parametrize(
+    "context_lines, expected_window",
+    [
+        (0, 1),
+        (16, 33),
+    ],
+)
+def test_search_scalars_with_context_accepts_edge_values(
+    monkeypatch: pytest.MonkeyPatch, context_lines: int, expected_window: int
+) -> None:
+    client = StubClient()
+    enforce_calls: dict[str, object] = {}
+
+    def fake_enforce(size: int, *, counter: str = "") -> None:
+        enforce_calls["size"] = size
+        enforce_calls["counter"] = counter
+
+    captured: dict[str, object] = {}
+
+    def fake_search_scalars_with_context(
+        client_arg: StubClient, *, value: int, context_lines: int, limit: int
+    ) -> dict[str, object]:
+        captured["client"] = client_arg
+        captured["value"] = value
+        captured["context_lines"] = context_lines
+        captured["limit"] = limit
+        return {"value": value, "matches": []}
+
+    monkeypatch.setattr(collect, "enforce_batch_limit", fake_enforce)
+    monkeypatch.setattr(
+        collect.batch_ops,
+        "search_scalars_with_context",
+        fake_search_scalars_with_context,
+    )
+
+    result = collect._op_search_scalars_with_context(
+        client, {"value": 0x10, "context_lines": context_lines, "limit": 1}
+    )
+
+    assert result == {"value": 0x10, "matches": []}
+    assert captured["client"] is client
+    assert captured["value"] == 0x10
+    assert captured["context_lines"] == context_lines
+    assert captured["limit"] == 1
+    assert enforce_calls["size"] == expected_window
+    assert enforce_calls["counter"] == "search_scalars_with_context.window"
