@@ -148,3 +148,57 @@ def test_read_words_handles_none():
     
     assert result["words"][0] == 1
     assert result["words"][1] is None
+
+
+def test_search_scalars_with_context_preserves_pagination(monkeypatch):
+    """search_scalars_with_context should surface pagination metadata."""
+
+    client = StubClient(
+        disasm_results={
+            0x0FFC: [
+                {"address": "0x00000FFC", "bytes": "00 00", "text": "nop"},
+                {"address": "0x00001000", "bytes": "00 48", "text": "ldr r0, [r0]"},
+                {"address": "0x00001004", "bytes": "70 47", "text": "bx lr"},
+            ]
+        },
+        read_results={},
+        scalar_results={},
+    )
+
+    def fake_search_scalars(
+        client_arg,
+        *,
+        value,
+        query,
+        limit,
+        page,
+        cursor=None,
+        resume_cursor=None,
+    ):
+        assert client_arg is client
+        assert limit == 1
+        assert page == 1
+        return {
+            "items": [
+                {"address": "0x00001000", "function": "handler", "context": "LDR"},
+                {"address": "0x00002000", "function": "other", "context": "MOV"},
+            ],
+            "total": 12,
+            "has_more": True,
+            "resume_cursor": "cursor-1",
+        }
+
+    monkeypatch.setattr(batch_ops.scalars, "search_scalars", fake_search_scalars)
+
+    result = batch_ops.search_scalars_with_context(
+        client,
+        value=0x1,
+        context_lines=1,
+        limit=1,
+    )
+
+    assert result["total"] == 12
+    assert result["has_more"] is True
+    assert result["resume_cursor"] == "cursor-1"
+    assert len(result["matches"]) == 1
+    assert result["matches"][0]["address"] == "0x00001000"

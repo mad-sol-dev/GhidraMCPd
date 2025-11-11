@@ -108,7 +108,9 @@ def search_scalars_with_context(
     Returns:
         Dictionary with keys:
         - value: Search value as hex string
-        - total: Total number of matches found
+        - total: Total number of matches found (if known)
+        - has_more: Whether additional pages of matches are available
+        - resume_cursor: Cursor token for fetching the next page (if provided)
         - matches: List of match dicts, each containing:
             - address: Match address as hex string
             - value: Value as hex string
@@ -150,8 +152,22 @@ def search_scalars_with_context(
         }
         matches.append(match)
     
-    return {
+    total = results.get("total")
+    has_more = bool(results.get("has_more", False))
+    if total is None and not has_more:
+        total = len(matches)
+
+    resume_cursor = results.get("resume_cursor") or results.get("cursor")
+    if isinstance(resume_cursor, str) and not resume_cursor:
+        resume_cursor = None
+
+    response: Dict[str, object] = {
         "value": int_to_hex(value),
-        "total": len(matches),
+        "total": total,
+        "has_more": has_more,
         "matches": matches,
     }
+    if resume_cursor is not None:
+        response["resume_cursor"] = resume_cursor
+
+    return response

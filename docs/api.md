@@ -409,15 +409,23 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `cursor` | string | No |  |
+| `k` | integer | No | min=1 |
 | `limit` | integer | No | default=100, min=1, max=500 |
 | `page` | integer | No | default=1, min=1 |
 | `query` | string | Yes |  |
+| `rank` | string | No | enum=['simple'] |
+| `resume_cursor` | string | No |  |
 
 ```json
 {
+  "cursor": "string",
+  "k": 0,
   "limit": 100,
   "page": 1,
-  "query": "string"
+  "query": "string",
+  "rank": "simple",
+  "resume_cursor": "string"
 }
 ```
 
@@ -428,15 +436,18 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `cursor` | string | No |  |
 | `has_more` | boolean | Yes |  |
 | `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
 | `query` | string | Yes |  |
+| `resume_cursor` | string | No |  |
 | `total` | integer | Yes | min=0 |
 
   ```json
   {
+  "cursor": "string",
   "has_more": false,
   "items": [
     {
@@ -447,6 +458,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   "limit": 0,
   "page": 0,
   "query": "string",
+  "resume_cursor": "string",
   "total": 0
 }
   ```
