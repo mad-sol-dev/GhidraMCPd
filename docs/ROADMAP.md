@@ -18,6 +18,25 @@
 - ✅ Cursor streaming for large sets (cursor/resume plumbing + docs/tests)
 - ✅ 5-minute short-term cache per {digest,query}
 
+## Post-Phase 3 – Delivery & Hardening
+
+### Recently completed
+- ✅ `/api/write_bytes.json` end-to-end write support with dry-run safety guardrails — gated by `GHIDRA_MCP_ENABLE_WRITES` and capped via `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (see [getting started](docs/getting-started.md#configuration)).
+- ✅ `/api/project_rebase.json` activation path, including `confirm=true` handshake and `GHIDRA_MCP_ENABLE_PROJECT_REBASE` opt-in (documented in [getting started](docs/getting-started.md#configuration)).
+- ✅ `/api/datatypes/*` surfacing for structure/enum introspection alongside deterministic pagination (see [API reference](docs/api.md)).
+
+### Upcoming milestones
+- Multi-program analysis orchestration
+  - Batch schedulers for cross-program actions (collector-aware orchestration + `include_literals` option surfaced alongside existing `/api/analyze_function_complete.json` knobs in [API reference](docs/api.md)).
+- Search ranking & context tuning
+  - Adjustable ranking strategies and context windows, with explicit `rank` + `k` defaults spelled out in [docs/api.md](docs/api.md), and batch-size guardrails tied to `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` (see [getting started](docs/getting-started.md#batch-limits-defaults)).
+- Deployment hardening
+  - Official Docker image & origin whitelist support (`GHIDRA_MCP_ALLOWED_ORIGINS`) documented alongside TLS/reverse-proxy recipes in [docs/getting-started.md](docs/getting-started.md) and [README.md](../README.md).
+- LLM-facing usability
+  - Surface batching helpers (`include_literals`, composite search envelopes) inside client recipes with updated token budgeting notes referencing [docs/getting-started.md](docs/getting-started.md#batch-limits-defaults).
+- Audit logging & observability
+  - Expand JSONL emitters beyond `GHIDRA_MCP_AUDIT_LOG`, including per-endpoint counters and batch-orchestration traces for `/api/write_bytes.json`, `/api/project_rebase.json`, and `/api/datatypes/*`.
+
 ## Principles
 - Defaults remain compatible; new features are opt-in.
 - Deterministic sorting & stable envelopes.
