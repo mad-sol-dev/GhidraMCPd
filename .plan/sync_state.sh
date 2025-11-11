@@ -5,6 +5,17 @@ set -euo pipefail
 sha() { git log -n1 --format='%h' -- "$@" 2>/dev/null || true; }
 
 # 1) Collect SHAs per task (nur Files, die den Task wirklich belegen)
+state_commit() {
+  local id="$1"
+  jq -r --arg id "$id" '
+    .tasks[$id] as $task
+    | if ($task | type) == "object" and ($task.commit // "") != "" then
+        $task.commit
+      else
+        ""
+      end
+  ' .plan/state.json
+}
 OPENAPI_FREEZE_SHA=$(sha \
   README.md \
   bridge/tests/golden/data/openapi_snapshot.json \
@@ -27,7 +38,7 @@ JT_SCAN_CONSISTENCY_SHA=$(sha \
   bridge/tests/contract/test_http_contracts.py \
   bridge/tests/contract/test_jt_scan_consistency.py)
 
-# Aus deinem Log bekannt:
+# JT-VERIFY does not map to unique files yet; keep the known commit documented here.
 JT_VERIFY_SHA=844252e
 
 RANGE_CONTRACT_SHA=$(sha \
@@ -41,24 +52,10 @@ CLIENT_UNIFY_SHA=$(sha \
 CI_TESTS_SHA=$(sha \
   .github/workflows/build.yml)
 if [ -z "${CI_TESTS_SHA:-}" ]; then
-  CI_TESTS_SHA=$(python3 - <<'PY'
-from pathlib import Path
-import re
-todo = Path('.plan/TODO.md').read_text(encoding='utf-8')
-m = re.search(r"CI-TESTS.*?_commit:\s*([0-9a-f]{7})_", todo, re.DOTALL)
-print(m.group(1) if m else(""))
-PY
-  )
+  CI_TESTS_SHA=$(state_commit CI-TESTS)
 fi
 
-STRINGS_ASSERTS_SHA=$(python3 - <<'PY'
-from pathlib import Path
-import re
-todo = Path('.plan/TODO.md').read_text(encoding='utf-8')
-m = re.search(r"STRINGS-ASSERTS.*?_commit:\s*([^_\s]+)_", todo, re.DOTALL)
-print(m.group(1) if m else (""))
-PY
-)
+STRINGS_ASSERTS_SHA=$(state_commit STRINGS-ASSERTS)
 
 BRIDGE_GUARD_03_SERIALIZE_PLUGIN_SHA=$(sha \
   bridge/api/routes.py \
@@ -66,14 +63,7 @@ BRIDGE_GUARD_03_SERIALIZE_PLUGIN_SHA=$(sha \
   bridge/ghidra/client.py \
   bridge/tests/unit/test_plugin_serialization.py)
 
-SSE_HANDSHAKE_SHA=$(python3 - <<'PY'
-from pathlib import Path
-import re
-todo = Path('.plan/TODO.md').read_text(encoding='utf-8')
-m = re.search(r"SSE-HANDSHAKE.*?_commit:\s*([0-9a-f]+)_", todo, re.DOTALL)
-print(m.group(1) if m else(""))
-PY
-)
+SSE_HANDSHAKE_SHA=$(state_commit SSE-HANDSHAKE)
 
 # 2) Update .plan/state.json for found SHAs
 NOW=$(date -Iseconds)
