@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:state.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bridge_ready",
+    "session_ready",
+    "ready",
+    "active_sse",
+    "connects",
+    "last_init_ts"
+  ],
+  "properties": {
+    "bridge_ready": {"type": "boolean"},
+    "session_ready": {"type": "boolean"},
+    "ready": {"type": "boolean"},
+    "active_sse": {"type": ["string", "null"]},
+    "connects": {"type": "integer", "minimum": 0},
+    "last_init_ts": {"type": ["string", "null"]}
+  }
+}
