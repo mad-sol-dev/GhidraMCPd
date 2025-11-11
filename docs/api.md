@@ -232,6 +232,202 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 }
   ```
 
+## `/api/datatypes/create.json`
+
+### POST
+
+**Summary:** create_route
+
+#### Request body
+- Schema ID: `urn:schema:datatypes-create.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `category` | string | Yes |  |
+| `dry_run` | boolean | No | default=True |
+| `fields` | array<object> | Yes |  |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `name` | string | Yes |  |
+
+```json
+{
+  "category": "string",
+  "dry_run": true,
+  "fields": [
+    "\u2026"
+  ],
+  "kind": "structure",
+  "name": "string"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:datatypes-create.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `datatype` | object | Yes |  |
+| `dry_run` | boolean | Yes |  |
+| `errors` | array<string> | Yes |  |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `notes` | array<string> | Yes |  |
+| `path` | string | Yes | pattern=^/.* |
+| `written` | boolean | Yes |  |
+
+  ```json
+  {
+  "datatype": {
+    "category": "string",
+    "fields": [
+      "\u2026"
+    ],
+    "kind": "structure",
+    "name": "string",
+    "path": "string",
+    "size": 0
+  },
+  "dry_run": false,
+  "errors": [
+    "string"
+  ],
+  "kind": "structure",
+  "notes": [
+    "string"
+  ],
+  "path": "string",
+  "written": false
+}
+  ```
+
+## `/api/datatypes/delete.json`
+
+### POST
+
+**Summary:** delete_route
+
+#### Request body
+- Schema ID: `urn:schema:datatypes-delete.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `dry_run` | boolean | No | default=True |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `path` | string | Yes | pattern=^/.* |
+
+```json
+{
+  "dry_run": true,
+  "kind": "structure",
+  "path": "string"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:datatypes-delete.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `datatype` | object | Yes |  |
+| `dry_run` | boolean | Yes |  |
+| `errors` | array<string> | Yes |  |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `notes` | array<string> | Yes |  |
+| `path` | string | Yes | pattern=^/.* |
+| `written` | boolean | Yes |  |
+
+  ```json
+  {
+  "datatype": {
+    "kind": "structure",
+    "path": "string"
+  },
+  "dry_run": false,
+  "errors": [
+    "string"
+  ],
+  "kind": "structure",
+  "notes": [
+    "string"
+  ],
+  "path": "string",
+  "written": false
+}
+  ```
+
+## `/api/datatypes/update.json`
+
+### POST
+
+**Summary:** update_route
+
+#### Request body
+- Schema ID: `urn:schema:datatypes-update.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `dry_run` | boolean | No | default=True |
+| `fields` | array<object> | Yes |  |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `path` | string | Yes | pattern=^/.* |
+
+```json
+{
+  "dry_run": true,
+  "fields": [
+    "\u2026"
+  ],
+  "kind": "structure",
+  "path": "string"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:datatypes-update.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `datatype` | object | Yes |  |
+| `dry_run` | boolean | Yes |  |
+| `errors` | array<string> | Yes |  |
+| `kind` | string | Yes | enum=['structure', 'union'] |
+| `notes` | array<string> | Yes |  |
+| `path` | string | Yes | pattern=^/.* |
+| `written` | boolean | Yes |  |
+
+  ```json
+  {
+  "datatype": {
+    "category": "string",
+    "fields": [
+      "\u2026"
+    ],
+    "kind": "structure",
+    "name": "string",
+    "path": "string",
+    "size": 0
+  },
+  "dry_run": false,
+  "errors": [
+    "string"
+  ],
+  "kind": "structure",
+  "notes": [
+    "string"
+  ],
+  "path": "string",
+  "written": false
+}
+  ```
+
 ## `/api/disassemble_at.json`
 
 ### POST
