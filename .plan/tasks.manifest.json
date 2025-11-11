@@ -115,7 +115,8 @@
       "dod": [
         "Cache layer with TTL=300s",
         "Cache key schema documented; hit/miss metrics"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "HK-OPENAPI-RENDERER",
