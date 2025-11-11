@@ -11,6 +11,6 @@ Use this when you need reliable, paginated, and schema-validated access to progr
 
 ## Current status snapshot
 
-- **Delivered**: project metadata endpoint, composite function dossier, unified error envelopes, deterministic search pagination (with totals/1-based pages) and query/has_more metadata across range listings, SSE guardrails, MCP batch helpers for disassembly/memory/search, the multi-query collector (`POST /api/collect.json`) with request-level result budgeting, and opt-in function ranking with `rank=simple` + `k` prefiltering.
+- **Delivered**: project metadata endpoint, composite function dossier, unified error envelopes, deterministic search pagination (with totals/1-based pages) and query/has_more metadata across range listings, SSE guardrails, MCP batch helpers for disassembly/memory/search, the multi-query collector (`POST /api/collect.json`) with request-level result budgeting, opt-in function ranking with `rank=simple` + `k` prefiltering, and a five-minute search cache keyed by `{program_digest, query, pagination}`.
 - **In progress**: compact listings continue to expose offset-based slicing.
-- **Planned**: a 5-minute short-term cache per `{digest,query}`.
+- **Planned**: additional compact listing polish and pagination parity work.

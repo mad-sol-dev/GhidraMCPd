@@ -3,6 +3,12 @@
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
+from ..utils.cache import (
+    build_search_cache_key,
+    get_program_digest,
+    get_search_cache,
+    normalize_search_query,
+)
 
 
 def search_xrefs_to(
@@ -31,9 +37,37 @@ def search_xrefs_to(
     except ValueError as exc:  # pragma: no cover - validated earlier
         raise ValueError(f"Invalid address: {address}") from exc
 
+    limit = max(int(limit), 1)
+    page = max(int(page), 1)
+
     # Use empty query for wildcard searches
     search_query = "" if query in ("*", "") else query
-    raw_results = client.search_xrefs_to(address_value, search_query)
+    normalized_query = normalize_search_query(search_query)
+
+    cache_key = None
+    digest = get_program_digest(client)
+    cache = get_search_cache()
+    if digest:
+        cache_key = build_search_cache_key(
+            program_digest=digest,
+            endpoint="xrefs_to",
+            normalized_query=normalized_query,
+            options={
+                "address": address_value,
+                "limit": limit,
+                "page": page,
+            },
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+
+    try:
+        raw_results = client.search_xrefs_to(address_value, search_query)
+    except Exception:
+        if cache_key is not None:
+            cache.invalidate(cache_key)
+        raise
 
     target_address = f"0x{address_value:08x}"
     items: List[Dict[str, str]] = []
@@ -52,8 +86,6 @@ def search_xrefs_to(
         )
 
     total = len(items)
-    limit = max(int(limit), 1)
-    page = max(int(page), 1)
     offset = (page - 1) * limit
     start = min(offset, total)
     end = min(start + limit, total)
@@ -61,7 +93,7 @@ def search_xrefs_to(
 
     has_more = end < total
 
-    return {
+    result = {
         "query": query,
         "total": total,
         "page": page,
@@ -69,3 +101,8 @@ def search_xrefs_to(
         "items": paginated_items,
         "has_more": has_more,
     }
+
+    if cache_key is not None:
+        cache.set(cache_key, result)
+
+    return result

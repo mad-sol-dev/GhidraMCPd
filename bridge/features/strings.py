@@ -5,6 +5,12 @@ import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from ..ghidra.client import GhidraClient
+from ..utils.cache import (
+    build_search_cache_key,
+    get_program_digest,
+    get_search_cache,
+    normalize_search_query,
+)
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.config import MAX_ITEMS_PER_BATCH
 from ..utils.logging import (
@@ -190,13 +196,36 @@ def search_strings(
     limit: int,
     page: int,
 ) -> Dict[str, Any]:
-    all_entries = client.search_strings(query)
+    limit = max(int(limit), 1)
+    page = max(int(page), 1)
+
+    normalized_query = normalize_search_query(query)
+
+    cache_key = None
+    digest = get_program_digest(client)
+    cache = get_search_cache()
+    if digest:
+        cache_key = build_search_cache_key(
+            program_digest=digest,
+            endpoint="strings",
+            normalized_query=normalized_query,
+            options={"limit": limit, "page": page},
+        )
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+
+    try:
+        all_entries = client.search_strings(query)
+    except Exception:
+        if cache_key is not None:
+            cache.invalidate(cache_key)
+        raise
+
     normalized = strings_compact_view(all_entries)
     normalized_entries = normalized.get("items", [])
 
     total = len(normalized_entries)
-    limit = max(int(limit), 1)
-    page = max(int(page), 1)
     window = page * limit
     if window > MAX_ITEMS_PER_BATCH:
         raise SafetyLimitExceeded("strings.search.window", MAX_ITEMS_PER_BATCH, window)
@@ -207,7 +236,7 @@ def search_strings(
 
     has_more = end_index < total
 
-    return {
+    result: Dict[str, Any] = {
         "query": query,
         "total": total,
         "page": page,
@@ -215,6 +244,11 @@ def search_strings(
         "items": paginated_items,
         "has_more": has_more,
     }
+
+    if cache_key is not None:
+        cache.set(cache_key, result)
+
+    return result
 
 
 _ELLIPSIS = "…"
