@@ -3,10 +3,12 @@
   "$id": "urn:schema:search-scalars-with-context.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["value", "total", "matches"],
+  "required": ["value", "total", "matches", "has_more"],
   "properties": {
     "value": {"type": "string", "pattern": "^0x[0-9A-Fa-f]+$"},
-    "total": {"type": "integer"},
+    "total": {"type": ["integer", "null"], "minimum": 0},
+    "has_more": {"type": "boolean"},
+    "resume_cursor": {"type": ["string", "null"], "minLength": 1},
     "matches": {
       "type": "array",
       "items": {
