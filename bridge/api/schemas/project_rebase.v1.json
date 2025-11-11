@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:project-rebase.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dry_run",
+    "rebased",
+    "notes",
+    "errors",
+    "requested_base",
+    "previous_base",
+    "offset",
+    "project_info"
+  ],
+  "properties": {
+    "dry_run": {"type": "boolean"},
+    "rebased": {"type": "boolean"},
+    "notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "errors": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "requested_base": {
+      "type": "string",
+      "pattern": "^-?0x[0-9a-fA-F]+$"
+    },
+    "previous_base": {
+      "type": ["string", "null"],
+      "pattern": "^-?0x[0-9a-fA-F]+$"
+    },
+    "offset": {
+      "type": ["string", "null"],
+      "pattern": "^-?0x[0-9a-fA-F]+$"
+    },
+    "project_info": {
+      "type": "object"
+    }
+  }
+}

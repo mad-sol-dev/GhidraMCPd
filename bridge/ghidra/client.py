@@ -63,6 +63,7 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "ROLLBACK_TRANSACTION": ("rollbackTransaction",),
     "WRITE_BYTES": ("writeBytes",),
     "REBUILD_CODE_UNITS": ("rebuildCodeUnits",),
+    "REBASE_PROGRAM": ("rebaseProgram", "rebase_program"),
 }
 
 
@@ -893,6 +894,59 @@ class GhidraClient:
 
             committed = self._commit_transaction(transaction)
             return committed
+        finally:
+            if transaction and not committed:
+                self._rollback_transaction(transaction)
+
+    def rebase_program(
+        self,
+        *,
+        new_base: int,
+        offset: Optional[int] = None,
+        confirm: bool = False,
+    ) -> tuple[bool, List[str]]:
+        """Request a program rebase via the plugin with transaction safety."""
+
+        increment_counter("ghidra.rebase_program")
+
+        transaction = self._begin_transaction("rebase_program")
+        if not transaction:
+            return False, ["ERROR: failed to start rebase transaction"]
+
+        payload: Dict[str, Any] = {
+            "transaction": transaction,
+            "confirm": bool(confirm),
+        }
+
+        new_base_hex = f"0x{new_base:x}"
+        payload["new_base"] = new_base_hex
+        payload["newBase"] = new_base_hex
+
+        if offset is not None:
+            payload["offset"] = int(offset)
+            payload["offset_hex"] = f"0x{offset:x}"
+
+        requester = EndpointRequester(
+            self,
+            "POST",
+            key="REBASE_PROGRAM",
+            data=payload,
+        )
+
+        committed = False
+        notes: List[str] = []
+        try:
+            response = self._post_resolver.resolve("REBASE_PROGRAM", requester)
+            if _is_error(response):
+                notes.extend(response)
+                return False, notes
+
+            notes.extend(line for line in response if line.strip())
+
+            committed = self._commit_transaction(transaction)
+            if not committed:
+                notes.append("ERROR: failed to commit rebase transaction")
+            return committed, notes
         finally:
             if transaction and not committed:
                 self._rollback_transaction(transaction)
