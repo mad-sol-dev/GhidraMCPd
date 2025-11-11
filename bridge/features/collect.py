@@ -272,6 +272,12 @@ def _op_search_scalars_with_context(
     value = parse_hex(str(value_raw)) if isinstance(value_raw, str) else int(value_raw)
     context_lines = int(params.get("context_lines", 4))
     limit = int(params.get("limit", 25))
+    if context_lines < 0 or context_lines > 16:
+        raise ValueError("context_lines must be between 0 and 16")
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+    context_window = context_lines * 2 + 1
+    enforce_batch_limit(context_window, counter="search_scalars_with_context.window")
     return batch_ops.search_scalars_with_context(
         client,
         value=value,
