@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional
 
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import CursorPageResult, GhidraClient
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
@@ -68,12 +68,44 @@ def search_functions(
     cursor_token = resume_cursor or cursor
     request_offset = 0 if cursor_token else offset
 
-    page_result = client.search_functions(
-        search_query,
-        limit=limit,
-        offset=request_offset,
-        cursor=cursor_token,
-    )
+    def _fetch_page(
+        *,
+        limit: int,
+        offset: int,
+        cursor: Optional[str],
+    ) -> CursorPageResult[str]:
+        """Invoke the client search API while tolerating legacy signatures."""
+
+        try:
+            result = client.search_functions(
+                search_query,
+                limit=limit,
+                offset=offset,
+                cursor=cursor,
+            )
+        except TypeError as exc:
+            if cursor:
+                raise ValueError(
+                    "resume_cursor is not supported by the configured client",
+                ) from exc
+            legacy_lines = client.search_functions(search_query)
+            lines = [str(line).strip() for line in legacy_lines if str(line).strip()]
+            sliced = lines[offset : offset + limit]
+            has_more = len(lines) > offset + limit
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        if isinstance(result, CursorPageResult):
+            return result
+
+        if isinstance(result, list):
+            lines = [str(line).strip() for line in result if str(line).strip()]
+            sliced = lines[offset : offset + limit]
+            has_more = len(lines) > offset + limit
+            return CursorPageResult(sliced, has_more, None, error=None)
+
+        raise TypeError("search_functions returned an unexpected result type")
+
+    page_result = _fetch_page(limit=limit, offset=request_offset, cursor=cursor_token)
 
     def _parse_lines(lines: Optional[List[str]]) -> List[Dict[str, str]]:
         parsed: List[Dict[str, str]] = []
@@ -115,12 +147,7 @@ def search_functions(
         fetch_offset = 0
         safety = 0
         while True:
-            next_page = client.search_functions(
-                search_query,
-                limit=limit,
-                offset=fetch_offset,
-                cursor=fetch_cursor,
-            )
+            next_page = _fetch_page(limit=limit, offset=fetch_offset, cursor=fetch_cursor)
             aggregated_lines.extend(_parse_lines(next_page.items))
             if next_page.error and not next_page.items:
                 break
