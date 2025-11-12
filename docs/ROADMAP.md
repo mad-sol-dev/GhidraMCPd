@@ -17,6 +17,7 @@
 - ✅ rank=simple & k (opt-in)
 - ✅ Cursor streaming for large sets (cursor/resume plumbing + docs/tests)
 - ✅ 5-minute short-term cache per {digest,query}
+- ✅ Batch project analysis lanes (multi-program collector envelopes)
 
 ## Post-Phase 3 – Delivery & Hardening
 
@@ -26,8 +27,6 @@
 - ✅ `/api/datatypes/*` surfacing for structure/enum introspection alongside deterministic pagination (see [API reference](docs/api.md)).
 
 ### Upcoming milestones
-- Multi-program analysis orchestration
-  - Batch schedulers for cross-program actions (collector-aware orchestration + `include_literals` option surfaced alongside existing `/api/analyze_function_complete.json` knobs in [API reference](docs/api.md)).
 - Search ranking & context tuning
   - Adjustable ranking strategies and context windows, with explicit `rank` + `k` defaults spelled out in [docs/api.md](docs/api.md), and batch-size guardrails tied to `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` (see [getting started](docs/getting-started.md#batch-limits-defaults)).
 - Deployment hardening

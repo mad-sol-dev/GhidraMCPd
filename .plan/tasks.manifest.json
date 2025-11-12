@@ -130,7 +130,7 @@
         "Collector accepts multi-program project batches with deterministic envelopes",
         "Contract coverage + docs outlining batch workflows"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.2",

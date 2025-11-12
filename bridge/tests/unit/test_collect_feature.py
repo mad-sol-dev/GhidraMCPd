@@ -30,6 +30,14 @@ def _first_query(result: dict[str, object]) -> dict[str, object]:
     return payload
 
 
+def test_execute_collect_allows_empty_queries() -> None:
+    client = StubClient()
+    payload = execute_collect(client, [])
+
+    assert payload["queries"] == []
+    assert payload["meta"]["estimate_tokens"] == 0
+
+
 def test_execute_collect_success() -> None:
     client = StubClient()
     payload = execute_collect(
