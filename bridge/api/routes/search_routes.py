@@ -43,6 +43,9 @@ def _validate_pagination(limit: int, page: int) -> JSONResponse | None:
     return None
 
 
+MAX_FUNCTION_CONTEXT_LINES = 16
+
+
 def create_search_routes(deps: RouteDependencies) -> List[Route]:
     @deps.with_client
     async def string_xrefs_route(request: Request, client: GhidraClient) -> JSONResponse:
@@ -299,8 +302,16 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                         ErrorCode.INVALID_REQUEST,
                         "cursor must be a string if provided.",
                     )
+                context_lines_raw = data.get("context_lines", 0)
+                context_lines = int(context_lines_raw)
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
+
+            if context_lines < 0 or context_lines > MAX_FUNCTION_CONTEXT_LINES:
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    f"context_lines must be between 0 and {MAX_FUNCTION_CONTEXT_LINES}.",
+                )
 
             rank_raw = data.get("rank")
             rank: str | None
@@ -357,6 +368,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     rank=rank,
                     k=k,
                     resume_cursor=cursor_token,
+                    context_lines=context_lines,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))

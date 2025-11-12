@@ -11,8 +11,12 @@ from bridge.utils.logging import SafetyLimitExceeded
 class StubClient:
     def disassemble_at(self, address: int, count: int):  # pragma: no cover - helper
         return [
-            {"address": f"0x{address:08x}", "bytes": "", "text": "NOP"}
-            for _ in range(min(count, 1))
+            {
+                "address": f"0x{address + index * 4:08x}",
+                "bytes": "",
+                "text": f"NOP_{index}",
+            }
+            for index in range(max(0, count))
         ]
 
     def search_functions(self, query: str):
@@ -116,6 +120,51 @@ def test_execute_collect_request_budget_strict() -> None:
             ],
             result_budget={"max_result_tokens": 1, "mode": "strict"},
         )
+
+
+def test_search_functions_rejects_invalid_context_lines() -> None:
+    client = StubClient()
+    with pytest.raises(ValueError):
+        collect._op_search_functions(client, {"context_lines": -1})
+    with pytest.raises(ValueError):
+        collect._op_search_functions(client, {"context_lines": 17})
+
+
+def test_search_functions_forwards_context_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = StubClient()
+    captured: dict[str, object] = {}
+
+    def fake_search_functions(
+        client_arg: StubClient,
+        *,
+        query: str,
+        limit: int,
+        page: int,
+        rank: str | None,
+        k: int | None,
+        resume_cursor: str | None,
+        context_lines: int,
+    ) -> dict[str, object]:
+        captured.update(
+            {
+                "client": client_arg,
+                "context_lines": context_lines,
+                "query": query,
+            }
+        )
+        return {"items": [], "query": query, "total": 0, "page": page, "limit": limit, "has_more": False}
+
+    monkeypatch.setattr(collect.functions, "search_functions", fake_search_functions)
+
+    result = collect._op_search_functions(
+        client,
+        {"query": "foo", "limit": 5, "page": 1, "context_lines": 4},
+    )
+
+    assert captured["client"] is client
+    assert captured["context_lines"] == 4
+    assert captured["query"] == "foo"
+    assert result["query"] == "foo"
 
 
 def test_execute_collect_unsupported_op() -> None:

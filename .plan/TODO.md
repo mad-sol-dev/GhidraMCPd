@@ -4,8 +4,6 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.2} Enhanced search ranking + expanded context windows
-
 ## NEXT
 - {R.3} `include_literals` plumbing across read/search APIs
 - {R.4} Expanded audit logging for write/rebase/datatypes flows
@@ -29,6 +27,7 @@
 - [x] OpenAPI renderer fixed — gen_api_md.py handles 3.1 unions/combinators, docs regenerated.
 - [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
 - [x] {R.1} Batch project analysis lanes for multi-program dossiers — collector lanes span multiple Ghidra projects with deterministic envelopes and docs/tests.
+- [x] {R.2} Enhanced search ranking + expanded context windows — function search supports opt-in context windows with deterministic ordering coverage across unit/contract/golden suites.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.

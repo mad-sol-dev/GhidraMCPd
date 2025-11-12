@@ -21,6 +21,16 @@ class DummyClient:
             if normalized in line.lower()
         ]
 
+    def disassemble_at(self, address: int, count: int) -> List[dict[str, str]]:
+        return [
+            {
+                "address": f"0x{address + i * 4:08x}",
+                "bytes": f"{i:02x}{i:02x}",
+                "text": f"INSN_{i}",
+            }
+            for i in range(max(0, count))
+        ]
+
 
 def test_search_functions_preserves_default_ordering() -> None:
     client = DummyClient(
@@ -81,3 +91,58 @@ def test_simple_rank_applies_k_before_pagination() -> None:
     assert page2["total"] == 2
     assert [item["name"] for item in page2["items"]] == ["foo_helper"]
     assert page2["has_more"] is False
+
+
+def test_context_lines_attach_disassembly() -> None:
+    client = DummyClient(
+        [
+            "alpha @ 0x00001000",
+            "beta @ 0x00001004",
+        ]
+    )
+
+    result = functions.search_functions(
+        client,
+        query="",
+        limit=2,
+        page=1,
+        context_lines=1,
+    )
+
+    assert result["total"] == 2
+    for item in result["items"]:
+        context = item.get("context")
+        assert context is not None
+        assert context["window"]["before"] == 1
+        assert context["window"]["after"] == 1
+        assert context["window"]["center"] == item["address"]
+        disassembly = context["disassembly"]
+        assert len(disassembly) == 3
+        assert disassembly[0]["address"].startswith("0x")
+
+
+def test_simple_rank_preserves_context_ordering() -> None:
+    client = DummyClient(
+        [
+            "match_main @ 0x00002000",
+            "match_helper @ 0x00002008",
+            "helper_match @ 0x00002010",
+            "other @ 0x00002020",
+        ]
+    )
+
+    ranked = functions.search_functions(
+        client,
+        query="match",
+        limit=2,
+        page=1,
+        rank="simple",
+        k=3,
+        context_lines=2,
+    )
+
+    assert ranked["total"] == 3
+    names = [item["name"] for item in ranked["items"]]
+    assert names == ["match_main", "match_helper"]
+    windows = [item["context"]["window"] for item in ranked["items"]]
+    assert all(window["before"] == 2 and window["after"] == 2 for window in windows)

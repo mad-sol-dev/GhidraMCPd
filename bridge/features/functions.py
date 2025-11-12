@@ -12,10 +12,13 @@ from ..utils.cache import (
     get_search_cache,
     normalize_search_query,
 )
+from ..utils.hex import parse_hex
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
 )
+
+_MAX_CONTEXT_LINES = 16
 
 
 def _rank_functions_simple(
@@ -62,6 +65,7 @@ def search_functions(
     k: int | None = None,
     cursor: Optional[str] = None,
     resume_cursor: Optional[str] = None,
+    context_lines: int = 0,
 ) -> Dict[str, object]:
     """Search for functions matching *query* and return a paginated payload."""
 
@@ -74,6 +78,16 @@ def search_functions(
     normalized_query = normalize_search_query(search_query)
     cursor_token = resume_cursor or cursor
     request_offset = 0 if cursor_token else offset
+
+    if context_lines is None:
+        context_lines_int = 0
+    else:
+        context_lines_int = int(context_lines)
+    if context_lines_int < 0 or context_lines_int > _MAX_CONTEXT_LINES:
+        raise ValueError(
+            f"context_lines must be between 0 and {_MAX_CONTEXT_LINES}"
+        )
+    context_lines = context_lines_int
 
     cache_key = None
     digest = get_program_digest(client)
@@ -89,6 +103,7 @@ def search_functions(
                 "cursor": cursor_token,
                 "rank": rank,
                 "k": k,
+                "context_lines": context_lines,
             },
         )
         cached = cache.get(cache_key)
@@ -216,6 +231,72 @@ def search_functions(
         paginated_items = ranked_items
         if not has_more and not cursor_token:
             computed_total = request_offset + len(paginated_items)
+
+    def _normalize_disassembly(raw: object) -> List[Dict[str, str]]:
+        if not isinstance(raw, list):
+            return []
+        normalized: List[Dict[str, str]] = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            address = entry.get("address")
+            bytes_text = entry.get("bytes")
+            text = entry.get("text")
+            if not isinstance(address, str) or not isinstance(bytes_text, str) or not isinstance(text, str):
+                continue
+            addr_norm = address.strip().lower()
+            if not addr_norm:
+                continue
+            if not addr_norm.startswith("0x"):
+                addr_norm = f"0x{addr_norm}"
+            normalized.append({
+                "address": addr_norm,
+                "bytes": bytes_text,
+                "text": text,
+            })
+        return normalized
+
+    def _attach_context(items: List[Dict[str, str]]) -> List[Dict[str, object]]:
+        if context_lines <= 0:
+            return items
+
+        contextual: List[Dict[str, object]] = []
+        disassemble = getattr(client, "disassemble_at", None)
+        window_before = context_lines
+        window_after = context_lines
+        instruction_count = window_before + window_after + 1
+        for item in items:
+            enriched: Dict[str, object] = dict(item)
+            raw_address = str(item.get("address", "")).strip()
+            address_text = raw_address.lower()
+            if not address_text:
+                address_text = "0x0"
+            elif not address_text.startswith("0x"):
+                address_text = f"0x{address_text}"
+            try:
+                address_int = parse_hex(address_text)
+            except (TypeError, ValueError):
+                address_int = None
+            disassembly: List[Dict[str, str]] = []
+            if callable(disassemble) and address_int is not None:
+                context_start = max(0, address_int - window_before * 4)
+                try:
+                    raw_context = disassemble(context_start, max(1, instruction_count))
+                except Exception:  # pragma: no cover - defensive guard
+                    raw_context = []
+                disassembly = _normalize_disassembly(raw_context)
+            enriched["context"] = {
+                "window": {
+                    "before": window_before,
+                    "after": window_after,
+                    "center": address_text,
+                },
+                "disassembly": disassembly,
+            }
+            contextual.append(enriched)
+        return contextual
+
+    paginated_items = _attach_context(paginated_items)
 
     result = {
         "query": query_str,

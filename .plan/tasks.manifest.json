@@ -143,7 +143,7 @@
         "Ranking heuristics expose adjustable context windows",
         "Golden samples prove deterministic ordering at new limits"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.3",

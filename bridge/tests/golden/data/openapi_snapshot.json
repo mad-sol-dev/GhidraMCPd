@@ -2874,6 +2874,12 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": false,
                 "properties": {
+                  "context_lines": {
+                    "default": 0,
+                    "maximum": 16,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "cursor": {
                     "minLength": 1,
                     "type": "string"
@@ -2943,6 +2949,63 @@
                           "address": {
                             "pattern": "^0x[0-9a-fA-F]+$",
                             "type": "string"
+                          },
+                          "context": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "disassembly": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "address": {
+                                      "pattern": "^0x[0-9a-fA-F]+$",
+                                      "type": "string"
+                                    },
+                                    "bytes": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "address",
+                                    "bytes",
+                                    "text"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "window": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "after": {
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "before": {
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "center": {
+                                    "pattern": "^0x[0-9a-fA-F]+$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "before",
+                                  "after",
+                                  "center"
+                                ],
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "window",
+                              "disassembly"
+                            ],
+                            "type": "object"
                           },
                           "name": {
                             "type": "string"

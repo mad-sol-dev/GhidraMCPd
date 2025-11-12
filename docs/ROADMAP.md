@@ -25,10 +25,9 @@
 - ✅ `/api/write_bytes.json` end-to-end write support with dry-run safety guardrails — gated by `GHIDRA_MCP_ENABLE_WRITES` and capped via `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (see [getting started](docs/getting-started.md#configuration)).
 - ✅ `/api/project_rebase.json` activation path, including `confirm=true` handshake and `GHIDRA_MCP_ENABLE_PROJECT_REBASE` opt-in (documented in [getting started](docs/getting-started.md#configuration)).
 - ✅ `/api/datatypes/*` surfacing for structure/enum introspection alongside deterministic pagination (see [API reference](docs/api.md)).
+- ✅ Function search ranking & context windows — opt-in `context_lines` parameter with deterministic disassembly snippets and docs/tests across unit, contract, and golden coverage.
 
 ### Upcoming milestones
-- Search ranking & context tuning
-  - Adjustable ranking strategies and context windows, with explicit `rank` + `k` defaults spelled out in [docs/api.md](docs/api.md), and batch-size guardrails tied to `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` (see [getting started](docs/getting-started.md#batch-limits-defaults)).
 - Deployment hardening
   - Official Docker image & origin whitelist support (`GHIDRA_MCP_ALLOWED_ORIGINS`) documented alongside TLS/reverse-proxy recipes in [docs/getting-started.md](docs/getting-started.md) and [README.md](../README.md).
 - LLM-facing usability
