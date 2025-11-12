@@ -180,6 +180,76 @@ def register_tools(
         result_budget: dict[str, object] | None = None,
         metadata: dict[str, object] | None = None,
     ) -> Dict[str, object]:
+        """Execute read-only feature queries across one or more projects.
+
+        The request envelope mirrors ``collect.request.v1`` and accepts:
+
+        * ``queries`` – in-project query objects. Each entry requires an ``id``
+          and ``op`` plus optional ``params`` (default ``{}``), per-query
+          ``result_budget`` overrides, ``max_result_tokens`` hints, and arbitrary
+          ``metadata`` echoed into the response.
+        * ``projects`` – cross-project overrides. Each project entry includes
+          an ``id`` (used to annotate the response), a ``queries`` list with the
+          same shape as the top-level collection, optional ``result_budget``
+          overrides, ``metadata`` passthrough, and an alternate ``ghidra_url`` or
+          ``base_url`` for remote analysis.
+        * ``result_budget`` – aggregate budget controls shared by all queries.
+          Budgets accept ``max_result_tokens`` (``int`` or ``null`` for
+          unlimited) and ``mode`` (``"auto_trim"`` to soft cap or
+          ``"strict"`` to raise ``RESULT_TOO_LARGE`` when exceeded).
+        * ``metadata`` – an arbitrary JSON object returned unchanged alongside
+          the aggregated result bundle.
+
+        Supported ``op`` values and common parameters:
+
+        * ``disassemble_at`` – ``address`` (hex) with optional ``count`` of
+          instructions (default ``16``).
+          Example: ``{"id": "head", "op": "disassemble_at", "params": {"address": "0x401000", "count": 8}}``
+        * ``disassemble_batch`` – ``addresses`` (array of hex strings) and
+          optional ``count`` (default ``16``).
+          Example: ``{"id": "epilogue", "op": "disassemble_batch", "params": {"addresses": ["0x401000", "0x401020"], "count": 4}}``
+        * ``read_bytes`` – ``address`` (hex) and ``length`` in bytes (default
+          ``64``).
+          Example: ``{"id": "bytes", "op": "read_bytes", "params": {"address": "0x401000", "length": 32}}``
+        * ``read_words`` – ``address`` (hex) and ``count`` of machine words
+          (default ``1``).
+          Example: ``{"id": "words", "op": "read_words", "params": {"address": "0x401000", "count": 2}}``
+        * ``search_strings`` – ``query`` substring, optional ``limit``
+          (default ``100``) and ``page`` (default ``1``).
+          Example: ``{"id": "long-strings", "op": "search_strings", "params": {"query": "init", "limit": 25}}``
+        * ``strings_compact`` – paginated listing with ``limit`` (required) and
+          ``offset`` (default ``0``).
+          Example: ``{"id": "strings", "op": "strings_compact", "params": {"limit": 100, "offset": 0}}``
+        * ``string_xrefs`` – ``string_addr`` (hex) target and optional ``limit``
+          (default ``50``).
+          Example: ``{"id": "string-xrefs", "op": "string_xrefs", "params": {"string_addr": "0x500123", "limit": 10}}``
+        * ``search_imports`` – ``query`` substring plus ``limit``/``page``
+          pagination (defaults ``100``/``1``).
+          Example: ``{"id": "imports", "op": "search_imports", "params": {"query": "socket", "limit": 10}}``
+        * ``search_exports`` – ``query`` substring plus ``limit``/``page``
+          pagination (defaults ``100``/``1``).
+          Example: ``{"id": "exports", "op": "search_exports", "params": {"query": "init", "limit": 10}}``
+        * ``search_functions`` – optional ``query`` text, ``limit``/``page``
+          pagination (defaults ``100``/``1``), optional ``rank="simple"`` with
+          ``k`` best results, cursor-based pagination via ``resume_cursor``
+          (mutually exclusive with ranking), and ``context_lines`` (0–16).
+          Example: ``{"id": "init-funcs", "op": "search_functions", "params": {"query": "init", "limit": 20, "context_lines": 2}}``
+        * ``search_xrefs_to`` – destination ``address`` (hex), optional ``query``
+          filter plus ``limit``/``page`` (defaults ``100``/``1``).
+          Example: ``{"id": "xref", "op": "search_xrefs_to", "params": {"address": "0x401050", "limit": 50}}``
+        * ``search_scalars`` – numeric ``value`` (decimal or hex), optional
+          ``query`` label, ``limit``/``page`` pagination, and ``resume_cursor``
+          for deep paging.
+          Example: ``{"id": "scalars", "op": "search_scalars", "params": {"value": "0xDEADBEEF", "limit": 10}}``
+        * ``search_scalars_with_context`` – numeric ``value``, ``context_lines``
+          (0–16, default ``4``), and ``limit`` (default ``25``) for annotated
+          disassembly windows.
+          Example: ``{"id": "scalar-context", "op": "search_scalars_with_context", "params": {"value": "0x8040123", "context_lines": 3}}``
+
+        Each query returns an envelope containing ``result.ok``/``errors`` as
+        described by ``envelope.v1``; aggregate metadata records the total token
+        estimate for all queries (including per-project batches).
+        """
         request_payload: Dict[str, object] = {}
         if queries is not None:
             request_payload["queries"] = [dict(item) for item in queries]

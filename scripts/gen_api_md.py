@@ -141,6 +141,208 @@ def render_table(rows: list[tuple[str, str, str, str]]) -> str:
     return "\n".join([header, *body_lines])
 
 
+def collect_extra_sections() -> list[str]:
+    """Return additional documentation for the collect endpoint."""
+
+    query_rows = [
+        ("id", "string", "Yes", "minLength=1"),
+        ("op", "string", "Yes", "minLength=1"),
+        ("params", "object", "No", "default={}"),
+        ("result_budget", "object", "No", "See Result budget object"),
+        ("max_result_tokens", "integer|null", "No", "min=0"),
+        ("metadata", "object", "No", "echoed in response"),
+    ]
+    project_rows = [
+        ("id", "string", "Yes", "minLength=1"),
+        ("queries", "array<query>", "Yes", "1-256 entries"),
+        ("result_budget", "object", "No", "See Result budget object"),
+        ("metadata", "object", "No", "echoed in response"),
+        ("ghidra_url", "string", "No", "alternate server base URL"),
+        ("base_url", "string", "No", "legacy alias for ghidra_url"),
+    ]
+    budget_rows = [
+        ("max_result_tokens", "integer|null", "No", "min=0; null for unlimited"),
+        ("mode", "string", "No", "enum=['auto_trim', 'strict']; default='auto_trim'"),
+    ]
+
+    operations = [
+        (
+            "disassemble_at",
+            "Disassemble instructions at a single address. Required: address (hex). Optional: count (default 16).",
+            {"id": "head", "op": "disassemble_at", "params": {"address": "0x401000", "count": 8}},
+        ),
+        (
+            "disassemble_batch",
+            "Disassemble multiple addresses in one call. Required: addresses (array of hex strings). Optional: count (default 16).",
+            {
+                "id": "epilogue",
+                "op": "disassemble_batch",
+                "params": {"addresses": ["0x401000", "0x401020"], "count": 4},
+            },
+        ),
+        (
+            "read_bytes",
+            "Read a raw byte window. Required: address (hex). Optional: length in bytes (default 64).",
+            {"id": "bytes", "op": "read_bytes", "params": {"address": "0x401000", "length": 32}},
+        ),
+        (
+            "read_words",
+            "Read machine words. Required: address (hex). Optional: count (default 1).",
+            {"id": "words", "op": "read_words", "params": {"address": "0x401000", "count": 2}},
+        ),
+        (
+            "search_strings",
+            "Search string literals. Required: query substring. Optional: limit (default 100) and page (default 1).",
+            {"id": "long-strings", "op": "search_strings", "params": {"query": "init", "limit": 25}},
+        ),
+        (
+            "strings_compact",
+            "List compact string summaries. Required: limit (>0). Optional: offset (default 0).",
+            {"id": "strings", "op": "strings_compact", "params": {"limit": 100, "offset": 0}},
+        ),
+        (
+            "string_xrefs",
+            "Lookup cross-references to a string. Required: string_addr (hex). Optional: limit (default 50).",
+            {"id": "string-xrefs", "op": "string_xrefs", "params": {"string_addr": "0x500123", "limit": 10}},
+        ),
+        (
+            "search_imports",
+            "Search imported symbols. Required: query substring. Optional: limit (default 100) and page (default 1).",
+            {"id": "imports", "op": "search_imports", "params": {"query": "socket", "limit": 10}},
+        ),
+        (
+            "search_exports",
+            "Search exported symbols. Required: query substring. Optional: limit (default 100) and page (default 1).",
+            {"id": "exports", "op": "search_exports", "params": {"query": "init", "limit": 10}},
+        ),
+        (
+            "search_functions",
+            "Search functions with optional ranking. Optional params: query text, limit/page (defaults 100/1), context_lines (0-16). "
+            "Use rank='simple' with optional k, or resume_cursor for pagination (not both).",
+            {
+                "id": "init-funcs",
+                "op": "search_functions",
+                "params": {"query": "init", "limit": 20, "context_lines": 2},
+            },
+        ),
+        (
+            "search_xrefs_to",
+            "Search inbound references to an address. Required: address (hex). Optional: query, limit (default 100), page (default 1).",
+            {"id": "xref", "op": "search_xrefs_to", "params": {"address": "0x401050", "limit": 50}},
+        ),
+        (
+            "search_scalars",
+            "Search scalar values. Required: value (int or hex string). Optional: query label, limit/page (defaults 50/1), resume_cursor.",
+            {"id": "scalars", "op": "search_scalars", "params": {"value": "0xDEADBEEF", "limit": 10}},
+        ),
+        (
+            "search_scalars_with_context",
+            "Search scalars and include annotated disassembly context. Required: value. Optional: context_lines (0-16, default 4) and limit (default 25).",
+            {
+                "id": "scalar-context",
+                "op": "search_scalars_with_context",
+                "params": {"value": "0x8040123", "context_lines": 3},
+            },
+        ),
+    ]
+
+    example_primary = {
+        "queries": [
+            {
+                "id": "init-funcs",
+                "op": "search_functions",
+                "params": {"query": "init", "limit": 20, "context_lines": 2},
+                "result_budget": {"max_result_tokens": 600},
+            },
+            {
+                "id": "long-strings",
+                "op": "search_strings",
+                "params": {"query": "initialization complete", "limit": 50},
+            },
+        ],
+        "result_budget": {"max_result_tokens": 1500, "mode": "auto_trim"},
+        "metadata": {"request": "search init functions & long strings"},
+    }
+
+    example_cross_project = {
+        "queries": [
+            {
+                "id": "xref-to-target",
+                "op": "search_xrefs_to",
+                "params": {"address": "0x401050", "limit": 25},
+            }
+        ],
+        "projects": [
+            {
+                "id": "linux-build",
+                "ghidra_url": "http://ghidra.example.local:13100/",
+                "queries": [
+                    {
+                        "id": "batch-disasm",
+                        "op": "disassemble_batch",
+                        "params": {"addresses": ["0x401050", "0x401060"], "count": 8},
+                    }
+                ],
+                "result_budget": {"mode": "strict", "max_result_tokens": 800},
+            }
+        ],
+        "result_budget": {"max_result_tokens": 2000},
+    }
+
+    lines: list[str] = []
+    lines.append("##### Query object")
+    lines.append("")
+    table = render_table(query_rows)
+    if table:
+        lines.append(table)
+    lines.append("")
+
+    lines.append("##### Project object")
+    lines.append("")
+    table = render_table(project_rows)
+    if table:
+        lines.append(table)
+    lines.append("")
+
+    lines.append("##### Result budget object")
+    lines.append("")
+    table = render_table(budget_rows)
+    if table:
+        lines.append(table)
+    lines.append("")
+
+    lines.append("#### Supported `op` values")
+    lines.append("")
+    for name, description, example in operations:
+        lines.append(f"- `{name}` — {description}")
+        lines.append("")
+        lines.append("  ```json")
+        example_json = json.dumps(example, indent=2)
+        for line in example_json.splitlines():
+            lines.append(f"  {line}")
+        lines.append("  ```")
+        lines.append("")
+
+    lines.append("#### Example requests")
+    lines.append("")
+    lines.append("**Search init functions & long strings**")
+    lines.append("")
+    lines.append("```json")
+    example_json = json.dumps(example_primary, indent=2)
+    lines.extend(example_json.splitlines())
+    lines.append("```")
+    lines.append("")
+
+    lines.append("**Xref lookup + batch disassembly**")
+    lines.append("")
+    lines.append("```json")
+    example_json = json.dumps(example_cross_project, indent=2)
+    lines.extend(example_json.splitlines())
+    lines.append("```")
+
+    return lines
+
+
 def render_schema_details(schema: Mapping[str, Any]) -> list[str]:
     lines: list[str] = []
     if "$id" in schema:
@@ -206,6 +408,9 @@ def render_method(path: str, method: str, spec: Mapping[str, Any]) -> list[str]:
                 details = render_schema_details(schema)
                 if details:
                     lines.extend([f"  {line}" if line else "" for line in details])
+    if path == "/api/collect.json":
+        lines.append("")
+        lines.extend(collect_extra_sections())
     return lines
 
 
