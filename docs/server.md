@@ -65,11 +65,12 @@ Poll `GET /state` to view live diagnostics:
 
 - `bridge_ready`: boolean indicating that the Python bridge has initialised.
 - `session_ready`: boolean showing the MCP session is available for tool calls.
+- `ready`: alias for `session_ready` maintained for existing clients.
 - `active_sse`: connection identifier or `null` when idle.
-- `counters`: per-endpoint usage counters, including batch operations and limit guards.
-- `limit_hits`: list of safety limit triggers (e.g., batch caps, write guards).
+- `connects`: count of SSE connections accepted since startup.
+- `last_init_ts`: ISO-8601 timestamp for the most recent session initialisation (or `null`).
 
-Throttle polling to at least every 500 ms to avoid log spam. The same endpoint reflects write-guard status and can be scraped for observability dashboards.
+Throttle polling to at least every 500 ms to avoid log spam. The same endpoint can be scraped for readiness dashboards and connection diagnostics.
 
 ## Limits & write-guards
 
@@ -77,6 +78,6 @@ Write operations are guarded by deterministic envelopes and configuration flags:
 
 - `ENABLE_WRITES`: bound to `GHIDRA_MCP_ENABLE_WRITES`. When `false`, write routes short-circuit and return `ok=false` with errors.
 - `dry_run`: per-request override that forces non-destructive execution even when writes are enabled.
-- `SafetyLimitExceeded`: error raised when batch sizes, search windows, or write counts exceed configured caps (e.g., `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`). Limit hits populate `/state.limit_hits` for downstream monitoring.
+- `SafetyLimitExceeded`: error raised when batch sizes, search windows, or write counts exceed configured caps (e.g., `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`).
 
-Keep writes idempotent and monitor `/state` for repeated limit violations to fine-tune batch sizes or adjust configuration within safe bounds.
+Keep writes idempotent and monitor for repeated `SafetyLimitExceeded` responses to fine-tune batch sizes or adjust configuration within safe bounds.

@@ -67,7 +67,7 @@ Set the environment variable before starting the server to raise the ceiling, fo
 GHIDRA_MCP_MAX_ITEMS_PER_BATCH=512 uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-Keep an eye on `/state.limit_hits` to confirm the new cap is sufficient for your workload.
+Watch for repeated `SafetyLimitExceeded` responses to confirm the new cap is sufficient for your workload.
 
 ## Token efficiency notes
 
