@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Dict
+from typing import Any, Callable, Dict, List, Mapping, Sequence
 
 from mcp.server.fastmcp import FastMCP
 
 from ..features import (
+    analyze,
     batch_ops,
     disasm,
+    datatypes,
     exports as export_features,
     function_range,
     functions,
@@ -16,12 +18,15 @@ from ..features import (
     jt,
     memory,
     mmio,
+    project,
     scalars,
     strings,
     xrefs,
 )
+from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient
-from ..utils.config import ENABLE_WRITES
+from ..utils import config
+from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
 from ..utils.errors import ErrorCode
 from ..utils.logging import (
     SafetyLimitExceeded,
@@ -42,6 +47,441 @@ def register_tools(
 ) -> None:
     tool_client = inject_client(client_factory)
     logger = logging.getLogger("bridge.mcp.tools")
+
+    @server.tool()
+    @tool_client
+    def project_info(client) -> Dict[str, object]:
+        with request_scope(
+            "project_info",
+            logger=logger,
+            extra={"tool": "project_info"},
+        ):
+            payload = client.get_project_info()
+            if payload is None:
+                return envelope_error(ErrorCode.UNAVAILABLE)
+            normalized = _normalise_project_info(payload)
+
+        valid, errors = validate_payload("project_info.v1.json", normalized)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(normalized)
+
+    @server.tool()
+    @tool_client
+    def project_rebase(
+        client,
+        new_base: str,
+        *,
+        dry_run: bool = True,
+        confirm: bool = False,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {
+            "new_base": new_base,
+            "dry_run": dry_run,
+            "confirm": confirm,
+        }
+        valid, errors = validate_payload("project_rebase.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        try:
+            parsed_new_base = parse_hex(new_base)
+        except ValueError as exc:
+            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        with request_scope(
+            "project_rebase",
+            logger=logger,
+            extra={"tool": "project_rebase"},
+            max_writes=1,
+        ):
+            try:
+                payload = project.rebase_project(
+                    client,
+                    new_base=parsed_new_base,
+                    dry_run=dry_run,
+                    confirm=confirm,
+                    writes_enabled=enable_writes,
+                    rebases_enabled=config.ENABLE_PROJECT_REBASE,
+                )
+            except ValueError as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload("project_rebase.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tool_client
+    def analyze_function_complete(
+        client,
+        address: str,
+        *,
+        fields: list[str] | None = None,
+        fmt: str = "json",
+        max_result_tokens: int | None = None,
+        options: dict[str, object] | None = None,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {"address": address}
+        if fields is not None:
+            request_payload["fields"] = list(fields)
+        if fmt is not None:
+            request_payload["fmt"] = fmt
+        if max_result_tokens is not None:
+            request_payload["max_result_tokens"] = max_result_tokens
+        if options is not None:
+            request_payload["options"] = dict(options)
+
+        valid, errors = validate_payload(
+            "analyze_function_complete.request.v1.json", request_payload
+        )
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        try:
+            parsed_address = parse_hex(address)
+        except ValueError as exc:
+            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        with request_scope(
+            "analyze_function_complete",
+            logger=logger,
+            extra={"tool": "analyze_function_complete"},
+        ):
+            try:
+                payload = analyze.analyze_function_complete(
+                    client,
+                    address=parsed_address,
+                    fields=list(fields) if fields is not None else None,
+                    fmt=fmt,
+                    max_result_tokens=max_result_tokens,
+                    options=_coerce_mapping(options),
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except ValueError as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload(
+            "analyze_function_complete.v1.json", payload
+        )
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tool_client
+    def collect(
+        client,
+        *,
+        queries: list[dict[str, object]] | None = None,
+        projects: list[dict[str, object]] | None = None,
+        result_budget: dict[str, object] | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {}
+        if queries is not None:
+            request_payload["queries"] = [dict(item) for item in queries]
+        if projects is not None:
+            request_payload["projects"] = [dict(item) for item in projects]
+        if result_budget is not None:
+            request_payload["result_budget"] = dict(result_budget)
+        if metadata is not None:
+            request_payload["metadata"] = dict(metadata)
+
+        valid, errors = validate_payload("collect.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        queries_payload: list[dict[str, object]] = request_payload.get(
+            "queries", []
+        )
+        projects_payload: list[dict[str, object]] = request_payload.get(
+            "projects", []
+        )
+        budget_payload: Mapping[str, object] | None = request_payload.get(
+            "result_budget"
+        )
+
+        with request_scope(
+            "collect",
+            logger=logger,
+            extra={"tool": "collect"},
+        ):
+            try:
+                base_payload = execute_collect(
+                    client,
+                    queries_payload,
+                    result_budget=budget_payload,
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except (KeyError, TypeError, ValueError) as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        response_payload: Dict[str, Any] = {
+            "queries": base_payload.get("queries", []),
+            "meta": dict(base_payload.get("meta", {})),
+        }
+        if metadata is not None:
+            response_payload["metadata"] = dict(metadata)
+
+        aggregate_tokens = int(response_payload["meta"].get("estimate_tokens", 0) or 0)
+
+        if projects_payload:
+            project_results: List[Dict[str, Any]] = []
+            for project_entry in projects_payload:
+                project_id = project_entry.get("id")
+                project_queries = project_entry.get("queries", [])
+                project_budget = project_entry.get("result_budget")
+                project_url = project_entry.get("ghidra_url") or project_entry.get(
+                    "base_url"
+                )
+
+                project_client = client
+                created_client = False
+                if project_url:
+                    project_client = client_factory()
+                    created_client = True
+                    if hasattr(project_client, "base_url"):
+                        try:
+                            project_client.base_url = (
+                                project_url
+                                if project_url.endswith("/")
+                                else f"{project_url}/"
+                            )
+                        except AttributeError:
+                            pass
+
+                try:
+                    project_payload = execute_collect(
+                        project_client,
+                        project_queries,
+                        result_budget=project_budget,
+                    )
+                except SafetyLimitExceeded as exc:
+                    if created_client:
+                        project_client.close()
+                    return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+                except (KeyError, TypeError, ValueError) as exc:
+                    if created_client:
+                        project_client.close()
+                    return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+                project_meta = dict(project_payload.get("meta", {}))
+                estimate = int(project_meta.get("estimate_tokens", 0) or 0)
+                aggregate_tokens += estimate
+                if project_url:
+                    project_meta.setdefault("ghidra_url", project_url)
+
+                project_result: Dict[str, Any] = {
+                    "id": project_id,
+                    "queries": project_payload.get("queries", []),
+                    "meta": project_meta,
+                }
+
+                if "metadata" in project_entry:
+                    project_result["metadata"] = project_entry["metadata"]
+
+                project_results.append(project_result)
+
+                if created_client:
+                    project_client.close()
+
+            response_payload["projects"] = project_results
+
+        response_payload["meta"]["estimate_tokens"] = aggregate_tokens
+
+        valid, errors = validate_payload("collect.v1.json", response_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(response_payload)
+
+    @server.tool()
+    @tool_client
+    def datatypes_create(
+        client,
+        *,
+        kind: str,
+        name: str,
+        category: str,
+        fields: list[dict[str, object]],
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {
+            "kind": kind,
+            "name": name,
+            "category": category,
+            "fields": [dict(field) for field in fields],
+            "dry_run": dry_run,
+        }
+        valid, errors = validate_payload("datatypes_create.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        with request_scope(
+            "create_datatype",
+            logger=logger,
+            extra={"tool": "datatypes_create"},
+            max_writes=MAX_WRITES_PER_REQUEST,
+        ):
+            try:
+                payload = datatypes.create_datatype(
+                    client,
+                    kind=kind,
+                    name=name,
+                    category=category,
+                    fields=list(request_payload["fields"]),
+                    dry_run=dry_run,
+                    writes_enabled=enable_writes,
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except (KeyError, ValueError) as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload("datatypes_create.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tool_client
+    def datatypes_update(
+        client,
+        *,
+        kind: str,
+        path: str,
+        fields: list[dict[str, object]],
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {
+            "kind": kind,
+            "path": path,
+            "fields": [dict(field) for field in fields],
+            "dry_run": dry_run,
+        }
+        valid, errors = validate_payload("datatypes_update.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        with request_scope(
+            "update_datatype",
+            logger=logger,
+            extra={"tool": "datatypes_update"},
+            max_writes=MAX_WRITES_PER_REQUEST,
+        ):
+            try:
+                payload = datatypes.update_datatype(
+                    client,
+                    kind=kind,
+                    path=path,
+                    fields=list(request_payload["fields"]),
+                    dry_run=dry_run,
+                    writes_enabled=enable_writes,
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except (KeyError, ValueError) as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload("datatypes_update.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tool_client
+    def datatypes_delete(
+        client,
+        *,
+        kind: str,
+        path: str,
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {
+            "kind": kind,
+            "path": path,
+            "dry_run": dry_run,
+        }
+        valid, errors = validate_payload("datatypes_delete.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        with request_scope(
+            "delete_datatype",
+            logger=logger,
+            extra={"tool": "datatypes_delete"},
+            max_writes=MAX_WRITES_PER_REQUEST,
+        ):
+            try:
+                payload = datatypes.delete_datatype(
+                    client,
+                    kind=kind,
+                    path=path,
+                    dry_run=dry_run,
+                    writes_enabled=enable_writes,
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except (KeyError, ValueError) as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload("datatypes_delete.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tool_client
+    def write_bytes(
+        client,
+        address: str,
+        data: str,
+        *,
+        encoding: str = "base64",
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        request_payload: Dict[str, object] = {
+            "address": address,
+            "data": data,
+            "encoding": encoding,
+            "dry_run": dry_run,
+        }
+        valid, errors = validate_payload("write_bytes.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+
+        try:
+            parsed_address = parse_hex(address)
+        except ValueError as exc:
+            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        with request_scope(
+            "write_bytes",
+            logger=logger,
+            extra={"tool": "write_bytes"},
+            max_writes=MAX_WRITES_PER_REQUEST,
+        ):
+            try:
+                payload = memory.write_bytes(
+                    client,
+                    address=parsed_address,
+                    data=data,
+                    encoding=encoding,
+                    dry_run=dry_run,
+                    writes_enabled=enable_writes,
+                )
+            except SafetyLimitExceeded as exc:
+                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except (KeyError, ValueError) as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+        valid, errors = validate_payload("write_bytes.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
 
     @server.tool()
     @tool_client
@@ -820,6 +1260,43 @@ def register_tools(
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(data)
+
+
+def _coerce_mapping(value: object) -> Mapping[str, object]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _normalise_project_info(payload: Mapping[str, Any]) -> Dict[str, Any]:
+    data = dict(payload)
+
+    entry_points = payload.get("entry_points")
+    if isinstance(entry_points, list):
+        data["entry_points"] = sorted(
+            (value for value in entry_points if isinstance(value, str))
+        )
+
+    blocks = payload.get("memory_blocks")
+    if isinstance(blocks, list):
+        normalised_blocks: List[Dict[str, Any]] = []
+        for block in blocks:
+            if isinstance(block, Mapping):
+                normalised_blocks.append(dict(block))
+        normalised_blocks.sort(key=_block_sort_key)
+        data["memory_blocks"] = normalised_blocks
+
+    return data
+
+
+def _block_sort_key(block: Mapping[str, Any]) -> tuple[int, str]:
+    start = block.get("start")
+    if isinstance(start, str):
+        try:
+            value = int(start, 16)
+        except ValueError:
+            pass
+        else:
+            return (0, f"{value:016x}")
+    return (1, str(start))
 
 
 __all__ = ["register_tools"]
