@@ -10,6 +10,15 @@
       "items": {"$ref": "#/$defs/query_result"}
     },
     "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "projects": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/project_result"}
+    }
+  },
+  "$defs": {
+    "meta": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -23,11 +32,10 @@
             "consumed_tokens": {"type": "integer", "minimum": 0},
             "remaining_tokens": {"type": "integer", "minimum": 0}
           }
-        }
+        },
+        "ghidra_url": {"type": "string"}
       }
-    }
-  },
-  "$defs": {
+    },
     "query_result": {
       "type": "object",
       "additionalProperties": false,
@@ -58,6 +66,23 @@
               "items": {"type": "string"}
             }
           }
+        }
+      }
+    },
+    "project_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "queries", "meta"],
+      "properties": {
+        "id": {"type": "string"},
+        "queries": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/query_result"}
+        },
+        "meta": {"$ref": "#/$defs/meta"},
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
         }
       }
     }

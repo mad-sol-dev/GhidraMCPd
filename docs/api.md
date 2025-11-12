@@ -191,17 +191,33 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `metadata` | object | No |  |
-| `queries` | array<object> | Yes |  |
-| `result_budget` | object | No |  |
+| `metadata` | object | No | Optional request-level diagnostics echoed in logs. |
+| `projects` | array<object> | No | Multi-program lanes. Each item requires `id` and `queries`, and can carry `metadata`, `ghidra_url`, and `result_budget`. |
+| `queries` | array<object> | No | Legacy single-lane batch. Provide when `projects` is omitted. |
+| `result_budget` | object | No | Request-level token budget applied to the default lane. |
+
+> At least one of `projects` or `queries` must be supplied.
 
 ```json
 {
-  "metadata": {},
-  "queries": [
-    "\u2026"
+  "projects": [
+    {
+      "id": "primary",
+      "queries": [
+        {"id": "imports", "op": "search_imports", "params": {"query": "import", "limit": 5}}
+      ],
+      "ghidra_url": "http://127.0.0.1:8080/",
+      "metadata": {"digest": "sha256:..."}
+    },
+    {
+      "id": "secondary",
+      "queries": [
+        {"id": "strings", "op": "search_strings", "params": {"query": "status", "limit": 5}}
+      ],
+      "result_budget": {"max_result_tokens": 1024}
+    }
   ],
-  "result_budget": "\u2026"
+  "result_budget": {"max_result_tokens": 4096}
 }
 ```
 
@@ -212,23 +228,42 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `meta` | object | No |  |
-| `queries` | array<object> | Yes |  |
+| `meta` | object | No | Aggregate metadata for the full request. |
+| `projects` | array<object> | No | Per-project envelopes with deterministic ordering. |
+| `queries` | array<object> | Yes | Default-lane results (empty when using only `projects`). |
 
   ```json
   {
   "meta": {
-    "estimate_tokens": 0,
+    "estimate_tokens": 120,
     "result_budget": {
-      "consumed_tokens": 0,
-      "max_result_tokens": 0,
-      "mode": "string",
-      "remaining_tokens": 0
+      "consumed_tokens": 100,
+      "max_result_tokens": 4096,
+      "mode": "auto_trim",
+      "remaining_tokens": 3996
     }
   },
-  "queries": [
-    "\u2026"
-  ]
+  "projects": [
+    {
+      "id": "primary",
+      "meta": {
+        "estimate_tokens": 80,
+        "ghidra_url": "http://127.0.0.1:8080/"
+      },
+      "queries": [
+        {"id": "imports", "op": "search_imports", "result": {"ok": true, "data": "...", "errors": []}}
+      ]
+    },
+    {
+      "id": "secondary",
+      "metadata": {"digest": "sha256:..."},
+      "meta": {"estimate_tokens": 40},
+      "queries": [
+        {"id": "strings", "op": "search_strings", "result": {"ok": true, "data": "...", "errors": []}}
+      ]
+    }
+  ],
+  "queries": []
 }
   ```
 

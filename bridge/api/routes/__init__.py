@@ -37,6 +37,7 @@ def make_routes(
         logger=logger,
         validated_json_body=validated_json_body,
         with_client=with_client,
+        client_factory=client_factory,
     )
 
     groups: Iterable[List[Route]] = (
