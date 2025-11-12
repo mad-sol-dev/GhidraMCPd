@@ -30,6 +30,9 @@ out/
 # Thumbnails
 ._*
 
+# Images
+*.xcf
+
 # macOS metadata files
 .Spotlight-V100
 .Trashes
