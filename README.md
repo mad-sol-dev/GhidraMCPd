@@ -11,7 +11,7 @@ Deterministic MCP server for the Ghidra plugin focused on lowering token spend w
 
 ## Motivation
 
-Started as a side-quest while building an e-recumbent bike battery (needed to label matched cells → bought a Chinease handheld HP45 printer → found SD card → firmware RE → here we are 🚴).
+Started as a side-quest while building an e-recumbent bike battery (needed to label matched cells → bought a Chinese handheld HP45 printer → found SD card → firmware RE → here we are 🚴).
 
 Bridging Ghidra through MCP can be API-expensive when clients emit many small calls. Ghidra MCPd reduces this through:
 - **Batch operations**: `disassemble_batch`, `read_words` - analyze multiple addresses in one call
