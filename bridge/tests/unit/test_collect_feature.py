@@ -62,6 +62,31 @@ def test_execute_collect_success() -> None:
     assert result["errors"] == []
 
 
+def test_execute_collect_aliases_type_and_filter() -> None:
+    client = StubClient()
+    payload = execute_collect(
+        client,
+        [
+            {
+                "id": "search",
+                "type": "search_functions",
+                "filter": {"query": "foo", "limit": 1},
+            }
+        ],
+    )
+
+    query = _first_query(payload)
+    assert query["op"] == "search_functions"
+
+    result = query["result"]
+    assert isinstance(result, dict)
+    assert result["ok"] is True
+
+    notes = query["meta"].get("notes", [])
+    assert "alias:op" in notes
+    assert "alias:params" in notes
+
+
 def test_execute_collect_query_budget_auto_trim() -> None:
     client = StubClient()
     payload = execute_collect(
