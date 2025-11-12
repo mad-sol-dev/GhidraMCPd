@@ -93,7 +93,7 @@ Restarting a client-side MCP manager can trigger reconnect attempts before the b
 
 - Ensure clients close SSE connections gracefully before spinning up a new one.
 - Space reconnection attempts to avoid overlapping `GET /sse` calls.
-- Monitor `/state.limit_hits` for repeated connection churn.
+- Monitor `/state.active_sse` and `/state.connects` to confirm reconnect behaviour over time.
 
 ### Manual recovery
 
