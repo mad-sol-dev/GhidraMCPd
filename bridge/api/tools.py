@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from ..features import (
     analyze,
     batch_ops,
+    collect as collect_feature,
     disasm,
     datatypes,
     exports as export_features,
@@ -37,6 +38,110 @@ from ..utils.logging import (
 from ..utils.hex import int_to_hex, parse_hex
 from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
 from .validators import validate_payload
+
+
+COLLECT_DOCS_URL = "docs/api.md#/api/collect.json"
+_SUPPORTED_COLLECT_OPS: tuple[str, ...] = tuple(
+    sorted(getattr(collect_feature, "_OPERATIONS", {}).keys())
+)
+
+if _SUPPORTED_COLLECT_OPS:
+    _COLLECT_OP_HINT = (
+        "Supported 'op' values: "
+        + ", ".join(_SUPPORTED_COLLECT_OPS)
+        + f". See {COLLECT_DOCS_URL} for details."
+    )
+else:  # pragma: no cover - fallback when operations are unavailable
+    _COLLECT_OP_HINT = f"See {COLLECT_DOCS_URL} for supported 'op' values."
+
+
+def _detect_collect_misspecifications(
+    payload: Mapping[str, object] | None,
+) -> str | None:
+    if not isinstance(payload, Mapping):
+        return None
+
+    def _budget_issue(
+        budget_payload: object,
+        *,
+        context: str,
+    ) -> str | None:
+        if isinstance(budget_payload, Mapping) and "max_items" in budget_payload:
+            return (
+                f"{context} uses 'max_items'. Result budgets accept 'max_result_tokens'. "
+                "Example: {'result_budget': {'max_result_tokens': 500}}. "
+                f"See {COLLECT_DOCS_URL} for budgeting fields."
+            )
+        return None
+
+    def _query_issue(source: str, queries_payload: object) -> str | None:
+        if not isinstance(queries_payload, Sequence) or isinstance(
+            queries_payload, (str, bytes, bytearray)
+        ):
+            return None
+
+        for index, raw_query in enumerate(queries_payload):
+            if not isinstance(raw_query, Mapping):
+                continue
+
+            qid = raw_query.get("id")
+            if isinstance(qid, str) and qid:
+                context = f"{source} query '{qid}'"
+            else:
+                context = f"{source} query #{index + 1}"
+
+            if "type" in raw_query:
+                return (
+                    f"{context} uses 'type'. Collect queries require an 'op' field. "
+                    "Use 'op': 'search_functions' and 'params': {...}. "
+                    f"{_COLLECT_OP_HINT}"
+                )
+
+            if "filter" in raw_query and "params" not in raw_query:
+                return (
+                    f"{context} uses 'filter'. Move filters under 'params'. "
+                    "Use 'op': 'search_functions' and 'params': {...}. "
+                    f"{_COLLECT_OP_HINT}"
+                )
+
+            budget_message = _budget_issue(
+                raw_query.get("result_budget"), context=f"{context} result_budget"
+            )
+            if budget_message:
+                return budget_message
+
+        return None
+
+    message = _query_issue("Top-level", payload.get("queries"))
+    if message:
+        return message
+
+    projects_payload = payload.get("projects")
+    if isinstance(projects_payload, Sequence):
+        for project in projects_payload:
+            if not isinstance(project, Mapping):
+                continue
+
+            pid = project.get("id")
+            source = f"Project '{pid}'" if isinstance(pid, str) and pid else "Project"
+
+            budget_message = _budget_issue(
+                project.get("result_budget"), context=f"{source} result_budget"
+            )
+            if budget_message:
+                return budget_message
+
+            message = _query_issue(source, project.get("queries"))
+            if message:
+                return message
+
+    budget_message = _budget_issue(
+        payload.get("result_budget"), context="Collect result_budget"
+    )
+    if budget_message:
+        return budget_message
+
+    return None
 
 
 def register_tools(
@@ -259,6 +364,10 @@ def register_tools(
             request_payload["result_budget"] = dict(result_budget)
         if metadata is not None:
             request_payload["metadata"] = dict(metadata)
+
+        friendly_error = _detect_collect_misspecifications(request_payload)
+        if friendly_error:
+            return envelope_error(ErrorCode.INVALID_REQUEST, friendly_error)
 
         valid, errors = validate_payload("collect.request.v1.json", request_payload)
         if not valid:
