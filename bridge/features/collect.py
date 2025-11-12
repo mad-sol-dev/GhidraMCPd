@@ -20,6 +20,25 @@ Envelope = Dict[str, object]
 OperationHandler = Callable[[GhidraClient, Mapping[str, object]], Mapping[str, object]]
 
 
+def _normalize_query_payload(
+    query: Mapping[str, object]
+) -> tuple[Mapping[str, object], List[str]]:
+    """Normalize legacy query aliases to the canonical schema."""
+
+    notes: List[str] = []
+    normalized = dict(query)
+
+    if "op" not in normalized and "type" in normalized:
+        normalized["op"] = normalized["type"]
+        notes.append("alias:op")
+
+    if "params" not in normalized and "filter" in normalized:
+        normalized["params"] = normalized["filter"]
+        notes.append("alias:params")
+
+    return normalized, notes
+
+
 def _envelope_ok(data: Mapping[str, object]) -> Envelope:
     return {"ok": True, "data": dict(data), "errors": []}
 
@@ -325,26 +344,36 @@ def execute_collect(
     results: List[Dict[str, object]] = []
     total_estimate = 0
 
-    for query in queries:
+    for raw_query in queries:
+        if isinstance(raw_query, Mapping):
+            query, alias_notes = _normalize_query_payload(raw_query)
+        else:  # pragma: no cover - defensive guard
+            query = raw_query
+            alias_notes = []
+
         qid = str(query.get("id", "")) if query.get("id") is not None else ""
         if not qid:
             qid = ""
         op = str(query.get("op", ""))
         params_raw = query.get("params") or {}
+        notes: List[str] = list(alias_notes)
         if not isinstance(params_raw, Mapping):
             envelope = _envelope_error(
                 ErrorCode.INVALID_REQUEST, "params must be an object"
             )
+            meta: Dict[str, object] = {
+                "estimate_tokens": 0,
+                "max_result_tokens": query.get("max_result_tokens"),
+                "truncated": False,
+            }
+            if notes:
+                meta["notes"] = notes
             results.append(
                 {
                     "id": qid,
                     "op": op,
                     "result": envelope,
-                    "meta": {
-                        "estimate_tokens": 0,
-                        "max_result_tokens": query.get("max_result_tokens"),
-                        "truncated": False,
-                    },
+                    "meta": meta,
                 }
             )
             continue
@@ -361,7 +390,7 @@ def execute_collect(
                         "estimate_tokens": 0,
                         "max_result_tokens": query.get("max_result_tokens"),
                         "truncated": False,
-                        "notes": ["unsupported_op"],
+                        "notes": ["unsupported_op", *notes] if notes else ["unsupported_op"],
                     },
                 }
             )
@@ -374,7 +403,6 @@ def execute_collect(
             else None,
         )
 
-        notes: List[str] = []
         truncated = False
         estimate_tokens = 0
 
