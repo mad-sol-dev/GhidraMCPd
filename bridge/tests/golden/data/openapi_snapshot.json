@@ -612,6 +612,43 @@
             "application/json": {
               "schema": {
                 "$defs": {
+                  "project": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "base_url": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "ghidra_url": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "additionalProperties": true,
+                        "type": "object"
+                      },
+                      "queries": {
+                        "items": {
+                          "$ref": "#/$defs/query"
+                        },
+                        "maxItems": 256,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "result_budget": {
+                        "$ref": "#/$defs/result_budget"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "queries"
+                    ],
+                    "type": "object"
+                  },
                   "query": {
                     "additionalProperties": false,
                     "properties": {
@@ -674,10 +711,30 @@
                 "$id": "urn:schema:collect.request.v1",
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": false,
+                "anyOf": [
+                  {
+                    "required": [
+                      "queries"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "projects"
+                    ]
+                  }
+                ],
                 "properties": {
                   "metadata": {
                     "additionalProperties": true,
                     "type": "object"
+                  },
+                  "projects": {
+                    "items": {
+                      "$ref": "#/$defs/project"
+                    },
+                    "maxItems": 64,
+                    "minItems": 1,
+                    "type": "array"
                   },
                   "queries": {
                     "items": {
@@ -691,9 +748,6 @@
                     "$ref": "#/$defs/result_budget"
                   }
                 },
-                "required": [
-                  "queries"
-                ],
                 "type": "object"
               }
             }
@@ -706,6 +760,70 @@
               "application/json": {
                 "schema": {
                   "$defs": {
+                    "meta": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "estimate_tokens": {
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "ghidra_url": {
+                          "type": "string"
+                        },
+                        "result_budget": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "consumed_tokens": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "max_result_tokens": {
+                              "minimum": 0,
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "mode": {
+                              "type": "string"
+                            },
+                            "remaining_tokens": {
+                              "minimum": 0,
+                              "type": "integer"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "project_result": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "meta": {
+                          "$ref": "#/$defs/meta"
+                        },
+                        "metadata": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        },
+                        "queries": {
+                          "items": {
+                            "$ref": "#/$defs/query_result"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "queries",
+                        "meta"
+                      ],
+                      "type": "object"
+                    },
                     "query_result": {
                       "additionalProperties": false,
                       "properties": {
@@ -782,38 +900,13 @@
                   "additionalProperties": false,
                   "properties": {
                     "meta": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "estimate_tokens": {
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        "result_budget": {
-                          "additionalProperties": false,
-                          "properties": {
-                            "consumed_tokens": {
-                              "minimum": 0,
-                              "type": "integer"
-                            },
-                            "max_result_tokens": {
-                              "minimum": 0,
-                              "type": [
-                                "integer",
-                                "null"
-                              ]
-                            },
-                            "mode": {
-                              "type": "string"
-                            },
-                            "remaining_tokens": {
-                              "minimum": 0,
-                              "type": "integer"
-                            }
-                          },
-                          "type": "object"
-                        }
+                      "$ref": "#/$defs/meta"
+                    },
+                    "projects": {
+                      "items": {
+                        "$ref": "#/$defs/project_result"
                       },
-                      "type": "object"
+                      "type": "array"
                     },
                     "queries": {
                       "items": {

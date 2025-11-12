@@ -27,3 +27,4 @@
 - 2025-11-10 **D.7** — rank=simple & k heuristic prefilter (opt-in, docs/tests) _commit:5c50273_
 - 2025-11-11 **D.8** — Cursor streaming for large sets (cursor/resume plumbing, docs/tests) _commit:01a634c_
 - 2025-11-12 **D.9** — 5-min short cache per {digest,query} (TTL caching layer, metrics, docs/tests) _commit:af5291a_
+- 2025-11-12 **R.1** — Batch project analysis lanes (collector lanes span multiple programs with deterministic envelopes + docs/tests) _commit:pending_

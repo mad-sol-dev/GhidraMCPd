@@ -192,18 +192,9 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `metadata` | object | No |  |
-| `queries` | array<object> | Yes |  |
+| `projects` | array<object> | No |  |
+| `queries` | array<object> | No |  |
 | `result_budget` | object | No |  |
-
-```json
-{
-  "metadata": {},
-  "queries": [
-    "\u2026"
-  ],
-  "result_budget": "\u2026"
-}
-```
 
 #### Responses
 - `200` — Successful Response
@@ -213,19 +204,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `meta` | object | No |  |
+| `projects` | array<object> | No |  |
 | `queries` | array<object> | Yes |  |
 
   ```json
   {
-  "meta": {
-    "estimate_tokens": 0,
-    "result_budget": {
-      "consumed_tokens": 0,
-      "max_result_tokens": 0,
-      "mode": "string",
-      "remaining_tokens": 0
-    }
-  },
+  "meta": "\u2026",
+  "projects": [
+    "\u2026"
+  ],
   "queries": [
     "\u2026"
   ]
