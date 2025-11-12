@@ -43,9 +43,17 @@ Once running, open Ghidra with a project and the server will connect automatical
 
 ```bash
 # Find all functions using MMIO address 0x40000000
-curl -X POST http://localhost:8000/api/search_scalars_with_context.json \
+curl -X POST http://localhost:8000/api/collect.json \
   -H 'content-type: application/json' \
-  -d '{"value":"0x40000000","context_lines":2,"limit":10}'
+  -d '{
+        "queries": [
+          {
+            "id": "mmio-usages",
+            "op": "search_scalars_with_context",
+            "params": {"value": "0x40000000", "context_lines": 2, "limit": 10}
+          }
+        ]
+      }'
 
 # Analyze function with decompiler
 curl -X POST http://localhost:8000/api/analyze_function_complete.json \
@@ -109,31 +117,33 @@ curl -sS -X POST http://localhost:8000/api/write_bytes.json \
 
 ## API Overview
 
+### Batch & Aggregation
+* `/api/collect.json` - Batch helper for read-only operations (supports `disassemble_batch`, `read_words`, `search_scalars_with_context`, etc.)
+
 ### Search & Analysis
 * `/api/search_strings.json` - Search for strings with pagination
 * `/api/search_functions.json` - Find functions by name pattern
-* `/api/search_scalars.json` - Locate scalar values in code
-* `/api/search_scalars_with_context.json` - Scalars with surrounding disassembly
+* `/api/search_scalars.json` - Locate scalar values in code (batch context via `search_scalars_with_context` on `/api/collect.json`)
 * `/api/search_imports.json` / `/api/search_exports.json` - Symbol search
 * `/api/search_xrefs_to.json` - Cross-references to an address
+* `/api/string_xrefs.json` - Compact view of string cross-references
+* `/api/list_functions_in_range.json` - List functions in address range
 
 ### Memory & Disassembly
-* `/api/read_bytes.json` - Read raw bytes from memory
-* `/api/read_words.json` - Batch read 32-bit words
-* `/api/disassemble_at.json` - Disassemble at address
-* `/api/disassemble_batch.json` - Batch disassembly of multiple addresses
+* `/api/read_bytes.json` - Read raw bytes from memory (batch reads via `read_words` on `/api/collect.json`)
+* `/api/disassemble_at.json` - Disassemble at address (batch disassembly via `disassemble_batch` on `/api/collect.json`)
+* `/api/write_bytes.json` - Write bytes (requires `ENABLE_WRITES`)
 
 ### Advanced Analysis
 * `/api/analyze_function_complete.json` - Complete function analysis (decompile, xrefs, etc.)
-* `/api/list_functions_in_range.json` - List functions in address range
 * `/api/mmio_annotate.json` - Annotate MMIO accesses
 * `/api/jt_scan.json` / `/api/jt_slot_check.json` / `/api/jt_slot_process.json` - Jump table analysis
 
 ### Data & Utilities
 * `/api/strings_compact.json` - Bulk string listing
-* `/api/string_xrefs.json` - Cross-references to strings
-* `/api/write_bytes.json` - Write bytes (requires `ENABLE_WRITES`)
+* `/api/datatypes/create.json` / `/api/datatypes/update.json` / `/api/datatypes/delete.json` - Manage custom datatypes (writes optional)
 * `/api/project_info.json` - Project metadata
+* `/api/project_rebase.json` - Project base address rebasing (writes optional)
 * `/api/health.json` - Server health check
 
 See the complete reference in [docs/api.md](docs/api.md).
