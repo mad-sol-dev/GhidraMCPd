@@ -220,6 +220,11 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
     if cursor_param is not None and rank is not None:
         raise ValueError("cursor pagination cannot be combined with rank")
 
+    context_param = params.get("context_lines", 0)
+    context_lines = int(context_param)
+    if context_lines < 0 or context_lines > 16:
+        raise ValueError("context_lines must be between 0 and 16")
+
     return functions.search_functions(
         client,
         query=query,
@@ -228,6 +233,7 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
         rank=rank,
         k=k,
         resume_cursor=str(cursor_param) if cursor_param is not None else None,
+        context_lines=context_lines,
     )
 
 

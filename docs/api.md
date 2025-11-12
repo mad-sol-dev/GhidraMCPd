@@ -1101,6 +1101,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `context_lines` | integer | No | default=0, min=0, max=16 |
 | `cursor` | string | No |  |
 | `k` | integer | No | min=1 |
 | `limit` | integer | No | default=100, min=1, max=500 |
@@ -1111,6 +1112,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 ```json
 {
+  "context_lines": 0,
   "cursor": "string",
   "k": 0,
   "limit": 100,
@@ -1144,6 +1146,20 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   "items": [
     {
       "address": "0x0",
+      "context": {
+        "disassembly": [
+          {
+            "address": "\u2026",
+            "bytes": "\u2026",
+            "text": "\u2026"
+          }
+        ],
+        "window": {
+          "after": 0,
+          "before": 0,
+          "center": "0x0"
+        }
+      },
       "name": "string"
     }
   ],

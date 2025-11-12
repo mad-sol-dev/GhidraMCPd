@@ -31,6 +31,42 @@
           "address": {
             "type": "string",
             "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "context": {
+            "type": "object",
+            "required": ["window", "disassembly"],
+            "properties": {
+              "window": {
+                "type": "object",
+                "required": ["before", "after", "center"],
+                "properties": {
+                  "before": {"type": "integer", "minimum": 0},
+                  "after": {"type": "integer", "minimum": 0},
+                  "center": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]+$"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "disassembly": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["address", "bytes", "text"],
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]+$"
+                    },
+                    "bytes": {"type": "string"},
+                    "text": {"type": "string"}
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

@@ -490,6 +490,16 @@ class StubGhidraClient:
         next_cursor = str(end) if has_more else None
         return CursorPageResult(page_items, has_more, next_cursor)
 
+    def disassemble_at(self, address: int, count: int) -> List[Dict[str, str]]:
+        return [
+            {
+                "address": f"0x{address + i * 4:08x}",
+                "bytes": "",
+                "text": f"INSN_{i}",
+            }
+            for i in range(max(0, count))
+        ]
+
     def list_functions_in_range(
         self, address_min: int, address_max: int
     ) -> List[Dict[str, object]]:

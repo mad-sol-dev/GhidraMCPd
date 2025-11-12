@@ -36,6 +36,16 @@ class _RecordingClient:
         next_cursor = str(end) if has_more else None
         return CursorPageResult(sliced, has_more, next_cursor)
 
+    def disassemble_at(self, address: int, count: int) -> list[dict[str, str]]:
+        return [
+            {
+                "address": f"0x{address + i * 4:08x}",
+                "bytes": "",
+                "text": f"NOP_{i}",
+            }
+            for i in range(max(0, count))
+        ]
+
 
 class _FakeClock:
     def __init__(self, start: float = 10_000.0) -> None:
@@ -88,3 +98,25 @@ def test_cache_refreshes_after_ttl_expiry() -> None:
         assert client.calls == 2
     finally:
         cache.reset_clock()
+
+
+def test_context_lines_changes_cache_key() -> None:
+    client = _RecordingClient()
+
+    base = functions.search_functions(client, query="func", limit=3, page=1, context_lines=0)
+    assert client.calls == 1
+    assert not any("context" in item for item in base["items"])
+
+    cached = functions.search_functions(client, query="func", limit=3, page=1, context_lines=0)
+    assert client.calls == 1
+    assert cached == base
+
+    with_context = functions.search_functions(
+        client, query="func", limit=3, page=1, context_lines=2
+    )
+    assert client.calls == 2
+    assert all("context" in item for item in with_context["items"])
+
+    repeat = functions.search_functions(client, query="func", limit=3, page=1, context_lines=2)
+    assert client.calls == 2
+    assert repeat == with_context

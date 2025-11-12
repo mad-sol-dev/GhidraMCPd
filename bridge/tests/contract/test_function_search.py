@@ -11,7 +11,7 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
 
     response = contract_client.post(
         "/api/search_functions.json",
-        json={"query": "func", "limit": 8, "page": 1},
+        json={"query": "func", "limit": 8, "page": 1, "context_lines": 2},
     )
 
     assert response.status_code == 200
@@ -39,6 +39,14 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
     for item in data["items"]:
         assert set(item.keys()).issuperset({"name", "address"})
         assert item["address"].startswith("0x")
+        context = item.get("context")
+        assert context is not None
+        assert context["window"] == {
+            "before": 2,
+            "after": 2,
+            "center": item["address"],
+        }
+        assert len(context["disassembly"]) == 5
 
 
 def test_search_functions_page_mode_totals(contract_client: TestClient) -> None:
@@ -197,6 +205,19 @@ def test_search_functions_validates_schema(contract_client: TestClient) -> None:
 
     assert response.status_code == 400
 
+    # context_lines out of bounds
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "test", "context_lines": -1},
+    )
+    assert response.status_code == 400
+
+    response = contract_client.post(
+        "/api/search_functions.json",
+        json={"query": "test", "context_lines": 32},
+    )
+    assert response.status_code == 400
+
 
 def test_search_functions_invalid_page(contract_client: TestClient) -> None:
     """Test that invalid page values are rejected."""
@@ -251,6 +272,7 @@ def test_search_functions_simple_rank_trims_before_pagination(
             "page": 1,
             "rank": "simple",
             "k": 3,
+            "context_lines": 1,
         },
     )
 
@@ -262,6 +284,7 @@ def test_search_functions_simple_rank_trims_before_pagination(
             "page": 2,
             "rank": "simple",
             "k": 3,
+            "context_lines": 1,
         },
     )
 
@@ -280,6 +303,12 @@ def test_search_functions_simple_rank_trims_before_pagination(
         "func_0001",
     ]
     assert [item["name"] for item in second_payload["items"]] == ["func_0002"]
+    for payload in (first_payload, second_payload):
+        for item in payload["items"]:
+            context = item.get("context")
+            assert context is not None
+            assert context["window"]["before"] == 1
+            assert context["window"]["after"] == 1
     assert first_payload["has_more"] is True
     assert second_payload["has_more"] is False
     assert first_payload["resume_cursor"] is None

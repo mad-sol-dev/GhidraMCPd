@@ -249,6 +249,16 @@ class GoldenStubGhidraClient:
         normalized_query = query.lower()
         return [f for f in all_functions if normalized_query in f.lower()]
 
+    def disassemble_at(self, address: int, count: int) -> List[Dict[str, str]]:
+        return [
+            {
+                "address": f"0x{address + i * 4:08x}",
+                "bytes": "",
+                "text": f"NOP_{i}",
+            }
+            for i in range(max(0, count))
+        ]
+
     def search_imports(self, query: str) -> List[str]:
         normalized_query = query.lower()
         return [
