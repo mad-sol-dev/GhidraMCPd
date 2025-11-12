@@ -1132,7 +1132,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | --- | --- | --- | --- |
 | `cursor` | string | No |  |
 | `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes | includes `context` when `context_lines` > 0 |
+| `items` | array<object> | Yes |  |
 | `limit` | integer | Yes | min=1 |
 | `page` | integer | Yes | min=1 |
 | `query` | string | Yes |  |
@@ -1149,9 +1149,9 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "context": {
         "disassembly": [
           {
-            "address": "0x0",
-            "bytes": "string",
-            "text": "string"
+            "address": "\u2026",
+            "bytes": "\u2026",
+            "text": "\u2026"
           }
         ],
         "window": {
@@ -1163,8 +1163,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "name": "string"
     }
   ],
-  "limit": 100,
-  "page": 1,
+  "limit": 0,
+  "page": 0,
   "query": "string",
   "resume_cursor": "string",
   "total": 0
