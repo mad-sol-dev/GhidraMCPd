@@ -1,6 +1,6 @@
 ![ghidra_MCP_logo](images/ghidraMCPd.png)
 
-# Ghidra MCPd - token-efficient MCP server for Ghidra
+# GhidraMCPd - token-efficient MCP server for Ghidra
 
 Deterministic MCP server for the Ghidra plugin focused on lowering token spend while keeping schemas stable and auditable.
 
