@@ -27,6 +27,7 @@ class RouteDependencies:
     logger: logging.Logger
     validated_json_body: JsonBodyValidator
     with_client: RouteDecorator
+    client_factory: Callable[[], GhidraClient]
 
 
 async def validated_json_body(request: Request, schema: str) -> Dict[str, object]:

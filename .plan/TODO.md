@@ -4,7 +4,6 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.1} Batch project analysis lanes for multi-program dossiers
 - {R.2} Enhanced search ranking + expanded context windows
 
 ## NEXT
@@ -29,6 +28,7 @@
 - [x] {D.9} 5-min short-term cache per {digest,query}.
 - [x] OpenAPI renderer fixed — gen_api_md.py handles 3.1 unions/combinators, docs regenerated.
 - [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
+- [x] {R.1} Batch project analysis lanes for multi-program dossiers — collector lanes span multiple Ghidra projects with deterministic envelopes and docs/tests.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.
