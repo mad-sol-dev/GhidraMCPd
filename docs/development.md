@@ -10,7 +10,7 @@ python -m pytest -q bridge/tests/unit bridge/tests/contract bridge/tests/golden
 
 ### Prerequisites
 
-* JDK 17 or later
+* JDK 21
 * Maven 3.6+
 * Ghidra 11.4.2 (or set `GHIDRA_DIR` to your local installation)
 
