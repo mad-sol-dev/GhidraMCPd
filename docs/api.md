@@ -57,16 +57,16 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `http://json-schema.org/draft-07/schema#`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `address` | string | Yes |  |
-| `callgraph` | object | No |  |
-| `decompile` | object | No |  |
-| `disasm` | object | No |  |
-| `features` | object | No |  |
-| `function` | object | No |  |
-| `meta` | object | Yes |  |
-| `strings` | object | No |  |
-| `xrefs` | object | No |  |
+  | --- | --- | --- | --- |
+  | `address` | string | Yes |  |
+  | `callgraph` | object | No |  |
+  | `decompile` | object | No |  |
+  | `disasm` | object | No |  |
+  | `features` | object | No |  |
+  | `function` | object | No |  |
+  | `meta` | object | Yes |  |
+  | `strings` | object | No |  |
+  | `xrefs` | object | No |  |
 
   ```json
   {
@@ -202,10 +202,10 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `meta` | object | No |  |
-| `projects` | array<object> | No |  |
-| `queries` | array<object> | Yes |  |
+  | --- | --- | --- | --- |
+  | `meta` | object | No |  |
+  | `projects` | array<object> | No |  |
+  | `queries` | array<object> | Yes |  |
 
   ```json
   {
@@ -540,14 +540,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `datatype` | object | Yes |  |
-| `dry_run` | boolean | Yes |  |
-| `errors` | array<string> | Yes |  |
-| `kind` | string | Yes | enum=['structure', 'union'] |
-| `notes` | array<string> | Yes |  |
-| `path` | string | Yes | pattern=^/.* |
-| `written` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `datatype` | object | Yes |  |
+  | `dry_run` | boolean | Yes |  |
+  | `errors` | array<string> | Yes |  |
+  | `kind` | string | Yes | enum=['structure', 'union'] |
+  | `notes` | array<string> | Yes |  |
+  | `path` | string | Yes | pattern=^/.* |
+  | `written` | boolean | Yes |  |
 
   ```json
   {
@@ -604,14 +604,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `datatype` | object | Yes |  |
-| `dry_run` | boolean | Yes |  |
-| `errors` | array<string> | Yes |  |
-| `kind` | string | Yes | enum=['structure', 'union'] |
-| `notes` | array<string> | Yes |  |
-| `path` | string | Yes | pattern=^/.* |
-| `written` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `datatype` | object | Yes |  |
+  | `dry_run` | boolean | Yes |  |
+  | `errors` | array<string> | Yes |  |
+  | `kind` | string | Yes | enum=['structure', 'union'] |
+  | `notes` | array<string> | Yes |  |
+  | `path` | string | Yes | pattern=^/.* |
+  | `written` | boolean | Yes |  |
 
   ```json
   {
@@ -666,14 +666,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `datatype` | object | Yes |  |
-| `dry_run` | boolean | Yes |  |
-| `errors` | array<string> | Yes |  |
-| `kind` | string | Yes | enum=['structure', 'union'] |
-| `notes` | array<string> | Yes |  |
-| `path` | string | Yes | pattern=^/.* |
-| `written` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `datatype` | object | Yes |  |
+  | `dry_run` | boolean | Yes |  |
+  | `errors` | array<string> | Yes |  |
+  | `kind` | string | Yes | enum=['structure', 'union'] |
+  | `notes` | array<string> | Yes |  |
+  | `path` | string | Yes | pattern=^/.* |
+  | `written` | boolean | Yes |  |
 
   ```json
   {
@@ -728,8 +728,8 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `items` | array<object> | Yes |  |
+  | --- | --- | --- | --- |
+  | `items` | array<object> | Yes |  |
 
   ```json
   {
@@ -755,10 +755,10 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `ghidra` | object | Yes |  |
-| `service` | string | Yes |  |
-| `writes_enabled` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `ghidra` | object | Yes |  |
+  | `service` | string | Yes |  |
+  | `writes_enabled` | boolean | Yes |  |
 
   ```json
   {
@@ -783,10 +783,10 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `ghidra` | object | Yes |  |
-| `service` | string | Yes |  |
-| `writes_enabled` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `ghidra` | object | Yes |  |
+  | `service` | string | Yes |  |
+  | `writes_enabled` | boolean | Yes |  |
 
   ```json
   {
@@ -837,10 +837,10 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `items` | array<object> | Yes |  |
-| `range` | object | Yes |  |
-| `summary` | object | Yes |  |
+  | --- | --- | --- | --- |
+  | `items` | array<object> | Yes |  |
+  | `range` | object | Yes |  |
+  | `summary` | object | Yes |  |
 
   ```json
   {
@@ -893,14 +893,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `errors` | array<string> | Yes |  |
-| `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
-| `notes` | array<string> | No |  |
-| `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `slot` | integer | Yes | min=0 |
-| `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `target` | object | Yes |  |
+  | --- | --- | --- | --- |
+  | `errors` | array<string> | Yes |  |
+  | `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
+  | `notes` | array<string> | No |  |
+  | `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `slot` | integer | Yes | min=0 |
+  | `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `target` | object | Yes |  |
 
   ```json
   {
@@ -958,16 +958,16 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `errors` | array<string> | Yes |  |
-| `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
-| `notes` | array<string> | No |  |
-| `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `slot` | integer | Yes | min=0 |
-| `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `target` | object | Yes |  |
-| `verify` | object | Yes |  |
-| `writes` | object | Yes |  |
+  | --- | --- | --- | --- |
+  | `errors` | array<string> | Yes |  |
+  | `mode` | string | Yes | enum=['ARM', 'Thumb', 'none'] |
+  | `notes` | array<string> | No |  |
+  | `raw` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `slot` | integer | Yes | min=0 |
+  | `slot_addr` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `target` | object | Yes |  |
+  | `verify` | object | Yes |  |
+  | `writes` | object | Yes |  |
 
   ```json
   {
@@ -1025,13 +1025,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1080,16 +1080,16 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `annotated` | integer | Yes | min=0 |
-| `bitwise_and` | integer | Yes | min=0 |
-| `bitwise_or` | integer | Yes | min=0 |
-| `function` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `notes` | array<string> | No |  |
-| `reads` | integer | Yes | min=0 |
-| `samples` | array<object> | Yes |  |
-| `toggles` | integer | Yes | min=0 |
-| `writes` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `annotated` | integer | Yes | min=0 |
+  | `bitwise_and` | integer | Yes | min=0 |
+  | `bitwise_or` | integer | Yes | min=0 |
+  | `function` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `notes` | array<string> | No |  |
+  | `reads` | integer | Yes | min=0 |
+  | `samples` | array<object> | Yes |  |
+  | `toggles` | integer | Yes | min=0 |
+  | `writes` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1125,19 +1125,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `compiler_spec_id` | string | Yes |  |
-| `entry_points` | array<string> | Yes |  |
-| `executable_format` | string | No |  |
-| `executable_md5` | string | No |  |
-| `executable_path` | string | No |  |
-| `executable_sha256` | string | No |  |
-| `exports_count` | integer | Yes | min=0 |
-| `image_base` | string | Yes |  |
-| `imports_count` | integer | Yes | min=0 |
-| `language_id` | string | Yes |  |
-| `memory_blocks` | array<object> | Yes |  |
-| `program_name` | string | Yes |  |
+  | --- | --- | --- | --- |
+  | `compiler_spec_id` | string | Yes |  |
+  | `entry_points` | array<string> | Yes |  |
+  | `executable_format` | string | No |  |
+  | `executable_md5` | string | No |  |
+  | `executable_path` | string | No |  |
+  | `executable_sha256` | string | No |  |
+  | `exports_count` | integer | Yes | min=0 |
+  | `image_base` | string | Yes |  |
+  | `imports_count` | integer | Yes | min=0 |
+  | `language_id` | string | Yes |  |
+  | `memory_blocks` | array<object> | Yes |  |
+  | `program_name` | string | Yes |  |
 
   ```json
   {
@@ -1177,19 +1177,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `compiler_spec_id` | string | Yes |  |
-| `entry_points` | array<string> | Yes |  |
-| `executable_format` | string | No |  |
-| `executable_md5` | string | No |  |
-| `executable_path` | string | No |  |
-| `executable_sha256` | string | No |  |
-| `exports_count` | integer | Yes | min=0 |
-| `image_base` | string | Yes |  |
-| `imports_count` | integer | Yes | min=0 |
-| `language_id` | string | Yes |  |
-| `memory_blocks` | array<object> | Yes |  |
-| `program_name` | string | Yes |  |
+  | --- | --- | --- | --- |
+  | `compiler_spec_id` | string | Yes |  |
+  | `entry_points` | array<string> | Yes |  |
+  | `executable_format` | string | No |  |
+  | `executable_md5` | string | No |  |
+  | `executable_path` | string | No |  |
+  | `executable_sha256` | string | No |  |
+  | `exports_count` | integer | Yes | min=0 |
+  | `image_base` | string | Yes |  |
+  | `imports_count` | integer | Yes | min=0 |
+  | `language_id` | string | Yes |  |
+  | `memory_blocks` | array<object> | Yes |  |
+  | `program_name` | string | Yes |  |
 
   ```json
   {
@@ -1250,15 +1250,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `dry_run` | boolean | Yes |  |
-| `errors` | array<string> | Yes |  |
-| `notes` | array<string> | Yes |  |
-| `offset` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
-| `previous_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
-| `project_info` | object | Yes |  |
-| `rebased` | boolean | Yes |  |
-| `requested_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
+  | --- | --- | --- | --- |
+  | `dry_run` | boolean | Yes |  |
+  | `errors` | array<string> | Yes |  |
+  | `notes` | array<string> | Yes |  |
+  | `offset` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
+  | `previous_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
+  | `project_info` | object | Yes |  |
+  | `rebased` | boolean | Yes |  |
+  | `requested_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
 
   ```json
   {
@@ -1305,11 +1305,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `data` | string | Yes |  |
-| `encoding` | string | Yes | enum=['base64'] |
-| `length` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `data` | string | Yes |  |
+  | `encoding` | string | Yes | enum=['base64'] |
+  | `length` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1350,13 +1350,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1414,15 +1414,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `cursor` | string | No |  |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `resume_cursor` | string | No |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `cursor` | string | No |  |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `resume_cursor` | string | No |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1486,13 +1486,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1544,15 +1544,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `cursor` | string | No |  |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `resume_cursor` | string | No |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `cursor` | string | No |  |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `resume_cursor` | string | No |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1604,13 +1604,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1657,13 +1657,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `has_more` | boolean | Yes |  |
-| `items` | array<object> | Yes |  |
-| `limit` | integer | Yes | min=1 |
-| `page` | integer | Yes | min=1 |
-| `query` | string | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
+  | `items` | array<object> | Yes |  |
+  | `limit` | integer | Yes | min=1 |
+  | `page` | integer | Yes | min=1 |
+  | `query` | string | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1710,10 +1710,10 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `callers` | array<object> | Yes |  |
-| `count` | integer | Yes | min=0 |
-| `string` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | --- | --- | --- | --- |
+  | `callers` | array<object> | Yes |  |
+  | `count` | integer | Yes | min=0 |
+  | `string` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
 
   ```json
   {
@@ -1758,9 +1758,9 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `items` | array<object> | Yes |  |
-| `total` | integer | Yes | min=0 |
+  | --- | --- | --- | --- |
+  | `items` | array<object> | Yes |  |
+  | `total` | integer | Yes | min=0 |
 
   ```json
   {
@@ -1807,13 +1807,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `dry_run` | boolean | Yes |  |
-| `errors` | array<string> | Yes |  |
-| `length` | integer | Yes | min=0 |
-| `notes` | array<string> | Yes |  |
-| `written` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `dry_run` | boolean | Yes |  |
+  | `errors` | array<string> | Yes |  |
+  | `length` | integer | Yes | min=0 |
+  | `notes` | array<string> | Yes |  |
+  | `written` | boolean | Yes |  |
 
   ```json
   {
@@ -1842,13 +1842,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `active_sse` | string | Yes |  |
-| `bridge_ready` | boolean | Yes |  |
-| `connects` | integer | Yes | min=0 |
-| `last_init_ts` | string | Yes |  |
-| `ready` | boolean | Yes |  |
-| `session_ready` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `active_sse` | string | Yes |  |
+  | `bridge_ready` | boolean | Yes |  |
+  | `connects` | integer | Yes | min=0 |
+  | `last_init_ts` | string | Yes |  |
+  | `ready` | boolean | Yes |  |
+  | `session_ready` | boolean | Yes |  |
 
   ```json
   {
@@ -1871,13 +1871,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   - Declares: `https://json-schema.org/draft/2020-12/schema`
 
   | Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `active_sse` | string | Yes |  |
-| `bridge_ready` | boolean | Yes |  |
-| `connects` | integer | Yes | min=0 |
-| `last_init_ts` | string | Yes |  |
-| `ready` | boolean | Yes |  |
-| `session_ready` | boolean | Yes |  |
+  | --- | --- | --- | --- |
+  | `active_sse` | string | Yes |  |
+  | `bridge_ready` | boolean | Yes |  |
+  | `connects` | integer | Yes | min=0 |
+  | `last_init_ts` | string | Yes |  |
+  | `ready` | boolean | Yes |  |
+  | `session_ready` | boolean | Yes |  |
 
   ```json
   {
