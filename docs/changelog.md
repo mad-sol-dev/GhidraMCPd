@@ -1,8 +1,12 @@
+
 # Changelog
 
 ## Unreleased
 
-- Restored the legacy helper as `scripts/bridge_stdio.py`; stdio works again but SSE usage remains unsupported.
+- **Short-Term Caching:** Search queries are now cached for 5 minutes to accelerate repeated requests (Task D.9).
+- **Batch Project Analysis:** The collector can now bundle analyses across multiple Ghidra projects in a single call (Task R.1).
+- **Enhanced Search Ranking:** Function search now supports contextual windows and advanced ranking options (Task R.2).
+- Removed the legacy `bridge_mcp_ghidra.py` script; use the uvicorn factory entrypoint.
 - Added deterministic write audit logging with JSONL output and unit coverage.
 - Introduced jump-table golden snapshots and stricter contract tests for deterministic endpoints.
 - Added mocked Ghidra integration tests to exercise happy/error/timeout flows.

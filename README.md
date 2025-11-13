@@ -22,11 +22,11 @@ Token savings depend on workflow, but batching operations significantly reduces 
 
 ## Highlights
 
-* Batch ops: `disassemble_batch`, `read_words`
-* Context search: `search_scalars_with_context` (server-side windowing)
-* Deterministic envelopes & schemas (`{ok,data,errors[]}`, `additionalProperties:false`)
-* Guard rails: write-guards (`ENABLE_WRITES`, `dry_run`), safety limits, observability via `/state`
-* Tested: contract, golden (OpenAPI/HTTP parity), unit
+* Batch Ops: `disassemble_batch`, `read_words`, and the powerful `collect` endpoint.
+* Contextual Search: `search_scalars_with_context` provides server-side disassembly windows.
+* Deterministic Envelopes & Schemas: All responses follow a strict `{ok, data, errors[]}` structure with `additionalProperties:false`.
+* Guard Rails: Write operations are disabled by default (`ENABLE_WRITES`, `dry_run`), with safety limits and observability via `/state`
+* Tested: Includes contract, golden (OpenAPI/HTTP parity), and unit tests to prevent drift.
 
 ## Quickstart
 
@@ -52,6 +52,26 @@ This launches the MCP server directly over stdio (no `/sse` endpoint or OpenWebU
 shim). Use it when testing locally without a browser client or when you need to
 mimic the pre-shim behavior; otherwise prefer the SSE server above so modern
 clients can attach via `/sse` and `/messages`.
+==== BASE ====
+
+## MCP Clients
+
+Theoretically, any MCP client should work with ghidraMCPd.  Three examples are given below.
+
+## Example 1: AiderDesk
+To set up AiderDesk as a Ghidra MCPd client, go to `Settings` -> `Agent` -> `MCP Servers (Agent Settings)` -> `Add`/`Edit Config` and add the following:
+
+```json
+{
+  "mcpServers": {
+    "ghidra-bridge": {
+      "name": "Ghidra Bridge",
+      "type": "sse",
+      "url": "http://127.0.0.1:8000/sse"
+    }
+  }
+}
+```
 
 ## Example Usage
 
@@ -94,14 +114,16 @@ The build produces `target/GhidraMCP-1.0-SNAPSHOT.jar`.
 
 **Installation:**
 
-1. Copy the JAR to Ghidra's Extensions directory:
-   ```bash
-   cp target/GhidraMCP-1.0-SNAPSHOT.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
-   ```
+1. a) Copy the JAR to Ghidra's Extensions directory:
+      ```bash
+      cp target/GhidraMCP-1.0-SNAPSHOT.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
+      ```
 
-2. Or use Ghidra's GUI: **File → Install Extensions** and select the JAR file.
+   b) Use Ghidra's GUI: **File → Install Extensions** and select the JAR file.
 
-3. Restart Ghidra to load the extension.
+2. Restart Ghidra to load the extension.
+
+3.  **Activate:** After restarting, go to **File → Configure → Developer/Configure**. Find `GhidraMCP` in the list (usually under the "Analysis" category) and **check the box** next to it to enable it. The plugin will not be active until you do this.
 
 ## Advanced start
 
@@ -151,25 +173,29 @@ HTTP-based observability.
 ### Search & Analysis
 * `/api/search_strings.json` - Search for strings with pagination
 * `/api/search_functions.json` - Find functions by name pattern
-* `/api/search_scalars.json` - Locate scalar values in code (batch context via `search_scalars_with_context` on `/api/collect.json`)
+* `/api/search_scalars.json` - Locate scalar values in code
+* `/api/search_scalars_with_context.json` - Scalars with surrounding disassembly
 * `/api/search_imports.json` / `/api/search_exports.json` - Symbol search
 * `/api/search_xrefs_to.json` - Cross-references to an address
 * `/api/string_xrefs.json` - Compact view of string cross-references
 * `/api/list_functions_in_range.json` - List functions in address range
 
 ### Memory & Disassembly
-* `/api/read_bytes.json` - Read raw bytes from memory (batch reads via `read_words` on `/api/collect.json`)
-* `/api/disassemble_at.json` - Disassemble at address (batch disassembly via `disassemble_batch` on `/api/collect.json`)
-* `/api/write_bytes.json` - Write bytes (requires `ENABLE_WRITES`)
+* `/api/read_bytes.json` - Read raw bytes from memory
+* `/api/read_words.json` - Batch read 32-bit words
+* `/api/disassemble_at.json` - Disassemble at address
+* `/api/disassemble_batch.json` - Batch disassembly of multiple addresses
 
 ### Advanced Analysis
 * `/api/analyze_function_complete.json` - Complete function analysis (decompile, xrefs, etc.)
+* `/api/list_functions_in_range.json` - List functions in address range
 * `/api/mmio_annotate.json` - Annotate MMIO accesses
 * `/api/jt_scan.json` / `/api/jt_slot_check.json` / `/api/jt_slot_process.json` - Jump table analysis
 
 ### Data & Utilities
 * `/api/strings_compact.json` - Bulk string listing
-* `/api/datatypes/create.json` / `/api/datatypes/update.json` / `/api/datatypes/delete.json` - Manage custom datatypes (writes optional)
+* `/api/string_xrefs.json` - Cross-references to strings
+* `/api/write_bytes.json` - Write bytes (requires `ENABLE_WRITES`)
 * `/api/project_info.json` - Project metadata
 * `/api/project_rebase.json` - Project base address rebasing (writes optional)
 * `/api/health.json` - Server health check
