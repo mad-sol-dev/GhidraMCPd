@@ -39,6 +39,20 @@ uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 
 Once running, open Ghidra with a project and the server will connect automatically.
 
+### Legacy / stdio mode
+
+Need a console-first workflow or migrating from the original bridge helper? Run the
+legacy entry point instead of Uvicorn:
+
+```bash
+python scripts/bridge_stdio.py --transport stdio
+```
+
+This launches the MCP server directly over stdio (no `/sse` endpoint or OpenWebUI
+shim). Use it when testing locally without a browser client or when you need to
+mimic the pre-shim behavior; otherwise prefer the SSE server above so modern
+clients can attach via `/sse` and `/messages`.
+
 ## Example Usage
 
 ```bash
@@ -114,6 +128,20 @@ curl -sS -X POST http://localhost:8000/api/write_bytes.json \
   -d '{"address":"0x00400000","data":"AAEC","dry_run":true}'
 # → {"ok":true,"data":{"written":false,...,"notes":["dry-run enabled: no bytes written", ...]},"errors":[]}
 ```
+
+### Legacy / stdio mode
+
+When running `python scripts/bridge_stdio.py --transport stdio` the checks above
+change slightly:
+
+- There is no `/sse` route—clients speak MCP over stdio and log readiness when the
+  bridge emits its `Initialized` notification.
+- `/messages` and `/state` are only available in the SSE topology. For stdio,
+  watch the console logs for `MCP INITIALIZED` before issuing tool calls.
+
+Use stdio when you need deterministic CLI sessions or compatibility with older
+MCP shells. Return to the SSE stack for OpenWebUI, multi-process shims, and
+HTTP-based observability.
 
 ## API Overview
 

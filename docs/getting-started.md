@@ -26,6 +26,32 @@ The server exposes REST endpoints under `/api/*.json`, `/openapi.json`, server-s
 
 Batch-oriented tools (`disassemble_batch`, `read_words`, `search_scalars_with_context`) are available once the SSE bridge reports ready. When running against large programs, favor these endpoints to reduce token churn compared to issuing many single-address calls.
 
+## Stdio mode
+
+The repository still ships the legacy helper for console-first workflows or
+environments where SSE/Web transports are blocked. Use it after completing the
+same Python prerequisites (`python -m pip install -r requirements.txt` etc.).
+
+Launch the helper by pointing it at your Ghidra Bridge URL and selecting a
+transport:
+
+```bash
+python scripts/bridge_stdio.py --ghidra-server http://127.0.0.1:8080/ --transport stdio
+```
+
+- `--transport stdio` starts the MCP server in-process and speaks JSON-RPC over
+  stdio (no `/sse`, `/messages`, or shim). This matches the classic CLI used
+  before the Uvicorn-based server and is ideal for local smoke tests.
+- `--transport sse` spins up the same MCP server but also boots an OpenWebUI shim
+  (controlled by `--shim-host/--shim-port`) and forwards HTTP traffic to
+  `/sse`, `/messages`, and `/state`. Use it when integrating with OpenWebUI or
+  other SSE-aware clients.
+
+Switch transports at runtime by re-running the command with the desired flag.
+Other CLI options (`--mcp-host`, `--mcp-port`, and `--debug`) remain identical
+between modes so you can keep a single `.env`/script and only toggle
+`--transport` depending on your client.
+
 ## Configuration
 
 Set environment variables before starting the server to adjust safety limits and auditing:
