@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Removed the legacy `bridge_mcp_ghidra.py` script; use the uvicorn factory entrypoint.
+- Restored the legacy helper as `scripts/bridge_stdio.py`; stdio works again but SSE usage remains unsupported.
 - Added deterministic write audit logging with JSONL output and unit coverage.
 - Introduced jump-table golden snapshots and stricter contract tests for deterministic endpoints.
 - Added mocked Ghidra integration tests to exercise happy/error/timeout flows.
