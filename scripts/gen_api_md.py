@@ -354,7 +354,7 @@ def render_schema_details(schema: Mapping[str, Any]) -> list[str]:
     table = render_table(summarise_properties(schema))
     if table:
         lines.append("")
-        lines.append(table)
+        lines.extend(table.splitlines())
     example = example_from_schema(schema)
     if example not in ("…", {}, []):
         example_json = json.dumps(example, indent=2, sort_keys=True)
