@@ -72,6 +72,28 @@ Poll `GET /state` to view live diagnostics:
 
 Throttle polling to at least every 500 ms to avoid log spam. The same endpoint can be scraped for readiness dashboards and connection diagnostics.
 
+## Legacy stdio transport
+
+`python scripts/bridge_stdio.py --transport stdio` runs the same MCP server but
+without the HTTP guardrails described above. The transport writes and reads JSON
+RPC messages over stdio, so there is no `/sse`, `/messages`, or `/state`
+endpoint to probe.
+
+- **Readiness**: the CLI logs `MCP INITIALIZED` once the session has finished its
+  handshake. Wait for that line before issuing tool calls; it replaces the
+  `/state.ready` flag from the SSE deployment.
+- **OpenWebUI trade-offs**: stdio mode does not start the shim (`bridge.shim`) so
+  OpenWebUI and other SSE-native clients cannot connect directly. Use stdio when
+  you want deterministic console sessions or to embed the server in another MCP
+  host process.
+- **Switching back to SSE**: rerun the helper with `--transport sse` to restore
+  the `/sse` endpoint, readiness guard, `/messages`, and shim-proxied OpenWebUI
+  routes.
+
+Because there is no `/sse` queue, stdio mode cannot enforce single-active
+connections or expose connection metrics. Prefer SSE for production or shared
+setups, and reserve stdio for local experimentation.
+
 ## Limits & write-guards
 
 Write operations are guarded by deterministic envelopes and configuration flags:
