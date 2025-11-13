@@ -360,7 +360,8 @@ def render_schema_details(schema: Mapping[str, Any]) -> list[str]:
         example_json = json.dumps(example, indent=2, sort_keys=True)
         lines.append("")
         lines.append("```json")
-        lines.append(example_json)
+        for line in example_json.splitlines():
+            lines.append(line)
         lines.append("```")
     return lines
 

@@ -70,113 +70,113 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "address": "string",
-  "callgraph": {
-    "callees": [
-      {
-        "address": "string",
-        "name": "string",
-        "type": "string"
-      }
-    ],
-    "callers": [
-      {
-        "name": "string",
-        "site": "string",
-        "type": "string"
-      }
-    ]
-  },
-  "decompile": {
-    "enabled": false,
-    "error": "string",
-    "lines": 0,
-    "snippet": "string",
-    "truncated": false
-  },
-  "disasm": {
-    "after": 0,
-    "before": 0,
-    "center_index": 0,
-    "max_instructions": 0,
-    "total_instructions": 0,
-    "truncated": false,
-    "window": [
-      {
-        "address": "string",
-        "bytes": "string",
-        "is_target": false,
-        "text": "string"
-      }
-    ]
-  },
-  "features": {
-    "call_count": 0,
-    "instruction_count": 0,
-    "notes": [
-      "string"
-    ],
-    "size_bytes": 0,
-    "string_reference_count": 0,
-    "xrefs_inbound_count": 0,
-    "xrefs_outbound_count": 0
-  },
-  "function": {
     "address": "string",
-    "comment": "string",
-    "entry_point": "string",
-    "name": "string",
-    "range": {
-      "end": "string",
-      "start": "string"
+    "callgraph": {
+      "callees": [
+        {
+          "address": "string",
+          "name": "string",
+          "type": "string"
+        }
+      ],
+      "callers": [
+        {
+          "name": "string",
+          "site": "string",
+          "type": "string"
+        }
+      ]
     },
-    "signature": "string"
-  },
-  "meta": {
-    "estimate_tokens": 0,
-    "fields": [
-      "string"
-    ],
-    "fmt": "string",
-    "max_result_tokens": 0,
-    "truncated": false
-  },
-  "strings": {
-    "items": [
-      {
-        "address": "string",
-        "length": 0,
-        "literal": "string",
-        "source": "string"
+    "decompile": {
+      "enabled": false,
+      "error": "string",
+      "lines": 0,
+      "snippet": "string",
+      "truncated": false
+    },
+    "disasm": {
+      "after": 0,
+      "before": 0,
+      "center_index": 0,
+      "max_instructions": 0,
+      "total_instructions": 0,
+      "truncated": false,
+      "window": [
+        {
+          "address": "string",
+          "bytes": "string",
+          "is_target": false,
+          "text": "string"
+        }
+      ]
+    },
+    "features": {
+      "call_count": 0,
+      "instruction_count": 0,
+      "notes": [
+        "string"
+      ],
+      "size_bytes": 0,
+      "string_reference_count": 0,
+      "xrefs_inbound_count": 0,
+      "xrefs_outbound_count": 0
+    },
+    "function": {
+      "address": "string",
+      "comment": "string",
+      "entry_point": "string",
+      "name": "string",
+      "range": {
+        "end": "string",
+        "start": "string"
+      },
+      "signature": "string"
+    },
+    "meta": {
+      "estimate_tokens": 0,
+      "fields": [
+        "string"
+      ],
+      "fmt": "string",
+      "max_result_tokens": 0,
+      "truncated": false
+    },
+    "strings": {
+      "items": [
+        {
+          "address": "string",
+          "length": 0,
+          "literal": "string",
+          "source": "string"
+        }
+      ],
+      "limit": 0,
+      "source": "string"
+    },
+    "xrefs": {
+      "inbound": [
+        {
+          "address": "string",
+          "context": "string",
+          "function": "string",
+          "type": "string"
+        }
+      ],
+      "outbound": [
+        {
+          "context": "string",
+          "from_address": "string",
+          "name": "string",
+          "to_address": "string",
+          "type": "string"
+        }
+      ],
+      "summary": {
+        "inbound": 0,
+        "outbound": 0
       }
-    ],
-    "limit": 0,
-    "source": "string"
-  },
-  "xrefs": {
-    "inbound": [
-      {
-        "address": "string",
-        "context": "string",
-        "function": "string",
-        "type": "string"
-      }
-    ],
-    "outbound": [
-      {
-        "context": "string",
-        "from_address": "string",
-        "name": "string",
-        "to_address": "string",
-        "type": "string"
-      }
-    ],
-    "summary": {
-      "inbound": 0,
-      "outbound": 0
     }
   }
-}
   ```
 
 ## `/api/collect.json`
@@ -209,14 +209,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "meta": "\u2026",
-  "projects": [
-    "\u2026"
-  ],
-  "queries": [
-    "\u2026"
-  ]
-}
+    "meta": "\u2026",
+    "projects": [
+      "\u2026"
+    ],
+    "queries": [
+      "\u2026"
+    ]
+  }
   ```
 
 ##### Query object
@@ -551,27 +551,27 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "datatype": {
-    "category": "string",
-    "fields": [
-      "\u2026"
+    "datatype": {
+      "category": "string",
+      "fields": [
+        "\u2026"
+      ],
+      "kind": "structure",
+      "name": "string",
+      "path": "string",
+      "size": 0
+    },
+    "dry_run": false,
+    "errors": [
+      "string"
     ],
     "kind": "structure",
-    "name": "string",
+    "notes": [
+      "string"
+    ],
     "path": "string",
-    "size": 0
-  },
-  "dry_run": false,
-  "errors": [
-    "string"
-  ],
-  "kind": "structure",
-  "notes": [
-    "string"
-  ],
-  "path": "string",
-  "written": false
-}
+    "written": false
+  }
   ```
 
 ## `/api/datatypes/delete.json`
@@ -615,21 +615,21 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "datatype": {
+    "datatype": {
+      "kind": "structure",
+      "path": "string"
+    },
+    "dry_run": false,
+    "errors": [
+      "string"
+    ],
     "kind": "structure",
-    "path": "string"
-  },
-  "dry_run": false,
-  "errors": [
-    "string"
-  ],
-  "kind": "structure",
-  "notes": [
-    "string"
-  ],
-  "path": "string",
-  "written": false
-}
+    "notes": [
+      "string"
+    ],
+    "path": "string",
+    "written": false
+  }
   ```
 
 ## `/api/datatypes/update.json`
@@ -677,27 +677,27 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "datatype": {
-    "category": "string",
-    "fields": [
-      "\u2026"
+    "datatype": {
+      "category": "string",
+      "fields": [
+        "\u2026"
+      ],
+      "kind": "structure",
+      "name": "string",
+      "path": "string",
+      "size": 0
+    },
+    "dry_run": false,
+    "errors": [
+      "string"
     ],
     "kind": "structure",
-    "name": "string",
+    "notes": [
+      "string"
+    ],
     "path": "string",
-    "size": 0
-  },
-  "dry_run": false,
-  "errors": [
-    "string"
-  ],
-  "kind": "structure",
-  "notes": [
-    "string"
-  ],
-  "path": "string",
-  "written": false
-}
+    "written": false
+  }
   ```
 
 ## `/api/disassemble_at.json`
@@ -733,14 +733,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "items": [
-    {
-      "address": "0x0",
-      "bytes": "string",
-      "text": "string"
-    }
-  ]
-}
+    "items": [
+      {
+        "address": "0x0",
+        "bytes": "string",
+        "text": "string"
+      }
+    ]
+  }
   ```
 
 ## `/api/health.json`
@@ -762,15 +762,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "ghidra": {
-    "base_url": "string",
-    "error": "string",
-    "reachable": false,
-    "status_code": 0
-  },
-  "service": "string",
-  "writes_enabled": false
-}
+    "ghidra": {
+      "base_url": "string",
+      "error": "string",
+      "reachable": false,
+      "status_code": 0
+    },
+    "service": "string",
+    "writes_enabled": false
+  }
   ```
 
 ### HEAD
@@ -790,15 +790,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "ghidra": {
-    "base_url": "string",
-    "error": "string",
-    "reachable": false,
-    "status_code": 0
-  },
-  "service": "string",
-  "writes_enabled": false
-}
+    "ghidra": {
+      "base_url": "string",
+      "error": "string",
+      "reachable": false,
+      "status_code": 0
+    },
+    "service": "string",
+    "writes_enabled": false
+  }
   ```
 
 ## `/api/jt_scan.json`
@@ -844,19 +844,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "items": [
-    "\u2026"
-  ],
-  "range": {
-    "count": 0,
-    "start": 0
-  },
-  "summary": {
-    "invalid": 0,
-    "total": 0,
-    "valid": 0
+    "items": [
+      "\u2026"
+    ],
+    "range": {
+      "count": 0,
+      "start": 0
+    },
+    "summary": {
+      "invalid": 0,
+      "total": 0,
+      "valid": 0
+    }
   }
-}
   ```
 
 ## `/api/jt_slot_check.json`
@@ -904,18 +904,18 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "errors": [
-    "string"
-  ],
-  "mode": "ARM",
-  "notes": [
-    "string"
-  ],
-  "raw": "0x0",
-  "slot": 0,
-  "slot_addr": "0x0",
-  "target": "0x0"
-}
+    "errors": [
+      "string"
+    ],
+    "mode": "ARM",
+    "notes": [
+      "string"
+    ],
+    "raw": "0x0",
+    "slot": 0,
+    "slot_addr": "0x0",
+    "target": "0x0"
+  }
   ```
 
 ## `/api/jt_slot_process.json`
@@ -971,26 +971,26 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "errors": [
-    "string"
-  ],
-  "mode": "ARM",
-  "notes": [
-    "string"
-  ],
-  "raw": "0x0",
-  "slot": 0,
-  "slot_addr": "0x0",
-  "target": "0x0",
-  "verify": {
-    "comment_present": false,
-    "name": "string"
-  },
-  "writes": {
-    "comment_set": false,
-    "renamed": false
+    "errors": [
+      "string"
+    ],
+    "mode": "ARM",
+    "notes": [
+      "string"
+    ],
+    "raw": "0x0",
+    "slot": 0,
+    "slot_addr": "0x0",
+    "target": "0x0",
+    "verify": {
+      "comment_present": false,
+      "name": "string"
+    },
+    "writes": {
+      "comment_set": false,
+      "renamed": false
+    }
   }
-}
   ```
 
 ## `/api/list_functions_in_range.json`
@@ -1035,19 +1035,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "has_more": false,
-  "items": [
-    {
-      "address": "0x0",
-      "name": "string",
-      "size": 0
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "total": 0
-}
+    "has_more": false,
+    "items": [
+      {
+        "address": "0x0",
+        "name": "string",
+        "size": 0
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/mmio_annotate.json`
@@ -1093,25 +1093,25 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "annotated": 0,
-  "bitwise_and": 0,
-  "bitwise_or": 0,
-  "function": "0x0",
-  "notes": [
-    "string"
-  ],
-  "reads": 0,
-  "samples": [
-    {
-      "addr": "0x0",
-      "address_abs": "0x0",
-      "op": "READ",
-      "target": "0x0"
-    }
-  ],
-  "toggles": 0,
-  "writes": 0
-}
+    "annotated": 0,
+    "bitwise_and": 0,
+    "bitwise_or": 0,
+    "function": "0x0",
+    "notes": [
+      "string"
+    ],
+    "reads": 0,
+    "samples": [
+      {
+        "addr": "0x0",
+        "address_abs": "0x0",
+        "op": "READ",
+        "target": "0x0"
+      }
+    ],
+    "toggles": 0,
+    "writes": 0
+  }
   ```
 
 ## `/api/project_info.json`
@@ -1141,31 +1141,31 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "compiler_spec_id": "string",
-  "entry_points": [
-    "string"
-  ],
-  "executable_format": "string",
-  "executable_md5": "string",
-  "executable_path": "string",
-  "executable_sha256": "string",
-  "exports_count": 0,
-  "image_base": "string",
-  "imports_count": 0,
-  "language_id": "string",
-  "memory_blocks": [
-    {
-      "end": "string",
-      "initialized": false,
-      "length": 0,
-      "loaded": false,
-      "name": "string",
-      "rwx": "string",
-      "start": "string"
-    }
-  ],
-  "program_name": "string"
-}
+    "compiler_spec_id": "string",
+    "entry_points": [
+      "string"
+    ],
+    "executable_format": "string",
+    "executable_md5": "string",
+    "executable_path": "string",
+    "executable_sha256": "string",
+    "exports_count": 0,
+    "image_base": "string",
+    "imports_count": 0,
+    "language_id": "string",
+    "memory_blocks": [
+      {
+        "end": "string",
+        "initialized": false,
+        "length": 0,
+        "loaded": false,
+        "name": "string",
+        "rwx": "string",
+        "start": "string"
+      }
+    ],
+    "program_name": "string"
+  }
   ```
 
 ### HEAD
@@ -1193,31 +1193,31 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "compiler_spec_id": "string",
-  "entry_points": [
-    "string"
-  ],
-  "executable_format": "string",
-  "executable_md5": "string",
-  "executable_path": "string",
-  "executable_sha256": "string",
-  "exports_count": 0,
-  "image_base": "string",
-  "imports_count": 0,
-  "language_id": "string",
-  "memory_blocks": [
-    {
-      "end": "string",
-      "initialized": false,
-      "length": 0,
-      "loaded": false,
-      "name": "string",
-      "rwx": "string",
-      "start": "string"
-    }
-  ],
-  "program_name": "string"
-}
+    "compiler_spec_id": "string",
+    "entry_points": [
+      "string"
+    ],
+    "executable_format": "string",
+    "executable_md5": "string",
+    "executable_path": "string",
+    "executable_sha256": "string",
+    "exports_count": 0,
+    "image_base": "string",
+    "imports_count": 0,
+    "language_id": "string",
+    "memory_blocks": [
+      {
+        "end": "string",
+        "initialized": false,
+        "length": 0,
+        "loaded": false,
+        "name": "string",
+        "rwx": "string",
+        "start": "string"
+      }
+    ],
+    "program_name": "string"
+  }
   ```
 
 ## `/api/project_rebase.json`
@@ -1262,19 +1262,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "dry_run": false,
-  "errors": [
-    "string"
-  ],
-  "notes": [
-    "string"
-  ],
-  "offset": "string",
-  "previous_base": "string",
-  "project_info": {},
-  "rebased": false,
-  "requested_base": "string"
-}
+    "dry_run": false,
+    "errors": [
+      "string"
+    ],
+    "notes": [
+      "string"
+    ],
+    "offset": "string",
+    "previous_base": "string",
+    "project_info": {},
+    "rebased": false,
+    "requested_base": "string"
+  }
   ```
 
 ## `/api/read_bytes.json`
@@ -1313,11 +1313,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "address": "0x0",
-  "data": "string",
-  "encoding": "base64",
-  "length": 0
-}
+    "address": "0x0",
+    "data": "string",
+    "encoding": "base64",
+    "length": 0
+  }
   ```
 
 ## `/api/search_exports.json`
@@ -1360,18 +1360,18 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "has_more": false,
-  "items": [
-    {
-      "address": "0x0",
-      "name": "string"
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "total": 0
-}
+    "has_more": false,
+    "items": [
+      {
+        "address": "0x0",
+        "name": "string"
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/search_functions.json`
@@ -1426,34 +1426,34 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "cursor": "string",
-  "has_more": false,
-  "items": [
-    {
-      "address": "0x0",
-      "context": {
-        "disassembly": [
-          {
-            "address": "\u2026",
-            "bytes": "\u2026",
-            "text": "\u2026"
+    "cursor": "string",
+    "has_more": false,
+    "items": [
+      {
+        "address": "0x0",
+        "context": {
+          "disassembly": [
+            {
+              "address": "\u2026",
+              "bytes": "\u2026",
+              "text": "\u2026"
+            }
+          ],
+          "window": {
+            "after": 0,
+            "before": 0,
+            "center": "0x0"
           }
-        ],
-        "window": {
-          "after": 0,
-          "before": 0,
-          "center": "0x0"
-        }
-      },
-      "name": "string"
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "resume_cursor": "string",
-  "total": 0
-}
+        },
+        "name": "string"
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "resume_cursor": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/search_imports.json`
@@ -1496,18 +1496,18 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "has_more": false,
-  "items": [
-    {
-      "address": "0x0",
-      "name": "string"
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "total": 0
-}
+    "has_more": false,
+    "items": [
+      {
+        "address": "0x0",
+        "name": "string"
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/search_scalars.json`
@@ -1556,22 +1556,22 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "cursor": "string",
-  "has_more": false,
-  "items": [
-    {
-      "address": "0x0",
-      "context": "string",
-      "function": "string",
-      "value": "0x0"
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "resume_cursor": "string",
-  "total": 0
-}
+    "cursor": "string",
+    "has_more": false,
+    "items": [
+      {
+        "address": "0x0",
+        "context": "string",
+        "function": "string",
+        "value": "0x0"
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "resume_cursor": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/search_strings.json`
@@ -1614,15 +1614,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "has_more": false,
-  "items": [
-    "\u2026"
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "total": 0
-}
+    "has_more": false,
+    "items": [
+      "\u2026"
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/search_xrefs_to.json`
@@ -1667,19 +1667,19 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "has_more": false,
-  "items": [
-    {
-      "context": "string",
-      "from_address": "0x0",
-      "target_address": "0x0"
-    }
-  ],
-  "limit": 0,
-  "page": 0,
-  "query": "string",
-  "total": 0
-}
+    "has_more": false,
+    "items": [
+      {
+        "context": "string",
+        "from_address": "0x0",
+        "target_address": "0x0"
+      }
+    ],
+    "limit": 0,
+    "page": 0,
+    "query": "string",
+    "total": 0
+  }
   ```
 
 ## `/api/string_xrefs.json`
@@ -1717,17 +1717,17 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "callers": [
-    {
-      "addr": "0x0",
-      "arg_index": 0,
-      "context": "string",
-      "hint": "string"
-    }
-  ],
-  "count": 0,
-  "string": "0x0"
-}
+    "callers": [
+      {
+        "addr": "0x0",
+        "arg_index": 0,
+        "context": "string",
+        "hint": "string"
+      }
+    ],
+    "count": 0,
+    "string": "0x0"
+  }
   ```
 
 ## `/api/strings_compact.json`
@@ -1764,15 +1764,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "items": [
-    {
-      "addr": "0x0",
-      "refs": 0,
-      "s": "string"
-    }
-  ],
-  "total": 0
-}
+    "items": [
+      {
+        "addr": "0x0",
+        "refs": 0,
+        "s": "string"
+      }
+    ],
+    "total": 0
+  }
   ```
 
 ## `/api/write_bytes.json`
@@ -1817,17 +1817,17 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "address": "0x0",
-  "dry_run": false,
-  "errors": [
-    "string"
-  ],
-  "length": 0,
-  "notes": [
-    "string"
-  ],
-  "written": false
-}
+    "address": "0x0",
+    "dry_run": false,
+    "errors": [
+      "string"
+    ],
+    "length": 0,
+    "notes": [
+      "string"
+    ],
+    "written": false
+  }
   ```
 
 ## `/state`
@@ -1852,13 +1852,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "active_sse": "string",
-  "bridge_ready": false,
-  "connects": 0,
-  "last_init_ts": "string",
-  "ready": false,
-  "session_ready": false
-}
+    "active_sse": "string",
+    "bridge_ready": false,
+    "connects": 0,
+    "last_init_ts": "string",
+    "ready": false,
+    "session_ready": false
+  }
   ```
 
 ### HEAD
@@ -1881,11 +1881,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
   ```json
   {
-  "active_sse": "string",
-  "bridge_ready": false,
-  "connects": 0,
-  "last_init_ts": "string",
-  "ready": false,
-  "session_ready": false
-}
+    "active_sse": "string",
+    "bridge_ready": false,
+    "connects": 0,
+    "last_init_ts": "string",
+    "ready": false,
+    "session_ready": false
+  }
   ```
