@@ -16,7 +16,10 @@ Deterministic MCP server for the Ghidra plugin, focused on lowering token spend 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt -r requirements-dev.txt
+# install the runtime dependencies only
+python -m pip install -r requirements.txt
+# optionally install development/test dependencies (needed for unit and contract tests)
+python -m pip install -r requirements-dev.txt
 uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
@@ -75,10 +78,11 @@ How much you save depends on your workflow, but batching and server-side context
 
 ---
 
-## MCP client example (AiderDesk)
+## MCP client examples
 
 Theoretically, any MCP client should work with GhidraMCPd.
 
+### AiderDesk
 Example configuration for AiderDesk: go to `Settings` → `Agent` → `MCP Servers (Agent Settings)` → `Add` / `Edit Config` and add:
 
 ```json
@@ -91,6 +95,21 @@ Example configuration for AiderDesk: go to `Settings` → `Agent` → `MCP Serve
     }
   }
 }
+```
+### Codex
+
+Add to /home/user/.codex/config.toml
+
+``bash
+[mcp_servers.ghidra-bridge]
+# ganz konkret den venv-Python verwenden
+command = "/your/path/to/GhidraMCPd/.venv/bin/python"
+
+# Script relativ zum Repo-Root, daher cwd setzen
+args = ["scripts/bridge_stdio.py", "--transport", "stdio"]
+
+# wichtig, damit relative Pfade im Server stimmen
+cwd = "/your/path/to/GhidraMCPd"
 ```
 
 For more MCP client examples, see [docs/getting-started.md](docs/getting-started.md).

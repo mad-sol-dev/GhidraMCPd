@@ -9,7 +9,10 @@ Use Python 3.10+ and create an isolated environment:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt -r requirements-dev.txt
+# install the runtime dependencies only
+python -m pip install -r requirements.txt
+# optionally install development/test dependencies
+python -m pip install -r requirements-dev.txt
 ```
 
 The bridge depends on Ghidra's headless components through the bundled plugin. No additional system packages are required for basic usage.
@@ -54,8 +57,9 @@ between modes so you can keep a single `.env`/script and only toggle
 
 ## Configuration
 
-Set environment variables before starting the server to adjust safety limits and auditing:
-
+Set environment variables before starting the server to adjust safety limits, auditing and endpoint targets:
+- `GHIDRA_SERVER_URL` (default `http://127.0.0.1:8080/`)
+  - Base URL (including trailing slash) for the Ghidra Java plugin.  The Python bridge uses this to communicate with Ghidra.  Override this if your plugin is running on a different host or port.
 - `GHIDRA_MCP_ENABLE_WRITES` (default `false`)
   - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations.
 - `GHIDRA_MCP_ENABLE_PROJECT_REBASE` (default `false`)
