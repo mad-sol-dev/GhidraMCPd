@@ -104,7 +104,7 @@ Example configuration for AiderDesk: go to `Settings` → `Agent` → `MCP Serve
 
 Add to /home/user/.codex/config.toml
 
-``bash
+```bash
 [mcp_servers.ghidra-bridge]
 # ganz konkret den venv-Python verwenden
 command = "/your/path/to/GhidraMCPd/.venv/bin/python"
