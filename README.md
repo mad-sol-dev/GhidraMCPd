@@ -104,14 +104,14 @@ Add to /home/user/.codex/config.toml
 
 ```bash
 [mcp_servers.ghidra-bridge]
-# ganz konkret den venv-Python verwenden
-command = "/your/path/to/GhidraMCPd/.venv/bin/python"
+# use precisely the venv Python
+command = “/your/path/to/GhidraMCPd/.venv/bin/python”
 
-# Script relativ zum Repo-Root, daher cwd setzen
-args = ["scripts/bridge_stdio.py", "--transport", "stdio"]
+# Script relative to the repo root, therefore set cwd
+args = [“scripts/bridge_stdio.py”, “--transport”, ‘stdio’]
 
-# wichtig, damit relative Pfade im Server stimmen
-cwd = "/your/path/to/GhidraMCPd"
+# Important so that relative paths in the server are correct
+cwd = “/your/path/to/GhidraMCPd”
 ```
 
 For more MCP client examples, see [docs/getting-started.md](docs/getting-started.md).
