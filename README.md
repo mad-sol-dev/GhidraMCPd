@@ -11,9 +11,7 @@ Deterministic MCP server for the Ghidra plugin, focused on lowering token spend 
 
 ---
 
-<video src="images/ghidraMCPd_codex_demo.mp4" controls width="800">
-  Dein Browser unterstützt das Video-Tag nicht.
-</video>
+<video width="630" height="300" src="https://github.com/user-attachments/assets/03597acf-f9f3-41ec-bab3-db849367123c"></video>
 
 ## Quickstart
 
