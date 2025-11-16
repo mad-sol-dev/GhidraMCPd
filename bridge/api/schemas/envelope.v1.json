@@ -25,6 +25,16 @@
           "recovery": {
             "type": "array",
             "items": {"type": "string"}
+          },
+          "upstream": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "reason", "retryable"],
+            "properties": {
+              "status": {"type": ["integer", "null"]},
+              "reason": {"type": "string"},
+              "retryable": {"type": "boolean"}
+            }
           }
         }
       }
