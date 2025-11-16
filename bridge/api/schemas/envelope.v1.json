@@ -38,6 +38,14 @@
           }
         }
       }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "correlation_id": {"type": "string"},
+        "summary": {"type": "string"}
+      }
     }
   }
 }
