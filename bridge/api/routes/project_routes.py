@@ -27,7 +27,20 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
         ):
             payload = client.get_project_info()
             if payload is None:
-                return error_response(ErrorCode.UNAVAILABLE)
+                upstream = client.last_error.as_dict() if client.last_error else None
+                message = None
+                status = None
+                if upstream is not None:
+                    message = f"Upstream request failed: {upstream.get('reason', '')}".strip()
+                    status_val = upstream.get("status")
+                    if isinstance(status_val, int):
+                        status = status_val
+                return error_response(
+                    ErrorCode.UNAVAILABLE,
+                    message or None,
+                    upstream_error=upstream,
+                    status=status,
+                )
             normalized = _normalise_project_info(payload)
             return envelope_response(envelope_ok(normalized))
 

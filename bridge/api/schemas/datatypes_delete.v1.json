@@ -11,6 +11,16 @@
     "written": {"type": "boolean"},
     "notes": {"type": "array", "items": {"type": "string"}},
     "errors": {"type": "array", "items": {"type": "string"}},
+    "transport_error": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["status", "reason", "retryable"],
+      "properties": {
+        "status": {"type": ["integer", "null"]},
+        "reason": {"type": "string"},
+        "retryable": {"type": "boolean"}
+      }
+    },
     "datatype": {
       "type": ["object", "null"],
       "additionalProperties": false,

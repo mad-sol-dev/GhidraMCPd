@@ -25,18 +25,21 @@ def envelope_error(
     *,
     recovery: tuple[str, ...] | None = None,
     status: int | None = None,
+    upstream_error: dict | None = None,
 ) -> Dict[str, object]:
+    error_payload = make_error(
+        code,
+        message=message,
+        recovery=recovery,
+        status=status,
+    )
+    if upstream_error is not None:
+        error_payload = dict(error_payload)
+        error_payload["upstream"] = upstream_error
     return {
         "ok": False,
         "data": None,
-        "errors": [
-            make_error(
-                code,
-                message=message,
-                recovery=recovery,
-                status=status,
-            )
-        ],
+        "errors": [error_payload],
     }
 
 
@@ -53,9 +56,22 @@ def envelope_response(payload: Dict[str, object]) -> JSONResponse:
 
 
 def error_response(
-    code: ErrorCode, message: str | None = None, *, recovery: tuple[str, ...] | None = None
+    code: ErrorCode,
+    message: str | None = None,
+    *,
+    recovery: tuple[str, ...] | None = None,
+    upstream_error: dict | None = None,
+    status: int | None = None,
 ) -> JSONResponse:
-    return envelope_response(envelope_error(code, message, recovery=recovery))
+    return envelope_response(
+        envelope_error(
+            code,
+            message,
+            recovery=recovery,
+            upstream_error=upstream_error,
+            status=status,
+        )
+    )
 
 
 def adapter_for_arch(arch: str) -> ArchAdapter:

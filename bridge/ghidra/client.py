@@ -123,8 +123,22 @@ class EndpointRequester:
         raise ValueError(f"Unsupported method {self.method}")
 
 
-def _is_error(lines: List[str]) -> bool:
-    return bool(lines) and lines[0].startswith("ERROR:")
+def _is_error(lines: object) -> bool:
+    if isinstance(lines, RequestError):
+        return True
+    if isinstance(lines, list) and lines:
+        first = lines[0]
+        return isinstance(first, str) and first.startswith("ERROR:")
+    return False
+
+
+def _error_summary(data: object) -> str:
+    if isinstance(data, RequestError):
+        status = data.status if data.status is not None else "unknown"
+        return f"status={status}, reason={data.reason}, retryable={data.retryable}"
+    if isinstance(data, list) and data:
+        return str(data[0])
+    return str(data)
 
 
 def _parse_xref_lines(lines: Iterable[str]) -> List[Xref]:
@@ -161,13 +175,25 @@ def _has_confirm_true(
 
 
 @dataclass(slots=True)
+class RequestError:
+    """Structured transport error returned when upstream HTTP calls fail."""
+
+    status: Optional[int]
+    reason: str
+    retryable: bool
+
+    def as_dict(self) -> Dict[str, object]:
+        return {"status": self.status, "reason": self.reason, "retryable": self.retryable}
+
+
+@dataclass(slots=True)
 class CursorPageResult(Generic[T]):
     """Structured payload returned by cursor-aware plugin endpoints."""
 
     items: List[T]
     has_more: bool
     cursor: Optional[str]
-    error: Optional[str] = None
+    error: Optional[object] = None
 
 
 @dataclass(slots=True)
@@ -175,9 +201,10 @@ class DataTypeOperationResult:
     """Canonicalised response returned by data-type management calls."""
 
     ok: bool
-    error: Optional[str] = None
+    error: Optional[object] = None
     datatype: Optional[Dict[str, Any]] = None
     details: Optional[Dict[str, Any]] = None
+    transport_error: Optional[RequestError] = None
 
 
 class GhidraClient:
@@ -197,6 +224,7 @@ class GhidraClient:
         self._whitelist = whitelist or DEFAULT_WHITELIST
         self._get_resolver = EndpointResolver(ENDPOINT_CANDIDATES)
         self._post_resolver = EndpointResolver(POST_ENDPOINT_CANDIDATES)
+        self._last_error: Optional[RequestError] = None
         self._validators = {
             "xrefs": Draft202012Validator(
                 {
@@ -265,6 +293,12 @@ class GhidraClient:
     # low level
     # ------------------------------------------------------------------
 
+    @property
+    def last_error(self) -> Optional[RequestError]:
+        """Return the most recent transport error, if any."""
+
+        return self._last_error
+
     def _is_allowed(self, method: str, *, key: Optional[str] = None, path: Optional[str] = None) -> bool:
         entries = self._whitelist.get(method.upper(), ())
         if key is not None:
@@ -286,7 +320,8 @@ class GhidraClient:
         key: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
-    ) -> List[str]:
+    ) -> List[str] | RequestError:
+        self._last_error = None
         if not self._is_allowed(method, key=key, path=path):
             logger.error("Attempted to call non-whitelisted endpoint %s %s", method, path)
             return [f"ERROR: endpoint {method} {path} not allowed"]
@@ -314,6 +349,13 @@ class GhidraClient:
                 response = self._session.request(method, url, params=params, data=data)
             except httpx.HTTPError as exc:  # pragma: no cover - transport errors are environment specific
                 duration_ms = (perf_counter() - start) * 1000.0
+                status_code = getattr(getattr(exc, "response", None), "status_code", None)
+                retryable = bool(status_code is None or int(status_code) >= 500)
+                self._last_error = RequestError(
+                    status=int(status_code) if status_code is not None else None,
+                    reason=str(exc),
+                    retryable=retryable,
+                )
                 logger.warning(
                     "ghidra.request",
                     extra={
@@ -323,7 +365,7 @@ class GhidraClient:
                         "error": str(exc),
                     },
                 )
-                return [f"ERROR: Request failed: {exc}"]
+                return self._last_error
         duration_ms = (perf_counter() - start) * 1000.0
         logger.info(
             "ghidra.request",
@@ -335,7 +377,9 @@ class GhidraClient:
             },
         )
         if response.is_error:
+            self._last_error = None
             return [f"ERROR: {response.status_code}: {response.text.strip()}"]
+        self._last_error = None
         text = response.text
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
@@ -352,7 +396,7 @@ class GhidraClient:
     ) -> Optional[Mapping[str, Any]]:
         lines = self._request_lines(method, path, key=key, params=params, data=data)
         if _is_error(lines):
-            logger.warning("%s request failed: %s", path, lines[:1])
+            logger.warning("%s request failed: %s", path, _error_summary(lines))
             return None
         text = "\n".join(line for line in lines if line is not None).strip()
         if not text:
@@ -402,7 +446,12 @@ class GhidraClient:
             data=data,
         )
         if _is_error(raw_lines):
-            error = raw_lines[0]
+            if isinstance(raw_lines, RequestError):
+                error: object = raw_lines
+            elif isinstance(raw_lines, list) and raw_lines:
+                error = raw_lines[0]
+            else:
+                error = "unknown error"
             return CursorPageResult([], False, None, error=error)
 
         text = "\n".join(line for line in raw_lines if line is not None).strip()
@@ -465,7 +514,9 @@ class GhidraClient:
             params={"address": f"0x{address:08x}"},
         )
         if _is_error(result) or not result:
-            logger.warning("read_dword failed for 0x%08x: %s", address, result[:1])
+            logger.warning(
+                "read_dword failed for 0x%08x: %s", address, _error_summary(result)
+            )
             return None
         line = result[0].strip()
         try:
@@ -480,7 +531,7 @@ class GhidraClient:
         increment_counter("ghidra.project_info")
         lines = self._request_lines("GET", "projectInfo", key="PROJECT_INFO")
         if _is_error(lines) or not lines:
-            logger.warning("project_info request failed: %s", lines[:1])
+            logger.warning("project_info request failed: %s", _error_summary(lines))
             return None
         text = "\n".join(line.strip() for line in lines if line.strip())
         if not text:
@@ -536,6 +587,11 @@ class GhidraClient:
         requester = EndpointRequester(self, "POST", key=key, data=data)
         lines = self._post_resolver.resolve(key, requester)
         if _is_error(lines):
+            if isinstance(lines, RequestError):
+                message = f"request failed: {lines.reason}"
+                return DataTypeOperationResult(
+                    False, error=message, transport_error=lines
+                )
             return DataTypeOperationResult(False, error=lines[0])
         text = "\n".join(line for line in lines if line is not None).strip()
         if not text:
@@ -823,7 +879,13 @@ class GhidraClient:
                 params={"filter": query, "limit": 999999, "offset": 0},
             )
             if _is_error(legacy_lines):
-                return CursorPageResult([], False, None, error=legacy_lines[0])
+                if isinstance(legacy_lines, RequestError):
+                    legacy_error: object = legacy_lines
+                elif isinstance(legacy_lines, list) and legacy_lines:
+                    legacy_error = legacy_lines[0]
+                else:
+                    legacy_error = "unknown error"
+                return CursorPageResult([], False, None, error=legacy_error)
             legacy_items = [line.strip() for line in legacy_lines if line.strip()]
             has_more = len(legacy_items) > max(0, int(offset)) + max(1, int(limit))
             sliced = legacy_items[offset : offset + limit]
@@ -890,7 +952,13 @@ class GhidraClient:
                 params={"value": f"0x{value:x}", "limit": 999999},
             )
             if _is_error(lines):
-                return CursorPageResult([], False, None, error=lines[0])
+                if isinstance(lines, RequestError):
+                    scalar_error: object = lines
+                elif isinstance(lines, list) and lines:
+                    scalar_error = lines[0]
+                else:
+                    scalar_error = "unknown error"
+                return CursorPageResult([], False, None, error=scalar_error)
             parsed: List[Dict[str, Any]] = []
             for line in lines:
                 stripped = line.strip()
@@ -1229,4 +1297,5 @@ __all__ = [
     "ENDPOINT_CANDIDATES",
     "GhidraClient",
     "POST_ENDPOINT_CANDIDATES",
+    "RequestError",
 ]
