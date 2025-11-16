@@ -1,10 +1,13 @@
 """Centralized error handling for validation errors."""
 import json
 import logging
-from typing import Any, Dict
+import uuid
+from typing import Any, Dict, Optional
 
 from starlette.responses import JSONResponse
 from starlette.requests import Request
+
+from .utils.logging import current_request
 
 log = logging.getLogger(__name__)
 
@@ -15,45 +18,69 @@ GENERIC_400 = {
     "recovery": ["Check required fields and value formats."],
 }
 
-def make_400_response() -> Dict[str, Any]:
+
+def _correlation_id() -> str:
+    context = current_request()
+    if context is not None:
+        return context.request_id
+    return uuid.uuid4().hex
+
+
+def make_400_response(
+    *,
+    debug: bool = False,
+    correlation_id: Optional[str] = None,
+    summary: Optional[str] = None,
+) -> Dict[str, Any]:
     """Create standardized 400 error response envelope."""
-    return {
+    payload = {
         "ok": False,
         "data": None,
-        "errors": [GENERIC_400]
+        "errors": [GENERIC_400],
     }
+
+    if not debug:
+        meta: Dict[str, str] = {}
+        if correlation_id:
+            meta["correlation_id"] = correlation_id
+        if summary:
+            meta["summary"] = summary
+        if meta:
+            payload["meta"] = meta
+
+    return payload
+
+
+def _render_validation_error(
+    request: Request, exc: Exception, summary: str
+) -> JSONResponse:
+    correlation_id = _correlation_id()
+    log.warning(
+        "%s: %s", summary, exc, extra={"correlation_id": correlation_id}
+    )
+    debug = getattr(request.app, "debug", False)
+    return JSONResponse(
+        status_code=400,
+        content=make_400_response(
+            debug=debug, correlation_id=correlation_id, summary=summary
+        ),
+    )
 
 def install_error_handlers(app) -> None:
     """Install error handlers on the Starlette app."""
-    
+
     @app.exception_handler(400)
     async def _on_bad_request(request: Request, exc: Exception) -> JSONResponse:
-        log.debug("bad request: %s", exc)
-        return JSONResponse(
-            status_code=400,
-            content=make_400_response()
-        )
+        return _render_validation_error(request, exc, "bad_request")
 
     @app.exception_handler(json.JSONDecodeError)
     async def _on_json_decode_error(request: Request, exc: json.JSONDecodeError) -> JSONResponse:
-        log.debug("json decode error: %s", exc)
-        return JSONResponse(
-            status_code=400,
-            content=make_400_response()
-        )
+        return _render_validation_error(request, exc, "json_decode_error")
 
     @app.exception_handler(ValueError)
     async def _on_value_error(request: Request, exc: ValueError) -> JSONResponse:
-        log.debug("value error: %s", exc)
-        return JSONResponse(
-            status_code=400,
-            content=make_400_response()
-        )
+        return _render_validation_error(request, exc, "value_error")
 
     @app.exception_handler(TypeError)
     async def _on_type_error(request: Request, exc: TypeError) -> JSONResponse:
-        log.debug("type error: %s", exc)
-        return JSONResponse(
-            status_code=400,
-            content=make_400_response()
-        )
+        return _render_validation_error(request, exc, "type_error")
