@@ -63,6 +63,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;
@@ -194,7 +195,7 @@ public class GhidraMCPPlugin extends Plugin {
             int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit  = parseIntOrDefault(qparams.get("limit"),  100);
             String filter = qparams.get("filter");
-            sendResponse(exchange, listImports(filter, offset, limit));
+            sendJsonResponse(exchange, listImports(filter, offset, limit));
         });
 
         server.createContext("/exports", exchange -> {
@@ -202,7 +203,7 @@ public class GhidraMCPPlugin extends Plugin {
             int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit  = parseIntOrDefault(qparams.get("limit"),  100);
             String filter = qparams.get("filter");
-            sendResponse(exchange, listExports(filter, offset, limit));
+            sendJsonResponse(exchange, listExports(filter, offset, limit));
         });
 
         server.createContext("/namespaces", exchange -> {
@@ -381,7 +382,7 @@ public class GhidraMCPPlugin extends Plugin {
             int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit = parseIntOrDefault(qparams.get("limit"), 100);
             String filter = qparams.get("filter");
-            sendResponse(exchange, getXrefsTo(address, offset, limit, filter));
+            sendJsonResponse(exchange, getXrefsTo(address, offset, limit, filter));
         });
 
         server.createContext("/xrefs_from", exchange -> {
@@ -405,7 +406,7 @@ public class GhidraMCPPlugin extends Plugin {
             int offset = parseIntOrDefault(qparams.get("offset"), 0);
             int limit = parseIntOrDefault(qparams.get("limit"), 100);
             String filter = qparams.get("filter");
-            sendResponse(exchange, listDefinedStrings(offset, limit, filter));
+            sendJsonResponse(exchange, listDefinedStrings(offset, limit, filter));
         });
 
         server.createContext("/searchScalars", exchange -> {
@@ -512,7 +513,7 @@ public class GhidraMCPPlugin extends Plugin {
 
     private String listImports(String filter, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) return jsonErrorEnvelope("No program loaded");
 
         String normalized = (filter == null) ? "" : filter.toLowerCase();
         List<String> lines = new ArrayList<>();
@@ -524,14 +525,14 @@ public class GhidraMCPPlugin extends Plugin {
             if (!normalized.isEmpty() && !name.toLowerCase().contains(normalized)) {
                 continue;
             }
-            lines.add(name + " -> " + symbol.getAddress());
+            lines.add(name + " -> " + formatAddress(symbol.getAddress()));
         }
-        return paginateList(lines, offset, limit);
+        return buildJsonEnvelope(lines, offset, limit, s -> '"' + jsonEscape(s) + '"');
     }
 
     private String listExports(String filter, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) return jsonErrorEnvelope("No program loaded");
 
         SymbolTable table = program.getSymbolTable();
         SymbolIterator it = table.getAllSymbols(true);
@@ -549,10 +550,10 @@ public class GhidraMCPPlugin extends Plugin {
                 if (!normalized.isEmpty() && !name.toLowerCase().contains(normalized)) {
                     continue;
                 }
-                lines.add(name + " -> " + s.getAddress());
+                lines.add(name + " -> " + formatAddress(s.getAddress()));
             }
         }
-        return paginateList(lines, offset, limit);
+        return buildJsonEnvelope(lines, offset, limit, s -> '"' + jsonEscape(s) + '"');
     }
 
     private String listNamespaces(int offset, int limit) {
@@ -1601,8 +1602,8 @@ public class GhidraMCPPlugin extends Plugin {
 
     private String getXrefsTo(String addressStr, int offset, int limit, String filter) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "Address is required";
+        if (program == null) return jsonErrorEnvelope("No program loaded");
+        if (addressStr == null || addressStr.isEmpty()) return jsonErrorEnvelope("Address is required");
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
@@ -1610,7 +1611,8 @@ public class GhidraMCPPlugin extends Plugin {
 
             ReferenceIterator refIter = refManager.getReferencesTo(addr);
 
-            List<String> refs = new ArrayList<>();
+            record Xref(String address, String context) {}
+            List<Xref> refs = new ArrayList<>();
             String normalized = (filter == null) ? "" : filter.toLowerCase();
             while (refIter.hasNext()) {
                 Reference ref = refIter.next();
@@ -1623,12 +1625,20 @@ public class GhidraMCPPlugin extends Plugin {
                 if (!normalized.isEmpty() && !context.toLowerCase().contains(normalized)) {
                     continue;
                 }
-                refs.add(String.format("%s | %s", fromAddr, context));
+                refs.add(new Xref(formatAddress(fromAddr), context));
             }
 
-            return paginateList(refs, offset, limit);
+            return buildJsonEnvelope(refs, offset, limit, xref -> {
+                StringBuilder sb = new StringBuilder();
+                sb.append('{');
+                sb.append("\"address\":\"").append(jsonEscape(xref.address())).append('\"');
+                sb.append(',');
+                sb.append("\"context\":\"").append(jsonEscape(xref.context())).append('\"');
+                sb.append('}');
+                return sb.toString();
+            });
         } catch (Exception e) {
-            return "Error getting references to address: " + e.getMessage();
+            return jsonErrorEnvelope("Error getting references to address: " + e.getMessage());
         }
     }
 
@@ -1715,25 +1725,35 @@ public class GhidraMCPPlugin extends Plugin {
  */
     private String listDefinedStrings(int offset, int limit, String filter) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) return jsonErrorEnvelope("No program loaded");
 
-        List<String> lines = new ArrayList<>();
+        record StringEntry(String address, String literal) {}
+
+        List<StringEntry> lines = new ArrayList<>();
         DataIterator dataIt = program.getListing().getDefinedData(true);
-        
+
         while (dataIt.hasNext()) {
             Data data = dataIt.next();
-            
+
             if (data != null && isStringData(data)) {
                 String value = data.getValue() != null ? data.getValue().toString() : "";
-                
+
                 if (filter == null || value.toLowerCase().contains(filter.toLowerCase())) {
                     String escapedValue = escapeString(value);
-                    lines.add(String.format("%s: \"%s\"", data.getAddress(), escapedValue));
+                    lines.add(new StringEntry(formatAddress(data.getAddress()), escapedValue));
                 }
             }
         }
-        
-        return paginateList(lines, offset, limit);
+
+        return buildJsonEnvelope(lines, offset, limit, entry -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            sb.append("\"address\":\"").append(jsonEscape(entry.address())).append('\"');
+            sb.append(',');
+            sb.append("\"literal\":\"").append(jsonEscape(entry.literal())).append('\"');
+            sb.append('}');
+            return sb.toString();
+        });
     }
 
     /**
@@ -1949,6 +1969,37 @@ public class GhidraMCPPlugin extends Plugin {
         }
         List<String> sub = items.subList(start, end);
         return String.join("\n", sub);
+    }
+
+    private <T> String buildJsonEnvelope(List<T> items, int offset, int limit, Function<T, String> serializer) {
+        int start = Math.max(0, offset);
+        int effectiveLimit = Math.max(1, limit);
+        int end = Math.min(items.size(), start + effectiveLimit);
+        List<T> sub = start < items.size() ? items.subList(start, end) : List.of();
+        boolean hasMore = end < items.size();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        sb.append("\"items\":[");
+        for (int i = 0; i < sub.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(serializer.apply(sub.get(i)));
+        }
+        sb.append("],\"has_more\":").append(hasMore);
+        sb.append('}');
+        return sb.toString();
+    }
+
+    private String jsonErrorEnvelope(String message) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"items\":[],\"has_more\":false");
+        if (message != null && !message.isEmpty()) {
+            sb.append(",\"error\":\"").append(jsonEscape(message)).append('\"');
+        }
+        sb.append('}');
+        return sb.toString();
     }
 
     /**

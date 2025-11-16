@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import base64
 import json
+from jsonschema import Draft202012Validator
 from dataclasses import dataclass, field
 import logging
 from typing import (
@@ -127,6 +128,9 @@ def _is_error(lines: List[str]) -> bool:
 
 
 def _parse_xref_lines(lines: Iterable[str]) -> List[Xref]:
+    logger.warning(
+        "_parse_xref_lines is deprecated; the plugin should return JSON envelopes",
+    )
     out: List[Xref] = []
     for raw in lines:
         parts = raw.split("|", 1)
@@ -193,6 +197,69 @@ class GhidraClient:
         self._whitelist = whitelist or DEFAULT_WHITELIST
         self._get_resolver = EndpointResolver(ENDPOINT_CANDIDATES)
         self._post_resolver = EndpointResolver(POST_ENDPOINT_CANDIDATES)
+        self._validators = {
+            "xrefs": Draft202012Validator(
+                {
+                    "type": "object",
+                    "required": ["items", "has_more"],
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": ["address", "context"],
+                                "properties": {
+                                    "address": {"type": "string"},
+                                    "context": {"type": "string"},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                        "has_more": {"type": "boolean"},
+                        "error": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                }
+            ),
+            "strings": Draft202012Validator(
+                {
+                    "type": "object",
+                    "required": ["items", "has_more"],
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": ["address", "literal"],
+                                "properties": {
+                                    "address": {"type": "string"},
+                                    "literal": {"type": "string"},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                        "has_more": {"type": "boolean"},
+                        "error": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                }
+            ),
+            "symbols": Draft202012Validator(
+                {
+                    "type": "object",
+                    "required": ["items", "has_more"],
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "has_more": {"type": "boolean"},
+                        "error": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                }
+            ),
+        }
 
     # ------------------------------------------------------------------
     # low level
@@ -272,6 +339,48 @@ class GhidraClient:
         text = response.text
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
+
+    def _request_json_payload(
+        self,
+        method: str,
+        path: str,
+        *,
+        key: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        schema_key: Optional[str] = None,
+    ) -> Optional[Mapping[str, Any]]:
+        lines = self._request_lines(method, path, key=key, params=params, data=data)
+        if _is_error(lines):
+            logger.warning("%s request failed: %s", path, lines[:1])
+            return None
+        text = "\n".join(line for line in lines if line is not None).strip()
+        if not text:
+            logger.warning("%s returned empty payload", path)
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "%s returned invalid JSON", path, extra={"error": str(exc), "preview": text[:256]}
+            )
+            return None
+        if schema_key is not None:
+            validator = self._validators.get(schema_key)
+            if validator is None:
+                logger.warning("No validator configured for %s", schema_key)
+            else:
+                errors = sorted(validator.iter_errors(payload), key=lambda e: e.path)
+                if errors:
+                    logger.warning(
+                        "%s response failed schema validation", path,
+                        extra={"errors": [err.message for err in errors][:3]},
+                    )
+                    return None
+        if not isinstance(payload, Mapping):
+            logger.warning("%s payload was not an object", path, extra={"type": type(payload).__name__})
+            return None
+        return payload
 
     def _request_cursor_page(
         self,
@@ -546,61 +655,95 @@ class GhidraClient:
 
     def get_xrefs_to(self, address: int, *, limit: int = 50) -> List[Xref]:
         increment_counter("ghidra.xrefs")
-        requester = EndpointRequester(
-            self,
-            "GET",
-            key="GET_XREFS_TO",
-            params={"address": f"0x{address:08x}", "limit": int(limit)},
-        )
-        lines = self._get_resolver.resolve("GET_XREFS_TO", requester)
-        if _is_error(lines):
+        params = {"address": f"0x{address:08x}", "limit": int(limit)}
+        payload = None
+        path_used = "get_xrefs_to"
+        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("get_xrefs_to",)):
+            payload = self._request_json_payload(
+                "GET",
+                candidate,
+                params=params,
+                key="GET_XREFS_TO",
+                schema_key="xrefs",
+            )
+            path_used = candidate
+            if payload is not None:
+                break
+        if not payload:
             return []
-        return _parse_xref_lines(lines)
+        if payload.get("error"):
+            logger.warning("%s returned error", path_used, extra={"error": payload.get("error")})
+        items_raw = payload.get("items", [])
+        results: List[Xref] = []
+        for raw in items_raw:
+            if not isinstance(raw, Mapping):
+                continue
+            addr_str = str(raw.get("address", "")).strip()
+            context = str(raw.get("context", ""))
+            try:
+                addr_val = int(addr_str, 16)
+            except ValueError:
+                logger.warning("Invalid xref address %s", addr_str)
+                continue
+            results.append({"addr": addr_val, "context": context})
+        return results
 
     def search_xrefs_to(self, address: int, query: str) -> List[Xref]:
         increment_counter("ghidra.search_xrefs_to")
-        requester = EndpointRequester(
-            self,
-            "GET",
-            key="GET_XREFS_TO",
-            params={
-                "address": f"0x{address:08x}",
-                "limit": 999999,
-                "offset": 0,
-                "filter": query,
-            },
-        )
-        lines = self._get_resolver.resolve("GET_XREFS_TO", requester)
-        if _is_error(lines):
+        params = {
+            "address": f"0x{address:08x}",
+            "limit": 999999,
+            "offset": 0,
+            "filter": query,
+        }
+        payload = None
+        path_used = "get_xrefs_to"
+        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("get_xrefs_to",)):
+            payload = self._request_json_payload(
+                "GET", candidate, key="GET_XREFS_TO", params=params, schema_key="xrefs"
+            )
+            path_used = candidate
+            if payload is not None:
+                break
+        if not payload:
             return []
-        return _parse_xref_lines(lines)
+        if payload.get("error"):
+            logger.warning("%s returned error", path_used, extra={"error": payload.get("error")})
+        items_raw = payload.get("items", [])
+        parsed: List[Xref] = []
+        for raw in items_raw:
+            if not isinstance(raw, Mapping):
+                continue
+            addr_str = str(raw.get("address", "")).strip()
+            context = str(raw.get("context", ""))
+            try:
+                addr_val = int(addr_str, 16)
+            except ValueError:
+                logger.warning("Invalid xref address %s", addr_str)
+                continue
+            parsed.append({"addr": addr_val, "context": context})
+        return parsed
 
     def search_strings(self, query: str) -> List[Dict[str, Any]]:
         increment_counter("ghidra.search_strings")
-        lines = self._request_lines(
+        payload = self._request_json_payload(
             "GET",
             "strings",
             key="SEARCH_STRINGS",
             params={"filter": query, "limit": 100000, "offset": 0},
+            schema_key="strings",
         )
-        if _is_error(lines):
+        if not payload:
             return []
+        if payload.get("error"):
+            logger.warning("strings returned error", extra={"error": payload.get("error")})
         results: List[Dict[str, Any]] = []
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
+        for raw in payload.get("items", []):
+            if not isinstance(raw, Mapping):
                 continue
-            address_part, _, literal_part = stripped.partition(":")
-            if not address_part:
-                continue
-            address = address_part.strip()
-            literal_text = literal_part.strip()
-            literal = literal_text
-            if literal_text:
-                try:
-                    literal = ast.literal_eval(literal_text)
-                except (ValueError, SyntaxError):
-                    literal = literal_text.strip('"')
+            address = str(raw.get("address", "")).strip()
+            literal_val = raw.get("literal", "")
+            literal = str(literal_val)
             results.append({"address": address, "literal": literal})
         return results
 
@@ -608,29 +751,35 @@ class GhidraClient:
         """Search for imported symbols matching the provided filter."""
 
         increment_counter("ghidra.search_imports")
-        lines = self._request_lines(
+        payload = self._request_json_payload(
             "GET",
             "imports",
             key="SEARCH_IMPORTS",
             params={"filter": query, "limit": 999999, "offset": 0},
+            schema_key="symbols",
         )
-        if _is_error(lines):
+        if not payload:
             return []
-        return [line.strip() for line in lines if line.strip()]
+        if payload.get("error"):
+            logger.warning("imports returned error", extra={"error": payload.get("error")})
+        return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_exports(self, query: str) -> List[str]:
         """Search for exported symbols matching the provided filter."""
 
         increment_counter("ghidra.search_exports")
-        lines = self._request_lines(
+        payload = self._request_json_payload(
             "GET",
             "exports",
             key="SEARCH_EXPORTS",
             params={"filter": query, "limit": 999999, "offset": 0},
+            schema_key="symbols",
         )
-        if _is_error(lines):
+        if not payload:
             return []
-        return [line.strip() for line in lines if line.strip()]
+        if payload.get("error"):
+            logger.warning("exports returned error", extra={"error": payload.get("error")})
+        return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_functions(
         self,
