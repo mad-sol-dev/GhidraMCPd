@@ -26,7 +26,7 @@ class FakeSession:
         if path in {"function_by_addr", "get_function_by_address", "functionMeta"}:
             return FakeResponse("name: func\nentry_point: 0x00001000\n")
         if path in {"get_xrefs_to", "xrefs_to"}:
-            return FakeResponse("00002000 | call string\n00003000 | BL other\n")
+            return FakeResponse('{"items":[{"address":"0x00002000","context":"call string"},{"address":"0x00003000","context":"BL other"}],"has_more":false}')
         if path in {"decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"}:
             return FakeResponse("int stub(void)\\n{\\n    return 0;\\n}\\n")
         if path == "read_cstring":

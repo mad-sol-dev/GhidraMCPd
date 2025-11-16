@@ -14,7 +14,8 @@ def _success_handler(request: httpx.Request) -> httpx.Response:
     if path.endswith("/disassemble"):
         return httpx.Response(200, text="00001000: PUSH {lr}\n00001004: BX LR\n")
     if path.endswith("/get_xrefs_to"):
-        return httpx.Response(200, text="00002000 | BL target\n")
+        payload = {"items": [{"address": "0x00002000", "context": "BL target"}], "has_more": False}
+        return httpx.Response(200, json=payload)
     if path.endswith("/rename_function_by_address"):
         return httpx.Response(200, text="OK\n")
     if path.endswith("/set_decompiler_comment"):
