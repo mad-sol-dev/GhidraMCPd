@@ -514,7 +514,9 @@ class GhidraClient:
             params={"address": f"0x{address:08x}"},
         )
         if _is_error(result) or not result:
-            logger.warning("read_dword failed for 0x%08x: %s", address, result[:1])
+            logger.warning(
+                "read_dword failed for 0x%08x: %s", address, _error_summary(result)
+            )
             return None
         line = result[0].strip()
         try:
