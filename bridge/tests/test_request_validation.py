@@ -101,6 +101,10 @@ def test_rejects_additional_properties(client: TestClient, path: str) -> None:
         "message": "Request was malformed or failed validation.",
         "recovery": ["Check required fields and value formats."],
     }
+    meta = body.get("meta")
+    assert meta, "Expected response metadata for triage"
+    assert meta.get("correlation_id"), "Correlation ID should be provided"
+    assert meta.get("summary") == "value_error"
 
 
 def test_rejects_non_object_payload(client: TestClient) -> None:
@@ -117,6 +121,10 @@ def test_rejects_non_object_payload(client: TestClient) -> None:
         "message": "Request was malformed or failed validation.",
         "recovery": ["Check required fields and value formats."],
     }
+    meta = body.get("meta")
+    assert meta, "Expected response metadata for triage"
+    assert meta.get("correlation_id"), "Correlation ID should be provided"
+    assert meta.get("summary") == "value_error"
 
 
 def test_rejects_invalid_json(client: TestClient) -> None:
