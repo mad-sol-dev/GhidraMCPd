@@ -139,12 +139,15 @@ def _base_envelope(kind: str, path: str, *, dry_run: bool) -> Dict[str, object]:
         "notes": [],
         "errors": [],
         "datatype": None,
+        "transport_error": None,
     }
 
 
 def _apply_result_metadata(
     envelope: MutableMapping[str, object], result: DataTypeOperationResult
 ) -> None:
+    if result.transport_error is not None:
+        envelope["transport_error"] = result.transport_error.as_dict()
     if result.details:
         message = result.details.get("message")
         if isinstance(message, str) and message.strip():

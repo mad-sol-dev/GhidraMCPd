@@ -163,7 +163,20 @@ def register_tools(
         ):
             payload = client.get_project_info()
             if payload is None:
-                return envelope_error(ErrorCode.UNAVAILABLE)
+                upstream = client.last_error.as_dict() if client.last_error else None
+                message = None
+                status = None
+                if upstream is not None:
+                    message = f"Upstream request failed: {upstream.get('reason', '')}".strip()
+                    status_val = upstream.get("status")
+                    if isinstance(status_val, int):
+                        status = status_val
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    message,
+                    status=status,
+                    upstream_error=upstream,
+                )
             normalized = _normalise_project_info(payload)
 
         valid, errors = validate_payload("project_info.v1.json", normalized)
