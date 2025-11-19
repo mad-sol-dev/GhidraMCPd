@@ -445,12 +445,12 @@ public class GhidraMCPPlugin extends Plugin {
             String address = qparams.get("address");
             String lengthStr = qparams.get("length");
             if (lengthStr == null) {
-                sendResponse(exchange, "ERROR: length parameter is required");
+                sendJsonResponse(exchange, errorResponse("length parameter is required"));
                 return;
             }
             int length = parseIntOrDefault(lengthStr, -1);
             if (length < 0) {
-                sendResponse(exchange, "ERROR: invalid length parameter");
+                sendJsonResponse(exchange, errorResponse("invalid length parameter"));
                 return;
             }
             sendResponse(exchange, readBytesBase64(address, length));
@@ -851,14 +851,14 @@ public class GhidraMCPPlugin extends Plugin {
     private String readDword(String addressStr) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
             byte[] buffer = new byte[4];
             int read = program.getMemory().getBytes(addr, buffer);
             if (read < 4) {
-                return "ERROR: unable to read 4 bytes at " + addressStr;
+                return errorResponse("unable to read 4 bytes at " + addressStr);
             }
 
             long value = ((long) buffer[0] & 0xff)
@@ -868,9 +868,9 @@ public class GhidraMCPPlugin extends Plugin {
 
             return String.format("0x%08x", value);
         } catch (MemoryAccessException e) {
-            return "ERROR: memory access failed: " + e.getMessage();
+            return errorResponse("memory access failed: " + e.getMessage());
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -880,11 +880,11 @@ public class GhidraMCPPlugin extends Plugin {
     private String readBytesHexdump(String addressStr, int length) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
 
         int effectiveLength = clampLength(length, MAX_BYTE_READ);
         if (effectiveLength <= 0) {
-            return "ERROR: length must be greater than zero";
+            return errorResponse("length must be greater than zero");
         }
 
         try {
@@ -892,7 +892,7 @@ public class GhidraMCPPlugin extends Plugin {
             byte[] buffer = new byte[effectiveLength];
             int read = program.getMemory().getBytes(addr, buffer);
             if (read <= 0) {
-                return "ERROR: unable to read memory at " + addressStr;
+                return errorResponse("unable to read memory at " + addressStr);
             }
 
             String dump = formatHexDump(addr, buffer, read);
@@ -901,11 +901,11 @@ public class GhidraMCPPlugin extends Plugin {
             }
             return dump;
         } catch (MemoryAccessException e) {
-            return "ERROR: memory access failed: " + e.getMessage();
+            return errorResponse("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
-            return "ERROR: address out of bounds";
+            return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -915,11 +915,11 @@ public class GhidraMCPPlugin extends Plugin {
     private String readCString(String addressStr, int maxLen) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
 
         int effectiveLen = clampLength(maxLen, MAX_CSTRING_LEN);
         if (effectiveLen <= 0) {
-            return "ERROR: max_len must be greater than zero";
+            return errorResponse("max_len must be greater than zero");
         }
 
         try {
@@ -946,11 +946,11 @@ public class GhidraMCPPlugin extends Plugin {
 
             return builder.toString();
         } catch (MemoryAccessException e) {
-            return "ERROR: memory access failed: " + e.getMessage();
+            return errorResponse("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
-            return "ERROR: address out of bounds";
+            return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -960,35 +960,35 @@ public class GhidraMCPPlugin extends Plugin {
     private String readDataWindow(String startStr, String endStr) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (startStr == null || endStr == null) return "ERROR: start and end are required";
+        if (startStr == null || endStr == null) return errorResponse("start and end are required");
 
         try {
             Address start = program.getAddressFactory().getAddress(startStr);
             Address end = program.getAddressFactory().getAddress(endStr);
 
             if (start == null || end == null) {
-                return "ERROR: invalid address range";
+                return errorResponse("invalid address range");
             }
 
             if (start.compareTo(end) >= 0) {
-                return "ERROR: start must be less than end";
+                return errorResponse("start must be less than end");
             }
 
             long span = end.subtract(start);
             if (span <= 0) {
-                return "ERROR: invalid range length";
+                return errorResponse("invalid range length");
             }
 
             long cappedSpan = Math.min(span, MAX_DATA_WINDOW);
             int bytesToRead = (int) cappedSpan;
             if (bytesToRead <= 0) {
-                return "ERROR: empty range";
+                return errorResponse("empty range");
             }
 
             byte[] buffer = new byte[bytesToRead];
             int read = program.getMemory().getBytes(start, buffer);
             if (read <= 0) {
-                return "ERROR: unable to read memory";
+                return errorResponse("unable to read memory");
             }
 
             String dump = formatHexDump(start, buffer, read);
@@ -997,11 +997,11 @@ public class GhidraMCPPlugin extends Plugin {
             }
             return dump;
         } catch (MemoryAccessException e) {
-            return "ERROR: memory access failed: " + e.getMessage();
+            return errorResponse("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
-            return "ERROR: address out of bounds";
+            return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -1992,6 +1992,10 @@ public class GhidraMCPPlugin extends Plugin {
         return sb.toString();
     }
 
+    private String errorResponse(String message) {
+        return "{\"error\":\"" + jsonEscape(message) + "\",\"status\":\"error\"}";
+    }
+
     private String jsonErrorEnvelope(String message) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"items\":[],\"has_more\":false");
@@ -2126,19 +2130,19 @@ public class GhidraMCPPlugin extends Plugin {
     private String handleFunctionsInRange(String minStr, String maxStr) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (minStr == null || minStr.isEmpty()) return "ERROR: min parameter is required";
-        if (maxStr == null || maxStr.isEmpty()) return "ERROR: max parameter is required";
+        if (minStr == null || minStr.isEmpty()) return errorResponse("min parameter is required");
+        if (maxStr == null || maxStr.isEmpty()) return errorResponse("max parameter is required");
 
         try {
             Address minAddr = program.getAddressFactory().getAddress(minStr);
             Address maxAddr = program.getAddressFactory().getAddress(maxStr);
 
             if (minAddr == null || maxAddr == null) {
-                return "ERROR: invalid address range";
+                return errorResponse("invalid address range");
             }
 
             if (minAddr.compareTo(maxAddr) > 0) {
-                return "ERROR: min must be less than or equal to max";
+                return errorResponse("min must be less than or equal to max");
             }
 
             AddressSet addressSet = new AddressSet(minAddr, maxAddr);
@@ -2164,7 +2168,7 @@ public class GhidraMCPPlugin extends Plugin {
             return results.isEmpty() ? "" : String.join("\n", results);
 
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -2174,7 +2178,7 @@ public class GhidraMCPPlugin extends Plugin {
     private String handleDisassembleAt(String addressStr, int count) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address parameter is required";
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         // Cap count at 128
         int effectiveCount = Math.min(Math.max(count, 1), 128);
@@ -2182,7 +2186,7 @@ public class GhidraMCPPlugin extends Plugin {
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
             if (addr == null) {
-                return "ERROR: invalid address";
+                return errorResponse("invalid address");
             }
 
             List<String> lines = new ArrayList<>();
@@ -2210,7 +2214,7 @@ public class GhidraMCPPlugin extends Plugin {
             return lines.isEmpty() ? "" : String.join("\n", lines);
 
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -2220,7 +2224,7 @@ public class GhidraMCPPlugin extends Plugin {
     private String readBytesBase64(String addressStr, int length) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address parameter is required";
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         // Cap length at 4096
         int effectiveLength = Math.min(Math.max(length, 1), 4096);
@@ -2228,14 +2232,14 @@ public class GhidraMCPPlugin extends Plugin {
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
             if (addr == null) {
-                return "ERROR: invalid address";
+                return errorResponse("invalid address");
             }
 
             byte[] buffer = new byte[effectiveLength];
             int bytesRead = program.getMemory().getBytes(addr, buffer);
 
             if (bytesRead <= 0) {
-                return "ERROR: unable to read memory at address";
+                return errorResponse("unable to read memory at address");
             }
 
             // If we read fewer bytes than requested, trim the buffer
@@ -2247,9 +2251,9 @@ public class GhidraMCPPlugin extends Plugin {
             return Base64.getEncoder().encodeToString(actualData);
 
         } catch (MemoryAccessException e) {
-            return "ERROR: memory access failed: " + e.getMessage();
+            return errorResponse("memory access failed: " + e.getMessage());
         } catch (Exception e) {
-            return "ERROR: " + e.getMessage();
+            return errorResponse(e.getMessage());
         }
     }
 
@@ -2279,7 +2283,7 @@ public class GhidraMCPPlugin extends Plugin {
     private String getProjectInfo() {
         Program program = getCurrentProgram();
         if (program == null) {
-            return "ERROR: No program loaded";
+            return errorResponse("No program loaded");
         }
 
         try {
@@ -2313,7 +2317,7 @@ public class GhidraMCPPlugin extends Plugin {
         }
         catch (Exception ex) {
             Msg.error(this, "Failed to collect project info", ex);
-            return "ERROR: Failed to collect project info";
+            return errorResponse("Failed to collect project info");
         }
     }
 
