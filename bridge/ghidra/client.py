@@ -377,10 +377,28 @@ class GhidraClient:
             },
         )
         if response.is_error:
-            self._last_error = None
-            return [f"ERROR: {response.status_code}: {response.text.strip()}"]
+            retryable = int(response.status_code) >= 500 if response.status_code is not None else False
+            self._last_error = RequestError(
+                status=int(response.status_code) if response.status_code is not None else None,
+                reason=response.text.strip(),
+                retryable=retryable,
+            )
+            return self._last_error
         self._last_error = None
         text = response.text
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, Mapping) and "error" in payload:
+            message = str(payload.get("error"))
+            retryable = int(response.status_code) >= 500 if response.status_code is not None else False
+            self._last_error = RequestError(
+                status=int(response.status_code) if response.status_code is not None else None,
+                reason=message,
+                retryable=retryable,
+            )
+            return self._last_error
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
 
@@ -423,6 +441,11 @@ class GhidraClient:
                     return None
         if not isinstance(payload, Mapping):
             logger.warning("%s payload was not an object", path, extra={"type": type(payload).__name__})
+            return None
+        if "error" in payload:
+            message = str(payload.get("error"))
+            self._last_error = RequestError(status=None, reason=message, retryable=False)
+            logger.warning("%s request failed: %s", path, message)
             return None
         return payload
 
