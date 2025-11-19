@@ -1993,7 +1993,8 @@ public class GhidraMCPPlugin extends Plugin {
     }
 
     private String errorResponse(String message) {
-        return "{\"error\":\"" + jsonEscape(message) + "\",\"status\":\"error\"}";
+        String safeMessage = (message == null || message.isEmpty()) ? "unexpected error" : message;
+        return "{\"error\":\"" + jsonEscape(safeMessage) + "\",\"status\":\"error\"}";
     }
 
     private String jsonErrorEnvelope(String message) {
