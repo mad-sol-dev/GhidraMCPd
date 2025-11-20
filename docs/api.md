@@ -2,6 +2,44 @@
 
 _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge API v1.0.0_
 
+## `/api/capabilities.json`
+
+### GET
+
+**Summary:** capabilities
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `endpoints` | array<object> | Yes |  |
+
+  **Endpoint entry**
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `path` | string | Yes |  |
+  | `method` | string | Yes |  |
+  | `category` | string | Yes | enum=['overview', 'detail', 'write'] |
+  | `budget_hint` | string | Yes | enum=['small', 'medium', 'large'] |
+  | `description` | string | Yes |  |
+
+  ```json
+  {
+    "endpoints": [
+      {
+        "path": "/api/health.json",
+        "method": "GET",
+        "category": "overview",
+        "budget_hint": "small",
+        "description": "Service and upstream health status."
+      }
+    ]
+  }
+  ```
+
 ## `/api/analyze_function_complete.json`
 
 ### POST
