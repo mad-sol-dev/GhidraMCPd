@@ -1,0 +1,21 @@
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+ARG GHIDRA_VERSION="11.4.2"
+
+ENV GHIDRA_DIR=/opt/ghidra/ghidra_${GHIDRA_VERSION}_PUBLIC
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/ghidra \
+    && wget -O /tmp/ghidra.zip "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${GHIDRA_VERSION}_build/ghidra_${GHIDRA_VERSION}_PUBLIC.zip" \
+    && unzip /tmp/ghidra.zip -d /opt/ghidra \
+    && rm /tmp/ghidra.zip
+
+WORKDIR /workspace
+
+COPY pom.xml ./
+COPY src ./src
+
+RUN mvn -B package
