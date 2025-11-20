@@ -20,7 +20,7 @@ CONTAINER_ID=$(docker create "${IMAGE_TAG}")
 mkdir -p target
 
 echo "Extracting built JAR from container..."
-docker cp "${CONTAINER_ID}:/app/target/GhidraMCP-*.jar" target/
+docker cp "${CONTAINER_ID}:/workspace/target" .
 
 cleanup
 trap - EXIT
