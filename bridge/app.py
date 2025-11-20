@@ -80,6 +80,7 @@ _REQUEST_SCHEMA_MAP = {
 
 _RESPONSE_SCHEMA_MAP = {
     "/api/analyze_function_complete.json": "analyze_function_complete.v1.json",
+    "/api/capabilities.json": "capabilities.v1.json",
     "/api/collect.json": "collect.v1.json",
     "/api/datatypes/create.json": "datatypes_create.v1.json",
     "/api/datatypes/update.json": "datatypes_update.v1.json",
