@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:capabilities.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["endpoints"],
+  "properties": {
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "method",
+          "category",
+          "budget_hint",
+          "description"
+        ],
+        "properties": {
+          "path": {"type": "string"},
+          "method": {"type": "string"},
+          "category": {
+            "type": "string",
+            "enum": ["overview", "detail", "write"]
+          },
+          "budget_hint": {
+            "type": "string",
+            "enum": ["small", "medium", "large"]
+          },
+          "description": {"type": "string"}
+        }
+      }
+    }
+  }
+}
