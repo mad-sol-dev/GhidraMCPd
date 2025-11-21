@@ -1,20 +1,19 @@
 FROM maven:3.9-eclipse-temurin-17 AS builder
 
-ARG GHIDRA_VERSION="11.4.2"
-# Build metadata suffix used in Ghidra release artifact names
-ARG GHIDRA_BUILD="20250213"
-
-ENV GHIDRA_ARCHIVE=ghidra_${GHIDRA_VERSION}_PUBLIC_${GHIDRA_BUILD}.zip
-ENV GHIDRA_DIR=/opt/ghidra/ghidra_${GHIDRA_VERSION}_PUBLIC_${GHIDRA_BUILD}
+ARG GHIDRA_ZIP_URL
+ENV GHIDRA_DIR=/opt/ghidra/current
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends wget unzip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/ghidra \
-    && wget -O /tmp/ghidra.zip "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${GHIDRA_VERSION}_build/${GHIDRA_ARCHIVE}" \
+    && wget -O /tmp/ghidra.zip "$GHIDRA_ZIP_URL" \
     && unzip /tmp/ghidra.zip -d /opt/ghidra \
-    && rm /tmp/ghidra.zip
+    && rm /tmp/ghidra.zip \
+    && extracted_dir=$(find /opt/ghidra -maxdepth 1 -mindepth 1 -type d -name "ghidra_*" | head -n 1) \
+    && [ -n "$extracted_dir" ] \
+    && ln -s "$extracted_dir" "$GHIDRA_DIR"
 
 WORKDIR /workspace
 
