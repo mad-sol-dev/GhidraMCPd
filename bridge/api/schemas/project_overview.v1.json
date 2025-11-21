@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "project_overview.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["files"],
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "domain_file_id",
+          "name",
+          "path",
+          "type",
+          "size"
+        ],
+        "properties": {
+          "domain_file_id": {"type": ["string", "null"]},
+          "name": {"type": "string"},
+          "path": {"type": "string"},
+          "type": {"type": "string"},
+          "size": {"type": ["integer", "null"], "minimum": 0}
+        }
+      }
+    }
+  }
+}

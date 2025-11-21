@@ -52,6 +52,7 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
             ("decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"),
         ),
         WhitelistEntry("GET", "PROJECT_INFO", ("projectInfo", "project_info")),
+        WhitelistEntry("GET", "PROJECT_FILES", ("project_files",)),
     ),
     "POST": (
         WhitelistEntry(

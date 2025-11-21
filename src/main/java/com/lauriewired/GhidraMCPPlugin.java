@@ -2,6 +2,10 @@ package com.lauriewired;
 
 import ghidra.framework.plugintool.Plugin;
 import ghidra.framework.plugintool.PluginTool;
+import ghidra.framework.model.DomainFile;
+import ghidra.framework.model.DomainFolder;
+import ghidra.framework.model.Project;
+import ghidra.framework.model.ProjectData;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
@@ -58,6 +62,7 @@ import com.lauriewired.CursorPager;
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
@@ -438,6 +443,10 @@ public class GhidraMCPPlugin extends Plugin {
 
         server.createContext("/projectInfo", exchange -> {
             sendResponse(exchange, getProjectInfo());
+        });
+
+        server.createContext("/project_files", exchange -> {
+            sendResponse(exchange, getProjectFiles());
         });
 
         server.createContext("/readBytes", exchange -> {
@@ -2279,6 +2288,94 @@ public class GhidraMCPPlugin extends Plugin {
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
+    }
+
+    private String getProjectFiles() {
+        Project project = tool.getProject();
+        if (project == null) {
+            return errorResponse("No project loaded");
+        }
+
+        ProjectData projectData = project.getProjectData();
+        if (projectData == null) {
+            return errorResponse("Project data unavailable");
+        }
+
+        DomainFolder rootFolder = projectData.getRootFolder();
+        if (rootFolder == null) {
+            return errorResponse("Project root folder not found");
+        }
+
+        List<String> entries = new ArrayList<>();
+        collectProjectEntries(rootFolder, entries);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(entries.get(i));
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    private void collectProjectEntries(DomainFolder folder, List<String> entries) {
+        entries.add(buildFolderEntry(folder));
+
+        for (DomainFile file : folder.getFiles()) {
+            entries.add(buildFileEntry(file));
+        }
+
+        for (DomainFolder child : folder.getFolders()) {
+            collectProjectEntries(child, entries);
+        }
+    }
+
+    private String buildFolderEntry(DomainFolder folder) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "domain_file_id", (String) null);
+        appendJsonField(sb, "name", folder.getName());
+        appendJsonField(sb, "path", folder.getPathname());
+        appendJsonField(sb, "type", "Folder");
+        sb.append("\"size\":null");
+        sb.append('}');
+        return sb.toString();
+    }
+
+    private String buildFileEntry(DomainFile file) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "domain_file_id", Long.toString(file.getFileID()));
+        appendJsonField(sb, "name", file.getName());
+        appendJsonField(sb, "path", file.getPathname());
+        appendJsonField(sb, "type", file.getContentType());
+        Long size = getDomainFileSize(file);
+        sb.append("\"size\":");
+        if (size == null) {
+            sb.append("null");
+        }
+        else {
+            sb.append(size);
+        }
+        sb.append('}');
+        return sb.toString();
+    }
+
+    private Long getDomainFileSize(DomainFile file) {
+        try {
+            Method method = file.getClass().getMethod("getSize");
+            Object value = method.invoke(file);
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            }
+        }
+        catch (Exception ignored) {
+            // Ignore and fallback to null
+        }
+        return null;
     }
 
     private String getProjectInfo() {

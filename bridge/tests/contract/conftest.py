@@ -141,6 +141,36 @@ class StubGhidraClient:
             "imports_count": len(self._imports),
             "exports_count": len(self._exports),
         }
+        self._project_files: List[Dict[str, object]] = [
+            {
+                "domain_file_id": None,
+                "name": "root",
+                "path": "/",
+                "type": "Folder",
+                "size": None,
+            },
+            {
+                "domain_file_id": "1",
+                "name": "sample_program",
+                "path": "/sample_program",
+                "type": "Program",
+                "size": 1024,
+            },
+            {
+                "domain_file_id": "2",
+                "name": "docs",
+                "path": "/docs",
+                "type": "Folder",
+                "size": None,
+            },
+            {
+                "domain_file_id": "3",
+                "name": "readme.txt",
+                "path": "/docs/readme.txt",
+                "type": "Text",
+                "size": 256,
+            },
+        ]
         self._datatypes: Dict[str, Dict[str, object]] = {
             "/structs/Packet": {
                 "kind": "structure",
@@ -546,6 +576,9 @@ class StubGhidraClient:
             "imports_count": self._project_info["imports_count"],
             "exports_count": self._project_info["exports_count"],
         }
+
+    def get_project_files(self) -> List[Dict[str, object]]:
+        return [dict(entry) for entry in self._project_files]
 
     def close(self) -> None:
         return None

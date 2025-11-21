@@ -570,6 +570,28 @@ class GhidraClient:
             return None
         return payload
 
+    def get_project_files(self) -> Optional[List[Dict[str, Any]]]:
+        """Fetch a list of files in the current Ghidra project."""
+
+        increment_counter("ghidra.project_files")
+        lines = self._request_lines("GET", "project_files", key="PROJECT_FILES")
+        if _is_error(lines) or not lines:
+            logger.warning("project_files request failed: %s", _error_summary(lines))
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("project_files returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode project_files payload: %s", text)
+            return None
+        if not isinstance(payload, list):
+            logger.warning("Unexpected project_files payload type: %s", type(payload))
+            return None
+        return payload
+
     def disassemble_function(self, address: int) -> List[str]:
         increment_counter("ghidra.disasm")
         requester = EndpointRequester(
