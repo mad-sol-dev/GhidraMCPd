@@ -186,6 +186,39 @@ def register_tools(
 
     @server.tool()
     @tool_client
+    def project_overview(client) -> Dict[str, object]:
+        with request_scope(
+            "project_overview",
+            logger=logger,
+            extra={"tool": "project_overview"},
+        ):
+            payload = client.get_project_files()
+            if payload is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                message = None
+                status = None
+                if upstream is not None:
+                    message = f"Upstream request failed: {upstream.get('reason', '')}".strip()
+                    status_val = upstream.get("status")
+                    if isinstance(status_val, int):
+                        status = status_val
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    message,
+                    status=status,
+                    upstream_error=upstream,
+                )
+            files = _normalise_project_files(payload)
+
+        response_payload = {"files": files}
+
+        valid, errors = validate_payload("project_overview.v1.json", response_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(response_payload)
+
+    @server.tool()
+    @tool_client
     def project_rebase(
         client,
         new_base: str,
@@ -1456,6 +1489,37 @@ def register_tools(
 
 def _coerce_mapping(value: object) -> Mapping[str, object]:
     return value if isinstance(value, Mapping) else {}
+
+
+def _normalise_project_files(payload: object) -> List[Dict[str, object]]:
+    files: List[Dict[str, object]] = []
+    if not isinstance(payload, list):
+        return files
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        entry_type = entry.get("type")
+        if not isinstance(entry_type, str):
+            continue
+        entry_id = entry.get("domain_file_id")
+        size = _coerce_int(entry.get("size"))
+        files.append(
+            {
+                "domain_file_id": str(entry_id) if entry_id is not None else None,
+                "name": str(entry.get("name", "")),
+                "path": str(entry.get("path", "")),
+                "type": entry_type,
+                "size": size,
+            }
+        )
+    return files
+
+
+def _coerce_int(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _normalise_project_info(payload: Mapping[str, Any]) -> Dict[str, Any]:
