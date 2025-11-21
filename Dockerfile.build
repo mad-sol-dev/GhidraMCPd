@@ -1,23 +1,38 @@
-FROM maven:3.9-eclipse-temurin-17 AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 ARG GHIDRA_ZIP_URL
-ENV GHIDRA_DIR=/opt/ghidra/current
+ARG GHIDRA_VERSION
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget unzip \
-    && rm -rf /var/lib/apt/lists/*
+# 1. Ghidra installieren
+WORKDIR /opt
+RUN apt-get update && apt-get install -y wget unzip \
+    && wget -q -O ghidra.zip "$GHIDRA_ZIP_URL" \
+    && unzip -q ghidra.zip \
+    && rm ghidra.zip \
+    && DIR=$(find . -maxdepth 1 -type d -name "ghidra_*") \
+    && mv "$DIR" /opt/ghidra-install
 
-RUN mkdir -p /opt/ghidra \
-    && wget -O /tmp/ghidra.zip "$GHIDRA_ZIP_URL" \
-    && unzip /tmp/ghidra.zip -d /opt/ghidra \
-    && rm /tmp/ghidra.zip \
-    && extracted_dir=$(find /opt/ghidra -maxdepth 1 -mindepth 1 -type d -name "ghidra_*" | head -n 1) \
-    && [ -n "$extracted_dir" ] \
-    && ln -s "$extracted_dir" "$GHIDRA_DIR"
+# 2. "Flatten" der JARs
+WORKDIR /opt/ghidra-libs
+RUN find /opt/ghidra-install -name "*.jar" -exec cp {} . \;
 
+# 3. Source kopieren
 WORKDIR /workspace
-
-COPY pom.xml ./
+COPY pom.xml .
 COPY src ./src
 
-RUN mvn -B package
+# 4. Versionen patchen
+RUN sed -i "s|<ghidra.version>.*</ghidra.version>|<ghidra.version>${GHIDRA_VERSION}</ghidra.version>|" pom.xml
+RUN sed -i "s|^ghidraVersion=.*|ghidraVersion=${GHIDRA_VERSION}|" src/main/resources/extension.properties
+
+# 5. Build – nur noch über Properties
+RUN mvn -B package \
+    -Dghidra.dir=/opt/ghidra-libs \
+    -Dghidra.generic.path=Generic.jar \
+    -Dghidra.softwareModeling.path=SoftwareModeling.jar \
+    -Dghidra.project.path=Project.jar \
+    -Dghidra.docking.path=Docking.jar \
+    -Dghidra.decompiler.path=Decompiler.jar \
+    -Dghidra.utility.path=Utility.jar \
+    -Dghidra.base.path=Base.jar \
+    -Dghidra.gui.path=Gui.jar
