@@ -77,6 +77,35 @@ PY
 
 echo "Updated pom.xml ghidra.version to ${GHIDRA_VERSION}"
 
+python - <<'PY'
+import pathlib
+import re
+import sys
+
+props_path = pathlib.Path("src/main/resources/extension.properties")
+new_version = sys.argv[1]
+text = props_path.read_text(encoding="utf-8")
+
+replacements = {
+    r"^(version=).*$": r"\\g<1>" + new_version,
+    r"^(ghidraVersion=).*$": r"\\g<1>" + new_version,
+}
+
+updated = text
+for pattern, repl in replacements.items():
+    updated, count = re.subn(pattern, repl, updated, count=1, flags=re.MULTILINE)
+    if count == 0:
+        raise SystemExit(f"Unable to update {pattern} in extension.properties")
+
+if not updated.endswith("\n"):
+    updated += "\n"
+
+props_path.write_text(updated, encoding="utf-8")
+PY
+"${GHIDRA_VERSION}"
+
+echo "Updated extension.properties versions to ${GHIDRA_VERSION}"
+
 docker build -f Dockerfile.build -t "${IMAGE_TAG}" --build-arg GHIDRA_ZIP_URL="${LATEST_URL}" .
 
 echo "Creating temporary container..."
