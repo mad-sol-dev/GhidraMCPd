@@ -68,7 +68,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.Function;
+import ghidra.program.model.listing.Function;
 import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;

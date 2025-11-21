@@ -11,119 +11,67 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Building Docker image (${IMAGE_TAG})..."
-LATEST_URL=$(python - <<'PY'
-import json
-import re
-import sys
-from urllib.error import URLError, HTTPError
-from urllib.request import urlopen
-
-RELEASES_URL = "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest"
+# 1. Ghidra URL & Version ermitteln (Robust via Python)
+echo "Resolving latest Ghidra version..."
+read -r LATEST_URL GHIDRA_VERSION <<< $(python3 -c '
+import json, sys, re
+from urllib.request import urlopen, Request
 
 try:
-    with urlopen(RELEASES_URL) as resp:
-        data = json.load(resp)
-except (HTTPError, URLError) as exc:
-    raise SystemExit(
-        f"Unable to reach GitHub releases API ({exc}); it may be unavailable or rate limited."
-    )
+    # GitHub API Request
+    req = Request("https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest")
+    with urlopen(req) as r:
+        data = json.load(r)
+    
+    # Find ZIP URL
+    zip_url = next((a["browser_download_url"] for a in data.get("assets", []) 
+                   if a["browser_download_url"].endswith(".zip") and "PUBLIC" in a["browser_download_url"]), None)
+    
+    if not zip_url:
+        sys.exit(1)
 
-assets = data.get("assets", [])
-zip_url = None
-for asset in assets:
-    url = asset.get("browser_download_url", "")
-    if url.endswith(".zip") and "ghidra_" in url and "PUBLIC" in url:
-        zip_url = url
-        break
+    # Extract Version (e.g. 11.4.2)
+    m = re.search(r"ghidra_([0-9.]+)_PUBLIC", zip_url)
+    version = m.group(1) if m else "11.4.2"
+    
+    print(f"{zip_url} {version}")
 
-if not zip_url:
-    raise SystemExit("Unable to locate Ghidra release ZIP URL")
-
-print(zip_url)
-PY
-)
+except Exception:
+    sys.exit(1)
+')
 
 if [[ -z "${LATEST_URL:-}" ]]; then
-  echo "Failed to resolve latest Ghidra download URL. The GitHub API may be unavailable or rate limited." >&2
-  exit 1
+    echo "Error: Could not resolve Ghidra URL. API might be rate-limited."
+    # Fallback falls API failt
+    LATEST_URL="https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.4.2_build/ghidra_11.4.2_PUBLIC_20250826.zip"
+    GHIDRA_VERSION="11.4.2"
+    echo "Using Fallback: $GHIDRA_VERSION"
 fi
 
-echo "Using Ghidra download URL: ${LATEST_URL}"
+echo "Target: Ghidra $GHIDRA_VERSION"
+echo "URL:    $LATEST_URL"
 
-GHIDRA_VERSION=$(python - "${LATEST_URL:-}" <<'PY'
-import re
-import sys
+# 2. Docker Build (Patching passiert intern via ARG)
+echo "Building Docker image..."
+docker build \
+    -f Dockerfile.build \
+    -t "${IMAGE_TAG}" \
+    --build-arg GHIDRA_ZIP_URL="${LATEST_URL}" \
+    --build-arg GHIDRA_VERSION="${GHIDRA_VERSION}" \
+    .
 
-DEFAULT_VERSION = "11.4.2"
-fallback_url = f"ghidra_{DEFAULT_VERSION}_PUBLIC.zip"
-url = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else fallback_url
-
-match = re.search(r"ghidra_([0-9]+\.[0-9]+\.[0-9]+)_PUBLIC", url)
-print(match.group(1) if match else DEFAULT_VERSION)
-PY
-)
-
-if [[ -z "${GHIDRA_VERSION}" ]]; then
-  GHIDRA_VERSION="11.4.2"
-fi
-
-python - "${GHIDRA_VERSION}" <<'PY'
-import pathlib
-import re
-import sys
-
-pom_path = pathlib.Path("pom.xml")
-new_version = sys.argv[1]
-text = pom_path.read_text(encoding="utf-8")
-updated, count = re.subn(r"(<ghidra\.version>)([^<]+)(</ghidra\.version>)", r"\1" + new_version + r"\3", text, count=1)
-if count:
-    pom_path.write_text(updated, encoding="utf-8")
-else:
-    raise SystemExit("Unable to update ghidra.version in pom.xml")
-PY
-
-echo "Updated pom.xml ghidra.version to ${GHIDRA_VERSION}"
-
-python - "${GHIDRA_VERSION}" <<'PY'
-import pathlib
-import re
-import sys
-
-props_path = pathlib.Path("src/main/resources/extension.properties")
-new_version = sys.argv[1]
-text = props_path.read_text(encoding="utf-8")
-
-replacements = {
-    r"^(version=).*$": r"\\g<1>" + new_version,
-    r"^(ghidraVersion=).*$": r"\\g<1>" + new_version,
-}
-
-updated = text
-for pattern, repl in replacements.items():
-    updated, count = re.subn(pattern, repl, updated, count=1, flags=re.MULTILINE)
-    if count == 0:
-        raise SystemExit(f"Unable to update {pattern} in extension.properties")
-
-if not updated.endswith("\n"):
-    updated += "\n"
-
-props_path.write_text(updated, encoding="utf-8")
-PY
-echo "Updated extension.properties versions to ${GHIDRA_VERSION}"
-
-docker build -f Dockerfile.build -t "${IMAGE_TAG}" --build-arg GHIDRA_ZIP_URL="${LATEST_URL}" .
-
-echo "Creating temporary container..."
+# 3. Artefakt extrahieren
+echo "Extracting artifact..."
 CONTAINER_ID=$(docker create "${IMAGE_TAG}")
-
 mkdir -p target
+# Kopiere alle JARs aus target, ignoriere Fehler falls keine da sind (sollte nicht passieren bei success)
+docker cp "${CONTAINER_ID}:/workspace/target/." target/
 
-echo "Extracting built JAR from container..."
-docker cp "${CONTAINER_ID}:/workspace/target" .
+# Bereinigung (Original-sources und classes entfernen, wir wollen nur das JAR)
+find target -maxdepth 1 -not -name "*.jar" -not -name "target" -delete 2>/dev/null || true
 
-cleanup
-trap - EXIT
-
-JAR_PATH=$(ls -1 target/GhidraMCP-*.jar | head -n 1)
-echo "Build artifact copied to: ${JAR_PATH}"
+JAR_PATH=$(ls target/GhidraMCP*.jar | head -n 1)
+echo "--------------------------------------------------"
+echo "Build Success! Artifact available at:"
+echo "$JAR_PATH"
+echo "--------------------------------------------------"
