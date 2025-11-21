@@ -73,6 +73,40 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
                 envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
             )
 
+    @deps.with_client
+    async def project_overview_route(
+        request: Request, client: GhidraClient
+    ) -> JSONResponse:
+        with request_scope(
+            "project_overview",
+            logger=deps.logger,
+            extra={"path": "/api/project_overview.json"},
+        ):
+            payload = client.get_project_files()
+            if payload is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                message = None
+                status = None
+                if upstream is not None:
+                    message = f"Upstream request failed: {upstream.get('reason', '')}".strip()
+                    status_val = upstream.get("status")
+                    if isinstance(status_val, int):
+                        status = status_val
+                return error_response(
+                    ErrorCode.UNAVAILABLE,
+                    message or None,
+                    upstream_error=upstream,
+                    status=status,
+                )
+            files = _normalise_project_files(payload)
+            response = {"files": files}
+            valid, errors = validate_payload("project_overview.v1.json", response)
+            if valid:
+                return envelope_response(envelope_ok(response))
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            )
+
     return [
         Route(
             "/api/project_info.json",
@@ -86,7 +120,44 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
             methods=["POST"],
             name="project_rebase",
         ),
+        Route(
+            "/api/project_overview.json",
+            project_overview_route,
+            methods=["GET", "HEAD"],
+            name="project_overview",
+        ),
     ]
+
+
+def _normalise_project_files(payload: object) -> List[Dict[str, object]]:
+    files: List[Dict[str, object]] = []
+    if not isinstance(payload, list):
+        return files
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        entry_type = entry.get("type")
+        if not isinstance(entry_type, str):
+            continue
+        entry_id = entry.get("domain_file_id")
+        size = _coerce_int(entry.get("size"))
+        files.append(
+            {
+                "domain_file_id": str(entry_id) if entry_id is not None else None,
+                "name": str(entry.get("name", "")),
+                "path": str(entry.get("path", "")),
+                "type": entry_type,
+                "size": size,
+            }
+        )
+    return files
+
+
+def _coerce_int(value: object) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _normalise_project_info(payload: Dict[str, Any]) -> Dict[str, Any]:
