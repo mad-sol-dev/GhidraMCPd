@@ -16,12 +16,18 @@ LATEST_URL=$(python - <<'PY'
 import json
 import re
 import sys
+from urllib.error import URLError, HTTPError
 from urllib.request import urlopen
 
 RELEASES_URL = "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest"
 
-with urlopen(RELEASES_URL) as resp:
-    data = json.load(resp)
+try:
+    with urlopen(RELEASES_URL) as resp:
+        data = json.load(resp)
+except (HTTPError, URLError) as exc:
+    raise SystemExit(
+        f"Unable to reach GitHub releases API ({exc}); it may be unavailable or rate limited."
+    )
 
 assets = data.get("assets", [])
 zip_url = None
@@ -38,8 +44,8 @@ print(zip_url)
 PY
 )
 
-if [[ -z "${LATEST_URL}" ]]; then
-  echo "Failed to resolve latest Ghidra download URL" >&2
+if [[ -z "${LATEST_URL:-}" ]]; then
+  echo "Failed to resolve latest Ghidra download URL. The GitHub API may be unavailable or rate limited." >&2
   exit 1
 fi
 
@@ -49,11 +55,14 @@ GHIDRA_VERSION=$(python - <<'PY'
 import re
 import sys
 
-url = sys.argv[1]
+DEFAULT_VERSION = "11.4.2"
+fallback_url = f"ghidra_{DEFAULT_VERSION}_PUBLIC.zip"
+url = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else fallback_url
+
 match = re.search(r"ghidra_([0-9]+\.[0-9]+\.[0-9]+)_PUBLIC", url)
-print(match.group(1) if match else "11.4.2")
+print(match.group(1) if match else DEFAULT_VERSION)
 PY
-"${LATEST_URL}")
+"${LATEST_URL:-}")
 
 if [[ -z "${GHIDRA_VERSION}" ]]; then
   GHIDRA_VERSION="11.4.2"
