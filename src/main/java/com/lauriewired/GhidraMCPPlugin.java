@@ -2336,7 +2336,7 @@ public class GhidraMCPPlugin extends Plugin {
     private String buildFolderEntry(DomainFolder folder) {
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        appendJsonField(sb, "domain_file_id", (String) null);
+        appendJsonField(sb, "domain_file_id", (Number) null);
         appendJsonField(sb, "name", folder.getName());
         appendJsonField(sb, "path", folder.getPathname());
         appendJsonField(sb, "type", "Folder");
@@ -2348,7 +2348,7 @@ public class GhidraMCPPlugin extends Plugin {
     private String buildFileEntry(DomainFile file) {
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        appendJsonField(sb, "domain_file_id", Long.toString(file.getFileID()));
+        appendJsonField(sb, "domain_file_id", file.getFileID());
         appendJsonField(sb, "name", file.getName());
         appendJsonField(sb, "path", file.getPathname());
         appendJsonField(sb, "type", file.getContentType());
@@ -2426,6 +2426,17 @@ public class GhidraMCPPlugin extends Plugin {
         }
         else {
             sb.append('"').append(jsonEscape(value)).append('"');
+        }
+        sb.append(',');
+    }
+
+    private void appendJsonField(StringBuilder sb, String key, Number value) {
+        sb.append('"').append(key).append('"').append(':');
+        if (value == null) {
+            sb.append("null");
+        }
+        else {
+            sb.append(value);
         }
         sb.append(',');
     }
