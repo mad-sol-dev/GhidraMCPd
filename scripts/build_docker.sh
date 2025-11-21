@@ -51,7 +51,7 @@ fi
 
 echo "Using Ghidra download URL: ${LATEST_URL}"
 
-GHIDRA_VERSION=$(python - <<'PY'
+GHIDRA_VERSION=$(python - "${LATEST_URL:-}" <<'PY'
 import re
 import sys
 
@@ -62,13 +62,13 @@ url = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] else fallback_url
 match = re.search(r"ghidra_([0-9]+\.[0-9]+\.[0-9]+)_PUBLIC", url)
 print(match.group(1) if match else DEFAULT_VERSION)
 PY
-"${LATEST_URL:-}")
+)
 
 if [[ -z "${GHIDRA_VERSION}" ]]; then
   GHIDRA_VERSION="11.4.2"
 fi
 
-python - <<'PY'
+python - "${GHIDRA_VERSION}" <<'PY'
 import pathlib
 import re
 import sys
@@ -82,11 +82,10 @@ if count:
 else:
     raise SystemExit("Unable to update ghidra.version in pom.xml")
 PY
-"${GHIDRA_VERSION}"
 
 echo "Updated pom.xml ghidra.version to ${GHIDRA_VERSION}"
 
-python - <<'PY'
+python - "${GHIDRA_VERSION}" <<'PY'
 import pathlib
 import re
 import sys
@@ -111,8 +110,6 @@ if not updated.endswith("\n"):
 
 props_path.write_text(updated, encoding="utf-8")
 PY
-"${GHIDRA_VERSION}"
-
 echo "Updated extension.properties versions to ${GHIDRA_VERSION}"
 
 docker build -f Dockerfile.build -t "${IMAGE_TAG}" --build-arg GHIDRA_ZIP_URL="${LATEST_URL}" .
