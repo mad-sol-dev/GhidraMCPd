@@ -68,7 +68,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import ghidra.program.model.listing.Function;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;
@@ -486,7 +486,7 @@ public class GhidraMCPPlugin extends Plugin {
         if (program == null) return "No program loaded";
 
         List<String> names = new ArrayList<>();
-        for (Function f : program.getFunctionManager().getFunctions(true)) {
+        for (ghidra.program.model.listing.Function f : program.getFunctionManager().getFunctions(true)) {
             names.add(f.getName());
         }
         return paginateList(names, offset, limit);
@@ -614,7 +614,7 @@ public class GhidraMCPPlugin extends Plugin {
         boolean matchAll = (searchTerm == null || searchTerm.isEmpty() || searchTerm.equals("*"));
 
         List<String> matches = new ArrayList<>();
-        for (Function func : program.getFunctionManager().getFunctions(true)) {
+        for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
             String name = func.getName();
             // simple substring match
             if (matchAll || name.toLowerCase().contains(searchTerm.toLowerCase())) {
@@ -646,7 +646,7 @@ public class GhidraMCPPlugin extends Plugin {
         if (program == null) return "No program loaded";
         DecompInterface decomp = new DecompInterface();
         decomp.openProgram(program);
-        for (Function func : program.getFunctionManager().getFunctions(true)) {
+        for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
             if (func.getName().equals(name)) {
                 DecompileResults result =
                     decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
@@ -669,7 +669,7 @@ public class GhidraMCPPlugin extends Plugin {
             SwingUtilities.invokeAndWait(() -> {
                 int tx = program.startTransaction("Rename function via HTTP");
                 try {
-                    for (Function func : program.getFunctionManager().getFunctions(true)) {
+                    for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
                         if (func.getName().equals(oldName)) {
                             func.setName(newName, SourceType.USER_DEFINED);
                             successFlag.set(true);
@@ -732,8 +732,8 @@ public class GhidraMCPPlugin extends Plugin {
         DecompInterface decomp = new DecompInterface();
         decomp.openProgram(program);
 
-        Function func = null;
-        for (Function f : program.getFunctionManager().getFunctions(true)) {
+        ghidra.program.model.listing.Function func = null;
+        for (ghidra.program.model.listing.Function f : program.getFunctionManager().getFunctions(true)) {
             if (f.getName().equals(functionName)) {
                 func = f;
                 break;
@@ -780,7 +780,7 @@ public class GhidraMCPPlugin extends Plugin {
         boolean commitRequired = checkFullCommit(highSymbol, highFunction);
 
         final HighSymbol finalHighSymbol = highSymbol;
-        final Function finalFunction = func;
+        final ghidra.program.model.listing.Function finalFunction = func;
         AtomicBoolean successFlag = new AtomicBoolean(false);
 
         try {
@@ -827,7 +827,7 @@ public class GhidraMCPPlugin extends Plugin {
 		if (highSymbol != null && !highSymbol.isParameter()) {
 			return false;
 		}
-		Function function = hfunction.getFunction();
+            ghidra.program.model.listing.Function function = hfunction.getFunction();
 		Parameter[] parameters = function.getParameters();
 		LocalSymbolMap localSymbolMap = hfunction.getLocalSymbolMap();
 		int numParams = localSymbolMap.getNumParams();
@@ -1075,7 +1075,7 @@ public class GhidraMCPPlugin extends Plugin {
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
-            Function func = program.getFunctionManager().getFunctionAt(addr);
+            ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
 
             if (func == null) return "No function found at address " + addressStr;
 
@@ -1115,7 +1115,7 @@ public class GhidraMCPPlugin extends Plugin {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
 
-        Function func = program.getFunctionManager().getFunctionContaining(location.getAddress());
+        ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionContaining(location.getAddress());
         if (func == null) return "No function at current location: " + location.getAddress();
 
         return String.format("Function: %s at %s\nSignature: %s",
@@ -1132,7 +1132,7 @@ public class GhidraMCPPlugin extends Plugin {
         if (program == null) return "No program loaded";
 
         List<String> entries = new ArrayList<>();
-        for (Function func : program.getFunctionManager().getFunctions(true)) {
+        for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
             entries.add(String.format("%s at %s", func.getName(), func.getEntryPoint()));
         }
 
@@ -1143,8 +1143,8 @@ public class GhidraMCPPlugin extends Plugin {
      * Gets a function at the given address or containing the address
      * @return the function or null if not found
      */
-    private Function getFunctionForAddress(Program program, Address addr) {
-        Function func = program.getFunctionManager().getFunctionAt(addr);
+    private ghidra.program.model.listing.Function getFunctionForAddress(Program program, Address addr) {
+        ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
         if (func == null) {
             func = program.getFunctionManager().getFunctionContaining(addr);
         }
@@ -1161,7 +1161,7 @@ public class GhidraMCPPlugin extends Plugin {
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
-            Function func = getFunctionForAddress(program, addr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
             if (func == null) return "No function found at or containing address " + addressStr;
 
             DecompInterface decomp = new DecompInterface();
@@ -1186,7 +1186,7 @@ public class GhidraMCPPlugin extends Plugin {
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
-            Function func = getFunctionForAddress(program, addr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
             if (func == null) return "No function found at or containing address " + addressStr;
 
             StringBuilder result = new StringBuilder();
@@ -1311,7 +1311,7 @@ public class GhidraMCPPlugin extends Plugin {
         int tx = program.startTransaction("Rename function by address");
         try {
             Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            Function func = getFunctionForAddress(program, addr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
 
             if (func == null) {
                 Msg.error(this, "Could not find function at address: " + functionAddrStr);
@@ -1364,7 +1364,7 @@ public class GhidraMCPPlugin extends Plugin {
         try {
             // Get the address and function
             Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            Function func = getFunctionForAddress(program, addr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
 
             if (func == null) {
                 String msg = "Could not find function at address: " + functionAddrStr;
@@ -1391,7 +1391,7 @@ public class GhidraMCPPlugin extends Plugin {
     /**
      * Add a comment showing the prototype being set
      */
-    private void addPrototypeComment(Program program, Function func, String prototype) {
+    private void addPrototypeComment(Program program, ghidra.program.model.listing.Function func, String prototype) {
         int txComment = program.startTransaction("Add prototype comment");
         try {
             program.getListing().setComment(
@@ -1491,7 +1491,7 @@ public class GhidraMCPPlugin extends Plugin {
         try {
             // Find the function
             Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            Function func = getFunctionForAddress(program, addr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
 
             if (func == null) {
                 Msg.error(this, "Could not find function at address: " + functionAddrStr);
@@ -1562,7 +1562,7 @@ public class GhidraMCPPlugin extends Plugin {
     /**
      * Decompile a function and return the results
      */
-    private DecompileResults decompileFunction(Function func, Program program) {
+    private DecompileResults decompileFunction(ghidra.program.model.listing.Function func, Program program) {
         // Set up decompiler for accessing the decompiled function
         DecompInterface decomp = new DecompInterface();
         decomp.openProgram(program);
@@ -1628,7 +1628,7 @@ public class GhidraMCPPlugin extends Plugin {
                 Address fromAddr = ref.getFromAddress();
                 RefType refType = ref.getReferenceType();
 
-                Function fromFunc = program.getFunctionManager().getFunctionContaining(fromAddr);
+                ghidra.program.model.listing.Function fromFunc = program.getFunctionManager().getFunctionContaining(fromAddr);
                 String funcInfo = (fromFunc != null) ? " in " + fromFunc.getName() : "";
                 String context = String.format("%s%s [%s]", fromAddr, funcInfo, refType.getName());
                 if (!normalized.isEmpty() && !context.toLowerCase().contains(normalized)) {
@@ -1671,7 +1671,7 @@ public class GhidraMCPPlugin extends Plugin {
                 RefType refType = ref.getReferenceType();
                 
                 String targetInfo = "";
-                Function toFunc = program.getFunctionManager().getFunctionAt(toAddr);
+                ghidra.program.model.listing.Function toFunc = program.getFunctionManager().getFunctionAt(toAddr);
                 if (toFunc != null) {
                     targetInfo = " to function " + toFunc.getName();
                 } else {
@@ -1701,7 +1701,7 @@ public class GhidraMCPPlugin extends Plugin {
         try {
             List<String> refs = new ArrayList<>();
             FunctionManager funcManager = program.getFunctionManager();
-            for (Function function : funcManager.getFunctions(true)) {
+            for (ghidra.program.model.listing.Function function : funcManager.getFunctions(true)) {
                 if (function.getName().equals(functionName)) {
                     Address entryPoint = function.getEntryPoint();
                     ReferenceIterator refIter = program.getReferenceManager().getReferencesTo(entryPoint);
@@ -1711,7 +1711,7 @@ public class GhidraMCPPlugin extends Plugin {
                         Address fromAddr = ref.getFromAddress();
                         RefType refType = ref.getReferenceType();
                         
-                        Function fromFunc = funcManager.getFunctionContaining(fromAddr);
+                        ghidra.program.model.listing.Function fromFunc = funcManager.getFunctionContaining(fromAddr);
                         String funcInfo = (fromFunc != null) ? " in " + fromFunc.getName() : "";
                         
                         refs.add(String.format("From %s%s [%s]", fromAddr, funcInfo, refType.getName()));
@@ -2160,7 +2160,7 @@ public class GhidraMCPPlugin extends Plugin {
 
             List<String> results = new ArrayList<>();
             while (functions.hasNext()) {
-                Function func = functions.next();
+                ghidra.program.model.listing.Function func = functions.next();
                 String name = func.getName();
                 Address entryPoint = func.getEntryPoint();
                 
@@ -2457,7 +2457,7 @@ public class GhidraMCPPlugin extends Plugin {
         if (entries.isEmpty()) {
             Address base = program.getImageBase();
             if (base != null) {
-                Function func = program.getListing().getFunctionAt(base);
+                ghidra.program.model.listing.Function func = program.getListing().getFunctionAt(base);
                 if (func != null) {
                     Address addr = func.getEntryPoint();
                     if (!entries.contains(addr)) {
