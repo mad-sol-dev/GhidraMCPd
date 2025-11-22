@@ -39,6 +39,24 @@ class MockProjectClient:
             "exports_count": 2,
         }
 
+    def get_project_files(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "domain_file_id": 1,
+                "name": "demo",
+                "path": "/demo",
+                "type": "program",
+                "size": "1024",
+            },
+            {
+                "domain_file_id": None,
+                "name": "notes",
+                "path": "/docs/notes.txt",
+                "type": "note",
+                "size": None,
+            },
+        ]
+
     def close(self) -> None:  # pragma: no cover - nothing to close in tests
         pass
 
@@ -91,12 +109,34 @@ def test_project_tools_registered_and_envelopes(monkeypatch) -> None:
     register_tools(server, client_factory=MockProjectClient, enable_writes=True)
 
     tool_names = {tool.name for tool in server._tool_manager._tools.values()}
-    assert {"project_info", "project_rebase"}.issubset(tool_names)
+    assert {"project_info", "project_overview", "project_rebase"}.issubset(tool_names)
 
     info_tool = server._tool_manager._tools["project_info"]
     info_response = info_tool.fn()
     assert info_response["ok"] is True
     assert info_response["data"]["entry_points"] == ["0x1000", "0x2000"]
+
+    overview_tool = server._tool_manager._tools["project_overview"]
+    overview_response = overview_tool.fn()
+    assert overview_response["ok"] is True
+    assert overview_response["data"] == {
+        "files": [
+            {
+                "domain_file_id": "1",
+                "name": "demo",
+                "path": "/demo",
+                "type": "program",
+                "size": 1024,
+            },
+            {
+                "domain_file_id": None,
+                "name": "notes",
+                "path": "/docs/notes.txt",
+                "type": "note",
+                "size": None,
+            },
+        ]
+    }
 
     rebase_tool = server._tool_manager._tools["project_rebase"]
     rebase_response = rebase_tool.fn(new_base="0x2000", dry_run=False, confirm=True)
@@ -106,6 +146,7 @@ def test_project_tools_registered_and_envelopes(monkeypatch) -> None:
     assert rebase_args["rebases_enabled"] is True
 
     assert "project_info.v1.json" in validate_calls
+    assert "project_overview.v1.json" in validate_calls
     assert "project_rebase.request.v1.json" in validate_calls
     assert "project_rebase.v1.json" in validate_calls
 
