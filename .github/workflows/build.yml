@@ -6,6 +6,7 @@ on:
       - ".plan/**"
       - "bridge/**"          # Python
       - "bin/plan_check.py"
+      - "docs/**"
       - "scripts/**"
       - "pom.xml"
       - "src/**"
