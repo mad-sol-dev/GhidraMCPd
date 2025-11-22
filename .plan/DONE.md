@@ -1,6 +1,7 @@
 # DONE (archive)
 
 ## 2025-11
+- 2025-11-22 **T-202511-019** — Refresh roadmap and .plan with navigation/context/backlog alignment _commit:pending_
 - 2025-11-06 **SSE-DISCONNECT-FIX** — Sticky-Lock nach Client-Abbruch _commit:6343362_
 - 2025-11-06 **OPENAPI-REQUESTBODY** — fehlende `requestBody`-Schemas
 - 2025-11-06 **API-SCHEMA-UNIFY** — Inkonsistente Felder in Antworten _commit:7ba7f46_
