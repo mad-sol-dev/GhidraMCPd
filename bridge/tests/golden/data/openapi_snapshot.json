@@ -605,6 +605,138 @@
         "x-response-model": "analyze_function_complete.v1.json"
       }
     },
+    "/api/capabilities.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:capabilities.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "endpoints": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "budget_hint": {
+                            "enum": [
+                              "small",
+                              "medium",
+                              "large"
+                            ],
+                            "type": "string"
+                          },
+                          "category": {
+                            "enum": [
+                              "overview",
+                              "detail",
+                              "write"
+                            ],
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "method": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "method",
+                          "category",
+                          "budget_hint",
+                          "description"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "endpoints"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "capabilities",
+        "x-response-model": "capabilities.v1.json"
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$id": "urn:schema:capabilities.v1",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "endpoints": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "budget_hint": {
+                            "enum": [
+                              "small",
+                              "medium",
+                              "large"
+                            ],
+                            "type": "string"
+                          },
+                          "category": {
+                            "enum": [
+                              "overview",
+                              "detail",
+                              "write"
+                            ],
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "method": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "method",
+                          "category",
+                          "budget_hint",
+                          "description"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "endpoints"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "capabilities",
+        "x-response-model": "capabilities.v1.json"
+      }
+    },
     "/api/collect.json": {
       "post": {
         "requestBody": {
@@ -1115,6 +1247,32 @@
                       "pattern": "^/.*",
                       "type": "string"
                     },
+                    "transport_error": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "reason",
+                        "retryable"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
                     "written": {
                       "type": "boolean"
                     }
@@ -1233,6 +1391,32 @@
                     "path": {
                       "pattern": "^/.*",
                       "type": "string"
+                    },
+                    "transport_error": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "reason",
+                        "retryable"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
                     },
                     "written": {
                       "type": "boolean"
@@ -1436,6 +1620,32 @@
                     "path": {
                       "pattern": "^/.*",
                       "type": "string"
+                    },
+                    "transport_error": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        },
+                        "retryable": {
+                          "type": "boolean"
+                        },
+                        "status": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "reason",
+                        "retryable"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
                     },
                     "written": {
                       "type": "boolean"
@@ -2584,6 +2794,132 @@
         },
         "summary": "project_info",
         "x-response-model": "project_info.v1.json"
+      }
+    },
+    "/api/project_overview.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "files": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domain_file_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "domain_file_id",
+                          "name",
+                          "path",
+                          "type",
+                          "size"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "files"
+                  ],
+                  "title": "project_overview.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "project_overview",
+        "x-response-model": "project_overview.v1.json"
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "files": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "domain_file_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "type": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "domain_file_id",
+                          "name",
+                          "path",
+                          "type",
+                          "size"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "files"
+                  ],
+                  "title": "project_overview.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "project_overview",
+        "x-response-model": "project_overview.v1.json"
       }
     },
     "/api/project_rebase.json": {
