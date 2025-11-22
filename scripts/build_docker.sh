@@ -64,14 +64,16 @@ docker build \
 echo "Extracting artifact..."
 CONTAINER_ID=$(docker create "${IMAGE_TAG}")
 mkdir -p target
-# Kopiere alle JARs aus target, ignoriere Fehler falls keine da sind (sollte nicht passieren bei success)
 docker cp "${CONTAINER_ID}:/workspace/target/." target/
 
-# Bereinigung (Original-sources und classes entfernen, wir wollen nur das JAR)
-find target -maxdepth 1 -not -name "*.jar" -not -name "target" -delete 2>/dev/null || true
+# Bereinigung: nur Verzeichnisse (classes/, lib/, …) entfernen – JAR & ZIP bleiben
+find target -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
 
-JAR_PATH=$(ls target/GhidraMCP*.jar | head -n 1)
+JAR_PATH=$(ls target/GhidraMCP*.jar 2>/dev/null | head -n 1 || true)
+ZIP_PATH=$(ls target/GhidraMCP-*.zip 2>/dev/null | head -n 1 || true)
+
 echo "--------------------------------------------------"
-echo "Build Success! Artifact available at:"
-echo "$JAR_PATH"
+[ -n "$JAR_PATH" ] && echo "JAR : $JAR_PATH"
+[ -n "$ZIP_PATH" ] && echo "ZIP : $ZIP_PATH"
 echo "--------------------------------------------------"
+
