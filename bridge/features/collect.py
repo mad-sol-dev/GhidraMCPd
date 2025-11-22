@@ -137,13 +137,25 @@ def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) ->
 def _op_read_bytes(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
     length = int(params.get("length", 64))
-    return memory.read_bytes(client, address=address, length=length)
+    include_literals = bool(params.get("include_literals", False))
+    return memory.read_bytes(
+        client,
+        address=address,
+        length=length,
+        include_literals=include_literals,
+    )
 
 
 def _op_read_words(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
     count = int(params.get("count", 1))
-    return batch_ops.read_words(client, address=address, count=count)
+    include_literals = bool(params.get("include_literals", False))
+    return batch_ops.read_words(
+        client,
+        address=address,
+        count=count,
+        include_literals=include_literals,
+    )
 
 
 def _op_search_strings(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
@@ -154,7 +166,14 @@ def _op_search_strings(client: GhidraClient, params: Mapping[str, object]) -> Ma
         raise ValueError("limit must be positive")
     if page <= 0:
         raise ValueError("page must be positive")
-    return strings.search_strings(client, query=query, limit=limit, page=page)
+    include_literals = bool(params.get("include_literals", False))
+    return strings.search_strings(
+        client,
+        query=query,
+        limit=limit,
+        page=page,
+        include_literals=include_literals,
+    )
 
 
 def _fetch_strings(client: GhidraClient, *, limit: int, offset: int) -> Iterable[Mapping[str, object]]:

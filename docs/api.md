@@ -335,7 +335,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
-- `read_bytes` — Read a raw byte window. Required: address (hex). Optional: length in bytes (default 64).
+- `read_bytes` — Read a raw byte window. Required: address (hex). Optional: length in bytes (default 64) and `include_literals` (default `false`) to echo the literal byte string alongside base64.
 
   ```json
   {
@@ -343,12 +343,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
     "op": "read_bytes",
     "params": {
       "address": "0x401000",
-      "length": 32
+      "length": 32,
+      "include_literals": true
     }
   }
   ```
 
-- `read_words` — Read machine words. Required: address (hex). Optional: count (default 1).
+- `read_words` — Read machine words. Required: address (hex). Optional: count (default 1) and `include_literals` (default `false`) to return base64-encoded word bytes beside decoded integers.
 
   ```json
   {

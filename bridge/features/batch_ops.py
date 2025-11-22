@@ -6,6 +6,8 @@ addresses or performing context-aware queries.
 """
 from __future__ import annotations
 
+import base64
+
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
@@ -52,6 +54,8 @@ def read_words(
     client: GhidraClient,
     address: int,
     count: int = 1,
+    *,
+    include_literals: bool = False,
 ) -> Dict[str, object]:
     """Read multiple 32-bit words from memory starting at an address.
     
@@ -70,6 +74,7 @@ def read_words(
     increment_counter("batch_ops.read_words")
     
     words = []
+    literals: List[str | None] = []
     for i in range(count):
         current_addr = address + i * 4
         data = client.read_bytes(current_addr, 4)
@@ -77,14 +82,22 @@ def read_words(
             # Convert 4 bytes to little-endian integer
             word = int.from_bytes(data, byteorder='little', signed=False)
             words.append(word)
+            if include_literals:
+                literals.append(base64.b64encode(data).decode("ascii"))
         else:
             words.append(None)
-    
-    return {
+            if include_literals:
+                literals.append(None)
+
+    payload: Dict[str, object] = {
         "address": int_to_hex(address),
         "count": count,
         "words": words,
     }
+    if include_literals:
+        payload["literals"] = literals
+
+    return payload
 
 
 def search_scalars_with_context(

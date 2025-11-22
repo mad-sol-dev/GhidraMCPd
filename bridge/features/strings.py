@@ -195,6 +195,7 @@ def search_strings(
     query: str,
     limit: int,
     page: int,
+    include_literals: bool = False,
 ) -> Dict[str, Any]:
     limit = max(int(limit), 1)
     page = max(int(page), 1)
@@ -209,7 +210,11 @@ def search_strings(
             program_digest=digest,
             endpoint="strings",
             normalized_query=normalized_query,
-            options={"limit": limit, "page": page},
+            options={
+                "limit": limit,
+                "page": page,
+                "include_literals": include_literals,
+            },
         )
         cached = cache.get(cache_key)
         if cached is not None:
@@ -222,7 +227,7 @@ def search_strings(
             cache.invalidate(cache_key)
         raise
 
-    normalized = strings_compact_view(all_entries)
+    normalized = strings_compact_view(all_entries, include_literals=include_literals)
     normalized_entries = normalized.get("items", [])
 
     total = len(normalized_entries)
@@ -268,7 +273,9 @@ def _truncate_literal(value: str, *, max_len: int = 120) -> str:
 
 
 def strings_compact_view(
-    entries: Sequence[Mapping[str, object]]
+    entries: Sequence[Mapping[str, object]],
+    *,
+    include_literals: bool = False,
 ) -> Dict[str, object]:
     """Normalize raw string metadata into the compact response structure."""
 
@@ -280,7 +287,7 @@ def strings_compact_view(
         if literal_raw is None:
             literal_raw = raw.get("s", "")
         literal = _normalize_literal(str(literal_raw))
-        literal = _truncate_literal(literal)
+        literal_compact = _truncate_literal(literal)
 
         address_raw = raw.get("address")
         if address_raw is None:
@@ -316,9 +323,10 @@ def strings_compact_view(
             (
                 int(address),
                 {
-                    "s": literal,
+                    "s": literal_compact,
                     "addr": int_to_hex(int(address)),
                     "refs": refs,
+                    **({"literal": literal} if include_literals else {}),
                 },
             )
         )

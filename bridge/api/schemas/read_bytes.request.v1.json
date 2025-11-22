@@ -6,6 +6,7 @@
   "required": ["address", "length"],
   "properties": {
     "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "length": {"type": "integer", "minimum": 1, "maximum": 4096}
+    "length": {"type": "integer", "minimum": 1, "maximum": 4096},
+    "include_literals": {"type": "boolean", "default": false}
   }
 }

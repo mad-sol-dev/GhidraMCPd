@@ -136,20 +136,22 @@ Read raw bytes from memory.
 **Response:**
 ```json
 {
-  "ok": true,
-  "data": {
-    "address": "0x00000000",
-    "length": 16,
-    "encoding": "base64",
-    "data": "2/Ah4zTQn+XX8CHjMNCf5Q=="
-  },
-  "errors": []
+"ok": true,
+"data": {
+  "address": "0x00000000",
+  "length": 16,
+  "encoding": "base64",
+  "data": "2/Ah4zTQn+XX8CHjMNCf5Q==",
+  "literal": "\xDB\xF0!\xE35\x10\x9F\xE5\xD7\xF0!\xE30\xD0\x9F\xE5"
+},
+"errors": []
 }
 ```
 
 - `length`: max 4096 bytes
 - `encoding`: always "base64"
 - `data`: Base64-encoded bytes
+- `literal`: Optional raw byte string (Latin-1 safe) when `include_literals: true` is requested
 
 ## Wildcard Queries
 

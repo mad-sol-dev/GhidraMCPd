@@ -139,15 +139,36 @@ def test_read_words_handles_none():
         },
         scalar_results={},
     )
-    
+
     result = batch_ops.read_words(
         client,
         address=0x1000,
         count=2,
     )
-    
+
     assert result["words"][0] == 1
     assert result["words"][1] is None
+
+
+def test_read_words_optionally_includes_literals():
+    client = StubClient(
+        disasm_results={},
+        read_results={
+            0x1000: b'\x01\x00\x00\x00',
+            0x1004: None,
+        },
+        scalar_results={},
+    )
+
+    result = batch_ops.read_words(
+        client,
+        address=0x1000,
+        count=2,
+        include_literals=True,
+    )
+
+    assert result["words"] == [1, None]
+    assert result.get("literals") == ["AQAAAA==", None]
 
 
 def test_search_scalars_with_context_preserves_pagination(monkeypatch):
