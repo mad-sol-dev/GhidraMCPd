@@ -179,6 +179,62 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
+## `/api/capabilities.json`
+
+### GET
+
+**Summary:** capabilities
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:capabilities.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `endpoints` | array<object> | Yes |  |
+
+  ```json
+  {
+    "endpoints": [
+      {
+        "budget_hint": "small",
+        "category": "overview",
+        "description": "string",
+        "method": "string",
+        "path": "string"
+      }
+    ]
+  }
+  ```
+
+### HEAD
+
+**Summary:** capabilities
+
+#### Responses
+- `200` — Successful Response
+  - Schema ID: `urn:schema:capabilities.v1`
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `endpoints` | array<object> | Yes |  |
+
+  ```json
+  {
+    "endpoints": [
+      {
+        "budget_hint": "small",
+        "category": "overview",
+        "description": "string",
+        "method": "string",
+        "path": "string"
+      }
+    ]
+  }
+  ```
+
 ## `/api/collect.json`
 
 ### POST
@@ -547,6 +603,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | `kind` | string | Yes | enum=['structure', 'union'] |
   | `notes` | array<string> | Yes |  |
   | `path` | string | Yes | pattern=^/.* |
+  | `transport_error` | object | No |  |
   | `written` | boolean | Yes |  |
 
   ```json
@@ -570,6 +627,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "string"
     ],
     "path": "string",
+    "transport_error": {
+      "reason": "string",
+      "retryable": false,
+      "status": 0
+    },
     "written": false
   }
   ```
@@ -611,6 +673,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | `kind` | string | Yes | enum=['structure', 'union'] |
   | `notes` | array<string> | Yes |  |
   | `path` | string | Yes | pattern=^/.* |
+  | `transport_error` | object | No |  |
   | `written` | boolean | Yes |  |
 
   ```json
@@ -628,6 +691,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "string"
     ],
     "path": "string",
+    "transport_error": {
+      "reason": "string",
+      "retryable": false,
+      "status": 0
+    },
     "written": false
   }
   ```
@@ -673,6 +741,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | `kind` | string | Yes | enum=['structure', 'union'] |
   | `notes` | array<string> | Yes |  |
   | `path` | string | Yes | pattern=^/.* |
+  | `transport_error` | object | No |  |
   | `written` | boolean | Yes |  |
 
   ```json
@@ -696,6 +765,11 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       "string"
     ],
     "path": "string",
+    "transport_error": {
+      "reason": "string",
+      "retryable": false,
+      "status": 0
+    },
     "written": false
   }
   ```
@@ -1217,6 +1291,60 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
       }
     ],
     "program_name": "string"
+  }
+  ```
+
+## `/api/project_overview.json`
+
+### GET
+
+**Summary:** project_overview
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `files` | array<object> | Yes |  |
+
+  ```json
+  {
+    "files": [
+      {
+        "domain_file_id": "string",
+        "name": "string",
+        "path": "string",
+        "size": 0,
+        "type": "string"
+      }
+    ]
+  }
+  ```
+
+### HEAD
+
+**Summary:** project_overview
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `files` | array<object> | Yes |  |
+
+  ```json
+  {
+    "files": [
+      {
+        "domain_file_id": "string",
+        "name": "string",
+        "path": "string",
+        "size": 0,
+        "type": "string"
+      }
+    ]
   }
   ```
 
