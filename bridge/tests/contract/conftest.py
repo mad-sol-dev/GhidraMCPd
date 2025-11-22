@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
-from bridge.ghidra.client import CursorPageResult, DataTypeOperationResult
+from bridge.ghidra.client import CursorPageResult, DataTypeOperationResult, RequestError
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 from bridge.utils import config
@@ -28,6 +28,7 @@ class StubGhidraClient:
     """Minimal stub that satisfies feature dependencies for contract tests."""
 
     def __init__(self) -> None:
+        self._last_error: Optional[RequestError] = None
         self._jt_base = 0x00100000
         self._slot_values: List[Optional[int]] = [
             0x00102030,
@@ -206,6 +207,20 @@ class StubGhidraClient:
             value = value.rstrip("/")
         return value or "/"
 
+    @property
+    def last_error(self) -> Optional[RequestError]:
+        return self._last_error
+
+    def _clear_error(self) -> None:
+        self._last_error = None
+
+    def _set_error(
+        self, reason: str, *, status: Optional[int] = None, retryable: bool = False
+    ) -> RequestError:
+        error = RequestError(status=status, reason=reason, retryable=retryable)
+        self._last_error = error
+        return error
+
     def _datatype_path(self, category: str, name: str) -> str:
         category = self._normalize_category(category)
         if category == "/":
@@ -255,6 +270,7 @@ class StubGhidraClient:
             "fields": prepared,
             "size": self._estimate_size("structure", prepared),
         }
+        self._clear_error()
         self._datatypes[path] = payload
         return DataTypeOperationResult(True, datatype=dict(payload))
 
@@ -264,9 +280,11 @@ class StubGhidraClient:
         path: str,
         fields: List[Dict[str, object]],
     ) -> DataTypeOperationResult:
+        self._clear_error()
         existing = self._datatypes.get(path)
         if existing is None:
-            return DataTypeOperationResult(False, error="datatype not found")
+            error = self._set_error("datatype not found")
+            return DataTypeOperationResult(False, error=str(error.reason), transport_error=error)
         prepared = self._prepare_fields(fields)
         payload = dict(existing)
         payload.update(
@@ -298,6 +316,7 @@ class StubGhidraClient:
             "fields": prepared,
             "size": self._estimate_size("union", prepared),
         }
+        self._clear_error()
         self._datatypes[path] = payload
         return DataTypeOperationResult(True, datatype=dict(payload))
 
@@ -307,9 +326,11 @@ class StubGhidraClient:
         path: str,
         fields: List[Dict[str, object]],
     ) -> DataTypeOperationResult:
+        self._clear_error()
         existing = self._datatypes.get(path)
         if existing is None:
-            return DataTypeOperationResult(False, error="datatype not found")
+            error = self._set_error("datatype not found")
+            return DataTypeOperationResult(False, error=str(error.reason), transport_error=error)
         prepared = self._prepare_fields(fields)
         payload = dict(existing)
         payload.update(
@@ -324,9 +345,11 @@ class StubGhidraClient:
         return DataTypeOperationResult(True, datatype=dict(payload))
 
     def delete_datatype(self, *, kind: str, path: str) -> DataTypeOperationResult:
+        self._clear_error()
         existing = self._datatypes.pop(path, None)
         if existing is None:
-            return DataTypeOperationResult(False, error="datatype not found")
+            error = self._set_error("datatype not found")
+            return DataTypeOperationResult(False, error=str(error.reason), transport_error=error)
         payload = {
             "kind": existing.get("kind", kind),
             "path": path,
@@ -334,25 +357,31 @@ class StubGhidraClient:
         return DataTypeOperationResult(True, datatype=payload)
 
     def read_dword(self, address: int) -> Optional[int]:
+        self._clear_error()
         index = (address - self._jt_base) // 4
         if 0 <= index < len(self._slot_values):
             return self._slot_values[index]
         return 0x00102030
 
     def get_function_by_address(self, address: int) -> Optional[Dict[str, str]]:
+        self._clear_error()
         meta = self._functions.get(address)
         return dict(meta) if meta else None
 
     def rename_function(self, address: int, new_name: str) -> bool:
+        self._clear_error()
         return True
 
     def set_decompiler_comment(self, address: int, comment: str) -> bool:
+        self._clear_error()
         return True
 
     def get_xrefs_to(self, address: int, *, limit: int = 50):
+        self._clear_error()
         return list(self._xrefs)
 
     def search_xrefs_to(self, address: int, query: str):
+        self._clear_error()
         normalized = query.lower()
         return [
             dict(entry)
@@ -361,6 +390,7 @@ class StubGhidraClient:
         ]
 
     def disassemble_function(self, address: int):
+        self._clear_error()
         if address == 0x00005000:
             return [
                 "00005000: BL target_func",
@@ -397,6 +427,7 @@ class StubGhidraClient:
         return "void helper(void) {\n    return;\n}"
 
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
+        self._clear_error()
         return True
 
     def rebase_program(
@@ -406,8 +437,10 @@ class StubGhidraClient:
         offset: Optional[int] = None,
         confirm: bool = False,
     ) -> tuple[bool, list[str]]:
+        self._clear_error()
         if not confirm:
-            return False, ["ERROR: confirmation required"]
+            error = self._set_error("confirmation required")
+            return False, [f"ERROR: {error.reason}"]
 
         try:
             current_base = int(str(self._project_info["image_base"]), 16)
@@ -463,6 +496,7 @@ class StubGhidraClient:
     def list_strings_compact(
         self, *, limit: int = 50, offset: int = 0
     ) -> List[Dict[str, object]]:
+        self._clear_error()
         if limit < 0:
             limit = 0
         start = max(offset, 0)
@@ -470,6 +504,7 @@ class StubGhidraClient:
         return [dict(entry) for entry in self._strings[start:end]]
 
     def search_strings(self, query: str) -> List[Dict[str, object]]:
+        self._clear_error()
         normalized = query.lower()
         results: List[Dict[str, object]] = []
         for entry in self._strings:
@@ -479,6 +514,7 @@ class StubGhidraClient:
         return results
 
     def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
+        self._clear_error()
         return self._string_lookup.get(address)
 
     def search_functions(
@@ -491,6 +527,7 @@ class StubGhidraClient:
     ) -> CursorPageResult[str]:
         """Return a predictable list of functions for testing."""
 
+        self._clear_error()
         all_functions = [
             "Reset at 0000ABCD",
             "reset_handler @ 00FF10",
@@ -521,6 +558,7 @@ class StubGhidraClient:
         return CursorPageResult(page_items, has_more, next_cursor)
 
     def disassemble_at(self, address: int, count: int) -> List[Dict[str, str]]:
+        self._clear_error()
         return [
             {
                 "address": f"0x{address + i * 4:08x}",
@@ -533,6 +571,7 @@ class StubGhidraClient:
     def list_functions_in_range(
         self, address_min: int, address_max: int
     ) -> List[Dict[str, object]]:
+        self._clear_error()
         results: List[Dict[str, object]] = []
         for addr, meta in sorted(self._functions.items()):
             if address_min <= addr <= address_max:
@@ -546,6 +585,7 @@ class StubGhidraClient:
         return results
 
     def search_imports(self, query: str) -> List[str]:
+        self._clear_error()
         normalized_query = query.lower()
         return [
             entry
@@ -554,6 +594,7 @@ class StubGhidraClient:
         ]
 
     def search_exports(self, query: str) -> List[str]:
+        self._clear_error()
         normalized_query = query.lower()
         return [
             entry
@@ -562,6 +603,7 @@ class StubGhidraClient:
         ]
 
     def get_project_info(self) -> Dict[str, object]:
+        self._clear_error()
         return {
             "program_name": self._project_info["program_name"],
             "executable_path": self._project_info["executable_path"],
@@ -578,6 +620,7 @@ class StubGhidraClient:
         }
 
     def get_project_files(self) -> List[Dict[str, object]]:
+        self._clear_error()
         return [dict(entry) for entry in self._project_files]
 
     def close(self) -> None:
