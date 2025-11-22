@@ -1,41 +1,46 @@
-# Roadmap (focused on LLM efficiency)
+# Roadmap (LLM-first focus)
 
-## Phase 1 – Correctness & consistency (now)
-- ✅ GET /api/project_info.json
-- ✅ Unify search metadata ({query,total,page,limit,has_more,items}, page=1-based) — `list_functions_in_range` now aligned; compact listings continue to rely on offsets
-- ✅ Unified error schema + enums
-- OpenAPI snapshots drift-free
+## Current capabilities
+- ✅ Core program metadata and firmware set visibility via `/api/project_info.json` and `/api/project_overview.json`, including schema validation and contract/unit coverage.
+- ✅ Composite and budgeting flows: `/api/analyze_function_complete.json`, `/api/collect.json`, cursor streaming, request budgeting with auto-trim/strict enforcement, and short-term caching for deterministic multi-query runs.
+- ✅ Guarded write support: `/api/write_bytes.json` and `/api/project_rebase.json` are behind explicit environment gates; datatype introspection endpoints are live; the MMIO annotator stays dry-run unless writes are enabled.
 
-## Phase 2 – Fewer Round Trips (Composite & Collector)
-- ✅ POST /api/analyze_function_complete.json (read-only, server-side aggregation)
-- ✅ POST /api/collect.json (multi-query collector for multiple read-only sub-ops)
-- ✅ Result budgeting (server-side): `max_result_tokens`, `result_budget.mode=auto_trim|strict`
-  - **auto_trim:** 200 OK, per-subop envelope flagged with `truncated=true`, `estimate_tokens`, and budgeting notes.
-  - **strict:** 413 RESULT_TOO_LARGE response with recovery hints (reduce fields/limit/k).
+## A. Program navigation & context
+- ✅ Solidify `project_overview`
+  - Tool is shipped and exercised; remaining work is UX/prompt guidance so LLMs reliably use the firmware-set context they receive.
+- ◻ Explicit program selection as global context
+  - Design MCP endpoints like `select_program(domain_file_id: str)` and `get_current_program()` to keep all analysis tools (search/disassembly/xrefs) aligned to the active Ghidra program. **Planning needed:** gating/validation rules for switching programs mid-session.
+- ◻ Firmware-set workflows
+  - Define standard prompts/recipes for boot→app→res investigations (e.g., reset vectors in BOOT, update handlers in APP, resource container checks in RES). **Planning needed:** how to expose these as reusable flows for agents.
 
-## Phase 3 – Relevance & Scaling
-- ✅ rank=simple & k (opt-in)
-- ✅ Cursor streaming for large sets (cursor/resume plumbing + docs/tests)
-- ✅ 5-minute short-term cache per {digest,query}
-- ✅ Batch project analysis lanes (multi-program collector envelopes)
+## B. ghidra-bridge tooling
+- ◻ Round out tool landscape
+  - Investigate why `strings_compact` returns empty catalogs while `search_strings` works; either document the limitation or activate population. Clarify error messaging for tools like `search_xrefs_to` where empty `query` strings are mandatory.
+- ◻ High-level analysis recipes on existing tools
+  - Formalize LLM-side “String → Xrefs → Disasm,” “Scalar → MMIO → mmio_annotate_compact,” and “Region → list_functions_in_range → analyze_function_complete” workflows. Future: optional MCP meta-tools that package these.
+- ◻ Write-path hygiene (rename/comments/labels)
+  - Build small gated write tools such as `rename_function`, `set_comment`, or `apply_label`, each with dry-run options, explicit error codes, and clear docs about `GHIDRA_MCP_ENABLE_WRITES` requirements.
 
-## Post-Phase 3 – Delivery & Hardening
+## C. GhidraMCP plugin & packaging
+- ◻ Extension ZIP packaging story
+  - Beyond the Maven-built `GhidraMCP.jar`, produce a reproducible Extension ZIP (proper layout + `extension.properties` + JAR) and installation checklist. CI/script should fetch Ghidra (11.4.2), build the plugin, emit the ZIP, and run a minimal smoke test (`project_info`, etc.).
+- ◻ Early detection of Ghidra version incompatibilities
+  - Establish a small test matrix (e.g., minimum supported vs. latest Ghidra) and at least one unit test that mocks Ghidra APIs to ensure type compatibility, guarding against namespace clashes like `java.util.function.Function` vs. `ghidra.program.model.listing.Function`.
 
-### Recently completed
-- ✅ `/api/write_bytes.json` end-to-end write support with dry-run safety guardrails — gated by `GHIDRA_MCP_ENABLE_WRITES` and capped via `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (see [getting started](docs/getting-started.md#configuration)).
-- ✅ `/api/project_rebase.json` activation path, including `confirm=true` handshake and `GHIDRA_MCP_ENABLE_PROJECT_REBASE` opt-in (documented in [getting started](docs/getting-started.md#configuration)).
-- ✅ `/api/datatypes/*` surfacing for structure/enum introspection alongside deterministic pagination (see [API reference](docs/api.md)).
-- ✅ Function search ranking & context windows — opt-in `context_lines` parameter with deterministic disassembly snippets and docs/tests across unit, contract, and golden coverage.
+## D. Tests & quality net
+- ◻ MCP tool smoke tests
+  - Automate the manual snippets used so far into a smoke-test script (Python/Shell) that exercises `project_info`, `project_overview`, `search_strings`, `search_functions`, `search_scalars_with_context`, `mmio_annotate_compact`, `read_bytes`, and `read_words` against a test firmware with “what good looks like” assertions.
+- ◻ Unit tests for new tools and error cases
+  - Extend the `project_overview`-style unit coverage to additional project/analysis tools, including negative cases (invalid parameters, large limits) and schema validation paths.
 
-### Upcoming milestones
-- Deployment hardening
-  - Official Docker image & origin whitelist support (`GHIDRA_MCP_ALLOWED_ORIGINS`) documented alongside TLS/reverse-proxy recipes in [docs/getting-started.md](docs/getting-started.md) and [README.md](../README.md).
-- LLM-facing usability
-  - Surface batching helpers (`include_literals`, composite search envelopes) inside client recipes with updated token budgeting notes referencing [docs/getting-started.md](docs/getting-started.md#batch-limits-defaults).
-- Audit logging & observability
-  - Expand JSONL emitters beyond `GHIDRA_MCP_AUDIT_LOG`, including per-endpoint counters and batch-orchestration traces for `/api/write_bytes.json`, `/api/project_rebase.json`, and `/api/datatypes/*`.
+## E. Documentation & UX
+- ◻ AGENTS.md / “How to talk to ghidra-bridge”
+  - Capture recommended tool sequencing (start with `project_info`/`project_overview`; strings via `search_strings` → `string_xrefs_compact`/`search_xrefs_to`; IO via `search_scalars_with_context` → `disassemble_at` → `mmio_annotate_compact`; eventually `select_program`).
+- ◻ User-facing cookbooks
+  - Curate markdown snippets for recurring asks (USB handlers, update/flash paths, bootloader reset-to-main walks, MMIO register surveys) that rely solely on ghidra-bridge tools.
 
-## Principles
-- Defaults remain compatible; new features are opt-in.
-- Deterministic sorting & stable envelopes.
-- Cost control is **server-side** – clients/LLMs do not need to predict anything.
+## F. Future bets
+- ◻ Cross-binary analyses
+  - Map interactions between BOOT and APP or compare firmware revisions (function graph diffs, cross-image references).
+- ◻ More Ghidra action automation
+  - Carefully gated automation hooks for actions like auto-analysis or marking functions as libraries, with explicit confirmations to avoid destructive edits.
