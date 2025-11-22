@@ -239,6 +239,192 @@
         "Overview or status doc summarizes current bridge capabilities and open roadmap gaps"
       ],
       "status": "done"
+    },
+    {
+      "id": "R.8",
+      "title": "Program selection helpers",
+      "area": "bridge",
+      "depends_on": [
+        "D.1"
+      ],
+      "dod": [
+        "MCP tools expose select_program/domain_file_id and get_current_program",
+        "Analysis endpoints consume the active program context",
+        "Docs clarify switching rules and validation"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.9",
+      "title": "Firmware-set workflows",
+      "area": "docs",
+      "depends_on": [
+        "R.8"
+      ],
+      "dod": [
+        "Standard prompts for boot→app→res analyses",
+        "Guidance for swapping programs mid-investigation",
+        "Example walkthrough against sample firmware"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.10",
+      "title": "Clarify strings_compact and xref errors",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "strings_compact population rules documented or fixed",
+        "search_xrefs_to error messages cover empty query requirements",
+        "Contract tests for expected envelopes"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.11",
+      "title": "LLM recipes on existing tools",
+      "area": "docs",
+      "depends_on": [
+        "D.2",
+        "D.4"
+      ],
+      "dod": [
+        "Document string→xrefs→disasm, scalar→MMIO→annotate, and region→functions→analyze workflows",
+        "Token budgeting notes for recipes",
+        "Optional MCP meta-tool backlog captured"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.12",
+      "title": "Write-path utilities",
+      "area": "bridge",
+      "depends_on": [
+        "D.6"
+      ],
+      "dod": [
+        "rename_function/set_comment/apply_label tools gated by GHIDRA_MCP_ENABLE_WRITES",
+        "Dry-run mode and structured error codes",
+        "Docs warn about write scope and confirmation requirements"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.13",
+      "title": "Extension ZIP packaging",
+      "area": "build",
+      "depends_on": [],
+      "dod": [
+        "Deterministic Extension ZIP emitted alongside GhidraMCP.jar",
+        "extension.properties and layout validated",
+        "Script/CI path builds ZIP and runs minimal smoke test"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.14",
+      "title": "Ghidra version compatibility",
+      "area": "tests",
+      "depends_on": [],
+      "dod": [
+        "Test matrix covering min supported and latest Ghidra",
+        "Mock-based unit test guarding API/namespace compatibility",
+        "Docs list supported versions and failure handling"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.15",
+      "title": "MCP tool smoke tests",
+      "area": "tests",
+      "depends_on": [
+        "D.1",
+        "D.4"
+      ],
+      "dod": [
+        "Script exercises project_info/overview, search_strings/functions, scalars, mmio_annotate_compact, read_bytes/words",
+        "Assertions for known-good fixtures",
+        "CI ready entrypoint"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.16",
+      "title": "Unit tests for new tools",
+      "area": "tests",
+      "depends_on": [
+        "D.1"
+      ],
+      "dod": [
+        "Unit coverage for new project/analysis tools beyond project_overview",
+        "Negative cases for bad parameters and large limits",
+        "Schema validation enforced"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.17",
+      "title": "AGENTS guidance",
+      "area": "docs",
+      "depends_on": [],
+      "dod": [
+        "AGENTS.md describes recommended tool sequencing",
+        "Examples emphasize project_info/project_overview and IO/string flows",
+        "Notes on future select_program usage"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.18",
+      "title": "Cookbook snippets",
+      "area": "docs",
+      "depends_on": [
+        "R.11"
+      ],
+      "dod": [
+        "Markdown snippets for USB handlers, update/flash, bootloader traces, MMIO surveys",
+        "Prompts rely solely on ghidra-bridge tools",
+        "Token/limit guidance included"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.19",
+      "title": "Cross-binary analysis",
+      "area": "research",
+      "depends_on": [
+        "R.8"
+      ],
+      "dod": [
+        "Plan for APP↔BOOT cross-references and firmware diffing",
+        "Prototype comparison flow or recipe documented",
+        "Risk/guardrails captured"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.20",
+      "title": "Controlled Ghidra automation",
+      "area": "research",
+      "depends_on": [],
+      "dod": [
+        "Design gated hooks for actions like auto-analysis and mark-as-library",
+        "Dry-run or confirmation steps documented",
+        "Safety constraints aligned with GHIDRA_MCP_ENABLE_WRITES"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "T-202511-019",
+      "title": "Refresh roadmap and plan backlog",
+      "area": "planning",
+      "depends_on": [],
+      "dod": [
+        "docs/ROADMAP.md reflects navigation/tooling backlog",
+        ".plan TODO/DONE updated with new task IDs and statuses",
+        "tasks.manifest.json and state.json synchronized"
+      ],
+      "status": "done"
     }
   ]
 }
