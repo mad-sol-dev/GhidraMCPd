@@ -155,9 +155,6 @@ Read raw bytes from memory.
 
 The following endpoints support wildcard queries (return all items without filtering):
 - `search_functions`: use `query: "*"` or `query: ""`
-- `search_xrefs_to`: use `query: "*"` or `query: ""`
 
-Example:
-```json
-{ "query": "*", "limit": 100, "page": 1 }
-```
+`search_xrefs_to` now requires a non-empty `query` string. Requests with empty or
+wildcard queries are rejected with `400` to encourage intentional filtering.
