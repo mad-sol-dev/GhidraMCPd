@@ -41,10 +41,12 @@ def search_xrefs_to(
     page = max(int(page), 1)
 
     # Reject empty or wildcard queries to enforce intentional filtering
-    search_query = "" if query in ("*", "") else query
-    normalized_query = normalize_search_query(search_query)
+    normalized_query = normalize_search_query(query)
     if not normalized_query:
         raise ValueError("query must be non-empty")
+    if normalized_query == "*":
+        raise ValueError("query must not be a wildcard")
+    search_query = query
 
     cache_key = None
     digest = get_program_digest(client)
