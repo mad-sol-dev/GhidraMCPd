@@ -92,6 +92,7 @@ _RESPONSE_SCHEMA_MAP = {
     "/api/jt_slot_process.json": "jt_slot_process.v1.json",
     "/api/list_functions_in_range.json": "list_functions_in_range.v1.json",
     "/api/mmio_annotate.json": "mmio_annotate.v1.json",
+    "/api/project_overview.json": "project_overview.v1.json",
     "/api/project_rebase.json": "project_rebase.v1.json",
     "/api/project_info.json": "project_info.v1.json",
     "/api/read_bytes.json": "read_bytes.v1.json",
