@@ -7,3 +7,4 @@ Search for references pointing to a target address:
 - Accepts `target`, `limit`, and `page` parameters.
 - Results include caller/callee metadata plus reference kinds and repeat the `target_address` on each item for clarity.
 - Pagination mirrors other search endpoints with deterministic totals (`has_more` flips to `false` on the last page).
+- Requests must include a non-empty `query`; empty or wildcard (`"*"`) queries return `400 Bad Request` to avoid accidental full listings.
