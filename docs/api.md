@@ -440,7 +440,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
-- `search_xrefs_to` — Search inbound references to an address. Required: address (hex). Optional: query, limit (default 100), page (default 1).
+- `search_xrefs_to` — Search inbound references to an address. Required: address (hex) and non-empty query string. Optional: limit (default 100), page (default 1).
 
   ```json
   {
@@ -448,6 +448,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
     "op": "search_xrefs_to",
     "params": {
       "address": "0x401050",
+      "query": "call",
       "limit": 50
     }
   }
@@ -1462,7 +1463,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | --- | --- | --- | --- |
 | `limit` | integer | No | default=100, min=1, max=1000 |
 | `page` | integer | No | default=1, min=1 |
-| `query` | string | Yes |  |
+| `query` | string | Yes | minLength=1; empty or wildcard (`"*"`) values are rejected |
 
 ```json
 {
@@ -1768,7 +1769,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
 | `limit` | integer | No | default=100, min=1, max=1000 |
 | `page` | integer | No | default=1, min=1 |
-| `query` | string | Yes |  |
+| `query` | string | Yes | minLength=1; empty or wildcard (`"*"`) values are rejected |
 
 ```json
 {

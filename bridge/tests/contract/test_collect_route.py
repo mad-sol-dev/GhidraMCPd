@@ -18,7 +18,7 @@ from bridge.tests.contract.conftest import contract_client
             {
                 "id": "xrefs",
                 "op": "search_xrefs_to",
-                "params": {"address": "0x00100000", "query": "", "limit": 2},
+                "params": {"address": "0x00100000", "query": "call", "limit": 2},
             },
         ]
     ],

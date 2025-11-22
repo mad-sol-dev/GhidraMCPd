@@ -24,7 +24,7 @@ def search_xrefs_to(
     Args:
         client: Ghidra client instance
         address: Target address as hex string
-        query: Search query string (use "*" or "" for all xrefs)
+        query: Search query string (must be non-empty)
         limit: Maximum number of results per page
         page: 1-based page number for pagination
         
@@ -40,9 +40,11 @@ def search_xrefs_to(
     limit = max(int(limit), 1)
     page = max(int(page), 1)
 
-    # Use empty query for wildcard searches
+    # Reject empty or wildcard queries to enforce intentional filtering
     search_query = "" if query in ("*", "") else query
     normalized_query = normalize_search_query(search_query)
+    if not normalized_query:
+        raise ValueError("query must be non-empty")
 
     cache_key = None
     digest = get_program_digest(client)

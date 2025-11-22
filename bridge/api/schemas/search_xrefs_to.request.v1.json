@@ -10,7 +10,7 @@
     },
     "query": {
       "type": "string",
-      "minLength": 0
+      "minLength": 1
     },
     "limit": {
       "type": "integer",
