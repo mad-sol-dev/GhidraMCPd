@@ -64,40 +64,40 @@ async def _run_sequence(args: argparse.Namespace) -> int:
 
     try:
         async with stdio_client(server) as (read_stream, write_stream):
-            session = ClientSession(
+            async with ClientSession(
                 read_stream,
                 write_stream,
                 read_timeout_seconds=timedelta(seconds=args.timeout),
-            )
+            ) as session:
 
-            await session.initialize()
+                await session.initialize()
 
-            project_info = await _call_tool(session, "project_info")
-            print(_first_text_content(project_info) or "project_info returned data")
+                project_info = await _call_tool(session, "project_info")
+                print(_first_text_content(project_info) or "project_info returned data")
 
-            strings = await _call_tool(
-                session,
-                "search_strings",
-                {"query": args.string_query, "limit": args.limit},
-            )
-            print(_first_text_content(strings) or "search_strings returned data")
+                strings = await _call_tool(
+                    session,
+                    "search_strings",
+                    {"query": args.string_query, "limit": args.limit},
+                )
+                print(_first_text_content(strings) or "search_strings returned data")
 
-            functions = await _call_tool(
-                session,
-                "search_functions",
-                {"query": args.function_query, "limit": args.limit},
-            )
-            print(_first_text_content(functions) or "search_functions returned data")
+                functions = await _call_tool(
+                    session,
+                    "search_functions",
+                    {"query": args.function_query, "limit": args.limit},
+                )
+                print(_first_text_content(functions) or "search_functions returned data")
 
-            bytes_result = await _call_tool(
-                session,
-                "read_bytes",
-                {"address": args.read_address, "length": args.read_length},
-            )
-            print(
-                _first_text_content(bytes_result)
-                or f"read_bytes returned {len(bytes_result.content)} items"
-            )
+                bytes_result = await _call_tool(
+                    session,
+                    "read_bytes",
+                    {"address": args.read_address, "length": args.read_length},
+                )
+                print(
+                    _first_text_content(bytes_result)
+                    or f"read_bytes returned {len(bytes_result.content)} items"
+                )
     except (McpError, Exception) as exc:
         print(f"[verify] failure: {exc}", file=sys.stderr)
         return 1
