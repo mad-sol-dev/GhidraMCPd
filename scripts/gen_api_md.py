@@ -604,7 +604,7 @@ CURATED_SECTIONS = dedent(
     The following endpoints support wildcard queries (return all items without filtering):
     - `search_functions`: use `query: "*"` or `query: ""`
 
-    `search_xrefs_to` requires an empty `query` string. Requests with non-empty or wildcard queries are rejected with `400` because upstream filtering is not available.
+    `search_xrefs_to` accepts optional query strings (normalized before forwarding). Leave the query empty or wildcard to return all matches.
 
     All search endpoints enforce the shared batch window cap (`page * limit <= 256` by default). Oversized windows return `413 Payload Too Large` so callers can retry with a smaller page or limit.
 

@@ -248,11 +248,6 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            if query.strip():
-                return error_response(
-                    ErrorCode.INVALID_REQUEST,
-                    "query must be empty; filtering is not supported.",
-                )
             pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error
