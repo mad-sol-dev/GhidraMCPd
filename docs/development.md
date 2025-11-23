@@ -87,3 +87,16 @@ GitHub Actions runs:
 * [`docs/ghidra-plugin-ground-truth.md`](ghidra-plugin-ground-truth.md)
 
 Additional design notes and roadmap context live in [`docs/ROADMAP.md`](ROADMAP.md).
+
+## Utilities
+
+### `aggregate_transcripts` (in `bridge.orchestrator`)
+
+Parses transcript records to extract the **first JSON object per record**, validates each object against a JSON schema (default:
+ `envelope.v1.json`), and produces a summary dict:
+
+* `total`: number of records processed
+* `ok`: records whose first JSON object matched the schema
+* `failed`: records that did not match
+
+Use this when you need a quick quality check on logged transcripts.
