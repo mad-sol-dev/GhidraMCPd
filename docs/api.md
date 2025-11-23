@@ -440,7 +440,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
-- `search_xrefs_to` — Search inbound references to an address. Required: address (hex). Optional: query, limit (default 100), page (default 1).
+- `search_xrefs_to` — Search inbound references to an address. Required: address (hex) and an **empty** query. Optional: limit (default 100) and page (default 1). Requests where `page * limit` exceeds the maximum window (default 256) return `413`.
 
   ```json
   {
@@ -1816,14 +1816,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
 | `limit` | integer | No | default=100, min=1, max=1000 |
 | `page` | integer | No | default=1, min=1 |
-| `query` | string | Yes |  |
+| `query` | string | Yes | default='' |
 
 ```json
 {
   "address": "0x0",
   "limit": 100,
   "page": 1,
-  "query": "string"
+  "query": ""
 }
 ```
 
@@ -1954,7 +1954,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `include_literals` | boolean | No | default=False |
-| `limit` | integer | Yes | min=1 |
+| `limit` | integer | Yes | min=0 |
 | `offset` | integer | No | min=0 |
 
 ```json

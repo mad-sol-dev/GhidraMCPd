@@ -595,7 +595,7 @@ def test_collect_snapshot(
                 {
                     "id": "xrefs",
                     "op": "search_xrefs_to",
-                    "params": {"address": "0x00102004", "query": "log", "limit": 5},
+                    "params": {"address": "0x00102004", "query": "", "limit": 5},
                 },
             ],
             "result_budget": {"max_result_tokens": 2048},

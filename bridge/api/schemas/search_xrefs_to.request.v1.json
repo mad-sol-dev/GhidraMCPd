@@ -10,7 +10,9 @@
     },
     "query": {
       "type": "string",
-      "minLength": 1
+      "minLength": 0,
+      "description": "Must be an empty string; filtering is not supported",
+      "default": ""
     },
     "limit": {
       "type": "integer",

@@ -1,6 +1,6 @@
 import json
 
-from bridge.features.strings import strings_compact_view
+from bridge.features.strings import fetch_strings_compact_entries, strings_compact_view
 
 
 def test_strings_compact_view_truncates_and_orders() -> None:
@@ -57,3 +57,24 @@ def test_strings_compact_view_can_include_literals() -> None:
     assert item["literal"] == "Hello World"
     assert item["s"] == "Hello World"
     assert set(item.keys()) == {"s", "addr", "refs", "literal"}
+
+
+def test_fetch_strings_compact_entries_falls_back_to_search() -> None:
+    class SearchOnlyClient:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def search_strings(self, query: str):
+            self.calls.append(query)
+            return [
+                {"address": 0x1000, "literal": "alpha"},
+                {"address": 0x1010, "literal": "beta"},
+                {"address": 0x1020, "literal": "gamma"},
+            ]
+
+    client = SearchOnlyClient()
+
+    entries = fetch_strings_compact_entries(client, limit=2, offset=1)
+
+    assert client.calls == [""]
+    assert [entry["address"] for entry in entries] == [0x1010, 0x1020]

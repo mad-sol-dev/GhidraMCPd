@@ -9,6 +9,8 @@ from ..utils.cache import (
     get_search_cache,
     normalize_search_query,
 )
+from ..utils.config import MAX_ITEMS_PER_BATCH
+from ..utils.logging import SafetyLimitExceeded
 
 
 def search_xrefs_to(
@@ -24,7 +26,7 @@ def search_xrefs_to(
     Args:
         client: Ghidra client instance
         address: Target address as hex string
-        query: Search query string (must be non-empty)
+        query: Search query string (must be empty; filtering is unsupported)
         limit: Maximum number of results per page
         page: 1-based page number for pagination
         
@@ -40,13 +42,15 @@ def search_xrefs_to(
     limit = max(int(limit), 1)
     page = max(int(page), 1)
 
-    # Reject empty or wildcard queries to enforce intentional filtering
+    window = page * limit
+    if window > MAX_ITEMS_PER_BATCH:
+        raise SafetyLimitExceeded("xrefs.search.window", MAX_ITEMS_PER_BATCH, window)
+
+    # Reject filters; backend only supports empty queries
     normalized_query = normalize_search_query(query)
-    if not normalized_query:
-        raise ValueError("query must be non-empty")
-    if normalized_query == "*":
-        raise ValueError("query must not be a wildcard")
-    search_query = query
+    if normalized_query not in {"", None}:
+        raise ValueError("query must be empty")
+    search_query = ""
 
     cache_key = None
     digest = get_program_digest(client)
@@ -75,12 +79,17 @@ def search_xrefs_to(
 
     target_address = f"0x{address_value:08x}"
     items: List[Dict[str, str]] = []
+    ordered_entries = []
     for entry in raw_results:
         addr_val = entry.get("addr")
         context = entry.get("context", "")
         if not isinstance(addr_val, int):
             continue
-        context_text = str(context)
+        ordered_entries.append((addr_val, str(context)))
+
+    ordered_entries.sort(key=lambda item: item[0])
+
+    for addr_val, context_text in ordered_entries:
         items.append(
             {
                 "from_address": f"0x{addr_val:08x}",
