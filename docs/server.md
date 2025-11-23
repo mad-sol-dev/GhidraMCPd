@@ -72,27 +72,29 @@ Poll `GET /state` to view live diagnostics:
 
 Throttle polling to at least every 500 ms to avoid log spam. The same endpoint can be scraped for readiness dashboards and connection diagnostics.
 
-## Legacy stdio transport
+## Stdio Transport
 
 `python scripts/bridge_stdio.py --transport stdio` runs the same MCP server but
 without the HTTP guardrails described above. The transport writes and reads JSON
 RPC messages over stdio, so there is no `/sse`, `/messages`, or `/state`
-endpoint to probe.
+endpoint to probe. This is the required mode for local LLM clients and other
+CLI-based hosts that expect stdio-backed MCP servers.
 
 - **Readiness**: the CLI logs `MCP INITIALIZED` once the session has finished its
   handshake. Wait for that line before issuing tool calls; it replaces the
   `/state.ready` flag from the SSE deployment.
 - **OpenWebUI trade-offs**: stdio mode does not start the shim (`bridge.shim`) so
-  OpenWebUI and other SSE-native clients cannot connect directly. Use stdio when
-  you want deterministic console sessions or to embed the server in another MCP
-  host process.
-- **Switching back to SSE**: rerun the helper with `--transport sse` to restore
-  the `/sse` endpoint, readiness guard, `/messages`, and shim-proxied OpenWebUI
-  routes.
+  OpenWebUI and other SSE-native clients cannot connect directly. Use SSE when
+  you need an HTTP `/sse` stream, readiness guardrails, or shim-proxied
+  OpenWebUI routes.
+- **Switching transports**: rerun the helper with `--transport sse` to restore
+  the `/sse` endpoint or `--transport stdio` to keep a stdio-only MCP host for
+  local tooling.
 
 Because there is no `/sse` queue, stdio mode cannot enforce single-active
-connections or expose connection metrics. Prefer SSE for production or shared
-setups, and reserve stdio for local experimentation.
+connections or expose connection metrics. SSE remains the recommended transport
+for shared or web-facing deployments where connection accounting matters, while
+stdio is optimized for local, single-client operation.
 
 ## Limits & write-guards
 
