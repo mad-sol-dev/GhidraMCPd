@@ -130,7 +130,7 @@ def test_rejects_non_object_payload(client: TestClient) -> None:
 def test_rejects_invalid_json(client: TestClient) -> None:
     response = client.post(
         "/api/jt_slot_check.json",
-        data="{not-json",
+        content=b"{not-json",
         headers={"content-type": "application/json"},
     )
     assert response.status_code == 400
