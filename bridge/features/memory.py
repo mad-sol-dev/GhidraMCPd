@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
+from ..utils import audit
 from ..utils.hex import int_to_hex
 from ..utils.logging import increment_counter, record_write_attempt
 
@@ -109,7 +110,7 @@ def write_bytes(
         else:
             errors.append("WRITE_FAILED")
 
-    return {
+    payload = {
         "address": int_to_hex(address),
         "length": length,
         "dry_run": bool(dry_run),
@@ -117,6 +118,25 @@ def write_bytes(
         "notes": notes,
         "errors": errors,
     }
+
+    audit.record_write_event(
+        category="memory.write_bytes",
+        parameters={
+            "address": int_to_hex(address),
+            "encoding": normalized_encoding,
+            "length": length,
+            "data": str(data),
+        },
+        dry_run=dry_run,
+        writes_enabled=writes_enabled,
+        result={
+            "written": written,
+            "errors": list(errors),
+            "notes": list(notes),
+        },
+    )
+
+    return payload
 
 
 __all__ = ["read_bytes", "write_bytes"]

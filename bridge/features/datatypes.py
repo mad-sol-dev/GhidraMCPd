@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional
 
 from ..ghidra.client import DataTypeOperationResult, GhidraClient
+from ..utils import audit
 from ..utils.config import ENABLE_WRITES
 from ..utils.logging import increment_counter, record_write_attempt
 
@@ -323,6 +324,24 @@ def create_datatype(
         operation=None if dry_run else _op,
     )
 
+    audit.record_write_event(
+        category="datatypes.create",
+        parameters={
+            "kind": normalized_kind,
+            "path": path,
+            "name": normalized_name,
+            "category": normalized_category,
+            "fields": normalized_fields,
+        },
+        dry_run=dry_run,
+        writes_enabled=writes_enabled,
+        result={
+            "written": envelope.get("written", False),
+            "errors": list(envelope["errors"]),
+            "notes": list(envelope["notes"]),
+        },
+    )
+
     return envelope
 
 
@@ -367,6 +386,22 @@ def update_datatype(
         operation=None if dry_run else _op,
     )
 
+    audit.record_write_event(
+        category="datatypes.update",
+        parameters={
+            "kind": normalized_kind,
+            "path": normalized_path,
+            "fields": normalized_fields,
+        },
+        dry_run=dry_run,
+        writes_enabled=writes_enabled,
+        result={
+            "written": envelope.get("written", False),
+            "errors": list(envelope["errors"]),
+            "notes": list(envelope["notes"]),
+        },
+    )
+
     return envelope
 
 
@@ -397,6 +432,18 @@ def delete_datatype(
         dry_run=dry_run,
         writes_enabled=writes_enabled,
         operation=None if dry_run else _op,
+    )
+
+    audit.record_write_event(
+        category="datatypes.delete",
+        parameters={"kind": normalized_kind, "path": normalized_path},
+        dry_run=dry_run,
+        writes_enabled=writes_enabled,
+        result={
+            "written": envelope.get("written", False),
+            "errors": list(envelope["errors"]),
+            "notes": list(envelope["notes"]),
+        },
     )
 
     return envelope
