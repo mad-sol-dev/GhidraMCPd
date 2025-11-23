@@ -10,14 +10,14 @@
 ## A. Program navigation & context
 - ✅ Solidify `project_overview`
   - Tool is shipped and exercised; remaining work is UX/prompt guidance so LLMs reliably use the firmware-set context they receive.
-- ◻ Explicit program selection as global context
-  - ✅ MCP endpoints `select_program(domain_file_id: str)` and `get_current_program()` track the active program per session/requestor with mid-session switch gating.
+- ✅ Explicit program selection as global context
+  - MCP endpoints `select_program(domain_file_id: str)` and `get_current_program()` track the active program per session/requestor with mid-session switch gating.
 - ◻ Firmware-set workflows
   - Define standard prompts/recipes for boot→app→res investigations (e.g., reset vectors in BOOT, update handlers in APP, resource container checks in RES). **Planning needed:** how to expose these as reusable flows for agents.
 
 ## B. ghidra-bridge tooling
-- ◻ Round out tool landscape
-  - ✅ `strings_compact` now falls back to `search_strings("")` with documented limitations, and `search_xrefs_to` errors clearly when queries are non-empty.
+- ✅ Round out tool landscape
+  - `strings_compact` now falls back to `search_strings("")` with documented limitations, and `search_xrefs_to` errors clearly when queries are non-empty.
 - ◻ High-level analysis recipes on existing tools
   - Formalize LLM-side “String → Xrefs → Disasm,” “Scalar → MMIO → mmio_annotate_compact,” and “Region → list_functions_in_range → analyze_function_complete” workflows. Future: optional MCP meta-tools that package these.
 - ◻ Write-path hygiene (rename/comments/labels)
@@ -30,9 +30,9 @@
   - Establish a small test matrix (e.g., minimum supported vs. latest Ghidra) and at least one unit test that mocks Ghidra APIs to ensure type compatibility, guarding against namespace clashes like `java.util.function.Function` vs. `ghidra.program.model.listing.Function`.
 
 ## D. Tests & quality net
-- ◻ MCP tool smoke tests
+- ◻ MCP tool smoke tests (NOW)
   - Automate the manual snippets used so far into a smoke-test script (Python/Shell) that exercises `project_info`, `project_overview`, `search_strings`, `search_functions`, `search_scalars_with_context`, `mmio_annotate_compact`, `read_bytes`, and `read_words` against a test firmware with “what good looks like” assertions.
-- ◻ Unit tests for new tools and error cases
+- ◻ Unit tests for new tools and error cases (NOW)
   - Extend the `project_overview`-style unit coverage to additional project/analysis tools, including negative cases (invalid parameters, large limits) and schema validation paths.
 
 ## E. Documentation & UX
