@@ -27,18 +27,18 @@ uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
 
 Once running, open Ghidra with a project and the server will connect automatically.
 
-### Legacy / stdio mode
+**HTTP/SSE Transport:** Uvicorn serves the HTTP API and `/sse` endpoint for clients that support Server-Sent Events (most GUI agents and web frontends).
 
-Need a console-first workflow or migrating from the original bridge helper? Run the
-legacy entry point instead of Uvicorn:
+### Stdio Transport
+
+Need a console-first workflow or using a local LLM client that can't handle SSE (e.g., CLI tools or OpenAI's Codex)? Run the stdio transport instead of Uvicorn:
 
 ```bash
 python scripts/bridge_stdio.py --transport stdio
 ```
 
 This launches the MCP server directly over stdio (no `/sse` endpoint or OpenWebUI
-shim). Use it when testing locally without a browser client or when you need to
-mimic the pre-shim behavior. SSE mode is recommended for modern clients.
+shim) and is the required transport for non-SSE clients.
 
 ---
 
@@ -146,33 +146,18 @@ For more examples, see [docs/api.md](docs/api.md).
 
 ## Build the Ghidra extension
 
-Populate `lib/` with the required Ghidra jars, then run Maven:
+The canonical way to build the installable ZIP is via Docker:
 
 ```bash
-python scripts/fetch_ghidra_jars.py
-mvn -DskipTests package
+./scripts/build_docker.sh
 ```
 
-If you already have a local Ghidra checkout, you can still point Maven at it directly:
-
-```bash
-export GHIDRA_DIR=/path/to/ghidra_*_PUBLIC && mvn -DskipTests package
-```
-
-The build produces `target/GhidraMCP-1.0-SNAPSHOT.jar`.
+The script resolves the latest public Ghidra release, builds the extension inside a container, and copies the artifacts to `target/` (including `GhidraMCP-<version>.zip`).
 
 **Installation:**
 
-1. Copy the JAR to Ghidra's Extensions directory:
-
-   ```bash
-   cp target/GhidraMCP-1.0-SNAPSHOT.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
-   ```
-
-   Or use Ghidra's GUI: **File → Install Extensions** and select the JAR file.
-
+1. In Ghidra, go to **File → Install Extensions** and select the ZIP from `target/`.
 2. Restart Ghidra to load the extension.
-
 3. **Activate:** After restarting, go to **File → Configure → Developer/Configure**. Find `GhidraMCP` in the list (usually under the "Analysis" category) and **check the box** next to it to enable it. The plugin will not be active until you do this.
 
 ---
