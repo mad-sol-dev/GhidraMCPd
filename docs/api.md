@@ -188,7 +188,7 @@ Read raw bytes from memory.
 The following endpoints support wildcard queries (return all items without filtering):
 - `search_functions`: use `query: "*"` or `query: ""`
 
-`search_xrefs_to` accepts optional query strings, normalized before forwarding. Leave the query empty (or wildcard) to return all matches.
+`search_xrefs_to` accepts optional query strings (normalized before forwarding). Leave the query empty or wildcard to return all matches.
 
 All search endpoints enforce the shared batch window cap (`page * limit <= 256` by default). Oversized windows return `413 Payload Too Large` so callers can retry with a smaller page or limit.
 
@@ -214,7 +214,7 @@ See [Search endpoints](#search-endpoints) for shared pagination semantics. Query
 
 Search for references pointing to a target address:
 
-- Accepts `target`, `limit`, and `page` parameters plus an optional `query` filter string. Queries are normalized (lowercased and whitespace-collapsed) before hitting Ghidra; empty or wildcard queries return all matches.
+- Accepts `target`, `limit`, and `page` parameters plus a required **empty** `query` string. Non-empty queries return `400 Bad Request` because filtering is not supported upstream.
 - Results include caller/callee metadata plus reference kinds and repeat the `target_address` on each item for clarity.
 - Pagination mirrors other search endpoints with deterministic totals (`has_more` flips to `false` on the last page).
 - Oversized windows (`page * limit` over the configured maximum, default `256`) fail fast with `413 Payload Too Large` so callers can retry with a smaller batch.
