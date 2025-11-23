@@ -882,8 +882,14 @@ def register_tools(
         query: str,
         limit: int = 100,
         page: int = 1,
+        include_literals: bool = False,
     ) -> Dict[str, object]:
-        request_payload = {"query": query, "limit": limit, "page": page}
+        request_payload = {
+            "query": query,
+            "limit": limit,
+            "page": page,
+            "include_literals": include_literals,
+        }
         valid, errors = validate_payload("search_strings.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -899,6 +905,7 @@ def register_tools(
                     query=query,
                     limit=int(limit),
                     page=int(page),
+                    include_literals=include_literals,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -914,8 +921,13 @@ def register_tools(
         client,
         limit: int = 50,
         offset: int = 0,
+        include_literals: bool = False,
     ) -> Dict[str, object]:
-        request_payload = {"limit": limit, "offset": offset}
+        request_payload = {
+            "limit": limit,
+            "offset": offset,
+            "include_literals": include_literals,
+        }
         valid, errors = validate_payload("strings_compact.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -945,7 +957,9 @@ def register_tools(
                         result = fallback(limit=limit)
                     raw_entries = [] if result is None else list(result)
             try:
-                data = strings.strings_compact_view(raw_entries)
+                data = strings.strings_compact_view(
+                    raw_entries, include_literals=include_literals
+                )
             except (TypeError, ValueError) as exc:
                 return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
 
@@ -1310,10 +1324,15 @@ def register_tools(
         client,
         address: str,
         length: int,
+        include_literals: bool = False,
     ) -> Dict[str, object]:
         """Read raw bytes from memory at a given address."""
 
-        request_payload = {"address": address, "length": length}
+        request_payload = {
+            "address": address,
+            "length": length,
+            "include_literals": include_literals,
+        }
         valid, errors = validate_payload("read_bytes.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -1328,6 +1347,7 @@ def register_tools(
                     client,
                     address=parse_hex(address),
                     length=length,
+                    include_literals=include_literals,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -1387,6 +1407,7 @@ def register_tools(
         client,
         address: str,
         count: int = 1,
+        include_literals: bool = False,
     ) -> Dict[str, object]:
         """
         Read multiple 32-bit words from memory at once.
@@ -1402,7 +1423,11 @@ def register_tools(
             Dictionary with address, count, and array of word values (integers or
             None for unreadable).
         """
-        request_payload = {"address": address, "count": count}
+        request_payload = {
+            "address": address,
+            "count": count,
+            "include_literals": include_literals,
+        }
         valid, errors = validate_payload("read_words.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -1417,6 +1442,7 @@ def register_tools(
                     client,
                     address=parse_hex(address),
                     count=count,
+                    include_literals=include_literals,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))

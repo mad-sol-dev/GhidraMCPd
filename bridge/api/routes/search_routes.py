@@ -88,6 +88,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 query = str(data["query"])
                 limit = int(data.get("limit", 100))
                 page = int(data.get("page", 1))
+                include_literals = bool(data.get("include_literals", False))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             pagination_error = _validate_pagination(limit, page)
@@ -99,6 +100,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     query=query,
                     limit=limit,
                     page=page,
+                    include_literals=include_literals,
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -122,6 +124,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             try:
                 limit = int(data.get("limit", 0))
                 offset = int(data.get("offset", 0))
+                include_literals = bool(data.get("include_literals", False))
             except (TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             if limit <= 0:
@@ -155,7 +158,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     raw_entries = [] if result is None else list(result)
 
             try:
-                payload = strings.strings_compact_view(raw_entries)
+                payload = strings.strings_compact_view(
+                    raw_entries, include_literals=include_literals
+                )
             except (TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 

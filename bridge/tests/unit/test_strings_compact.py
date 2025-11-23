@@ -39,3 +39,21 @@ def test_strings_compact_view_truncates_and_orders() -> None:
 
     response = {"ok": True, "data": payload, "errors": []}
     assert len(json.dumps(response)) <= 8192
+
+
+def test_strings_compact_view_can_include_literals() -> None:
+    raw_entries = [
+        {
+            "literal": "Hello\nWorld",
+            "address": 0x1000,
+            "refs": 1,
+        }
+    ]
+
+    payload = strings_compact_view(raw_entries, include_literals=True)
+
+    assert payload["items"]
+    item = payload["items"][0]
+    assert item["literal"] == "Hello World"
+    assert item["s"] == "Hello World"
+    assert set(item.keys()) == {"s", "addr", "refs", "literal"}

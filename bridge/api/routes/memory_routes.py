@@ -33,6 +33,7 @@ def create_memory_routes(deps: RouteDependencies) -> List[Route]:
                     client,
                     address=parse_hex(str(data["address"])),
                     length=int(data["length"]),
+                    include_literals=bool(data.get("include_literals", False)),
                 )
             except (KeyError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
