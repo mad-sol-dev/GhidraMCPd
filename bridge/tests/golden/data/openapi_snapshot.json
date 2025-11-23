@@ -3837,7 +3837,7 @@
                   },
                   "query": {
                     "default": "",
-                    "description": "Must be an empty string; filtering is not supported",
+                    "description": "Search query string",
                     "minLength": 0,
                     "type": "string"
                   }
