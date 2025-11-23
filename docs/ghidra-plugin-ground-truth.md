@@ -10,6 +10,33 @@ This page defines **exact request/response formats** for the Java plugin (plain 
 * **Caps:** `limit ≤ 500`, `count ≤ 128` (disassembly), `length ≤ 4096` (bytes)
 * **Errors:** on invalid params return **HTTP 400** with a single line: `error: <reason>`
 * **Pagination:** the plugin returns the **full list**; Python does filter/sort/paginate to `total/page/limit`
+* **List endpoints:** support `offset` and `limit` parameters for pagination
+
+## Direct HTTP endpoints
+
+Raw plugin routes are exposed on **port 8080** for non-MCP access:
+
+* `/methods`
+* `/classes`
+* `/segments`
+* `/imports`
+* `/exports`
+* `/namespaces`
+* `/data`
+* `/functions`
+* `/strings`
+* `/read_bytes`
+* `/read_dword`
+* `/read_cstring`
+* `/disassembleAt`
+* `/disassemble`
+* `/renameFunction`
+* `/renameVariable`
+* `/renameData`
+* `/set_*comment`
+* `/rename_function_by_address`
+* `/set_function_prototype`
+* `/set_local_variable_type`
 
 ---
 

@@ -21,3 +21,9 @@
 - Keep `dry_run` at its default `True` until you have reviewed the planned changes (memory writes, data types, JT/MMIO annotations); switching to `False` is what triggers actual writes when writes are enabled.
 - Turn on `GHIDRA_MCP_ENABLE_PROJECT_REBASE` only for deliberate rebasing scenarios and run `project_rebase` with `dry_run` first; rebasing also requires `confirm=True` in addition to writes being enabled.
 - Avoid raising `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` or `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` unless you truly need larger operations; these limits are the guard rails enforced by `record_write_attempt()` and `enforce_batch_limit()`.
+
+## Whitelisted Bridge Calls & Adapters
+
+The bridge enforces a whitelist of allowed Ghidra operations (GET/POST) defined in `bridge/ghidra/whitelist.py`; only these
+ endpoints can be invoked upstream. Optional architecture adapters (e.g., `x86`) can be enabled via `BRIDGE_OPTIONAL_ADAPTERS`
+ to extend functionality while still honoring the whitelist.
