@@ -4,11 +4,10 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)
 - {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words)
 - {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths
 
-Recommended next focus: start {R.8} program selection helpers so upcoming tool flows can anchor to an explicit active program context.
+Recommended next focus: advance {R.15}/{R.16} coverage so smoke tests and invalid-parameter paths are stable before expanding tool flows.
 
 ## NEXT
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
@@ -27,6 +26,7 @@ Recommended next focus: start {R.8} program selection helpers so upcoming tool f
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)
 - [x] {R.8} Program selection helpers (`select_program`, `get_current_program`) to anchor analysis tools on the active Ghidra program
 - [x] {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.
 - [x] {D.2} POST /api/analyze_function_complete.json (read-only) — composite dossier (`fields`, `fmt`, `max_result_tokens`, disasm/decompile/xrefs/callgraph/strings/features) with deterministic ordering, unit/contract/golden coverage, docs updated.
