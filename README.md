@@ -40,6 +40,21 @@ python scripts/bridge_stdio.py --transport stdio
 This launches the MCP server directly over stdio (no `/sse` endpoint or OpenWebUI
 shim) and is the required transport for non-SSE clients.
 
+### Verify MCP tools over stdio
+
+Run a quick smoke test of the MCP tools over stdio using the uvicorn factory entry
+point:
+
+```bash
+python scripts/verify_mcp_tools.py --ghidra-server-url http://127.0.0.1:8080/
+```
+
+The helper spawns `uvicorn bridge.app:create_app --factory` as a subprocess, then
+calls `project_info`, `search_strings` (defaults to the query `boot`),
+`search_functions` (defaults to `main`), and `read_bytes` (default address
+`0x401000`). The script exits non-zero if any tool returns an error envelope or
+empty content.
+
 ---
 
 ## Motivation
