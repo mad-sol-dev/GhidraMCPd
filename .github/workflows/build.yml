@@ -7,6 +7,7 @@ on:
       - "bridge/**"          # Python
       - "bin/plan_check.py"
       - "scripts/**"
+      - "docs/**"
       - "pom.xml"
       - "src/**"
       - ".github/workflows/build.yml"

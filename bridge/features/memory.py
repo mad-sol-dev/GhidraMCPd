@@ -18,6 +18,7 @@ def read_bytes(
     *,
     address: int,
     length: int,
+    include_literals: bool = False,
 ) -> Dict[str, object]:
     """
     Read raw bytes from memory.
@@ -47,12 +48,18 @@ def read_bytes(
     
     increment_counter("memory.read_bytes.bytes", actual_length)
     
-    return {
+    payload: Dict[str, object] = {
         "address": int_to_hex(address),
         "length": actual_length,
         "encoding": "base64",
         "data": data_b64,
     }
+
+    if include_literals:
+        literal = "" if raw_bytes is None else raw_bytes.decode("latin1")
+        payload["literal"] = literal
+
+    return payload
 
 
 def write_bytes(

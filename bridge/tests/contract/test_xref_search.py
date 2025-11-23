@@ -104,6 +104,26 @@ def test_search_xrefs_invalid_page(contract_client: TestClient) -> None:
     assert response.json()["ok"] is False
 
 
+def test_search_xrefs_rejects_empty_query(contract_client: TestClient) -> None:
+    """Empty or wildcard queries should be rejected for clarity."""
+
+    empty_query = contract_client.post(
+        "/api/search_xrefs_to.json",
+        json={"address": "0x00100000", "query": "", "limit": 5, "page": 1},
+    )
+
+    assert empty_query.status_code == 400
+    assert empty_query.json()["ok"] is False
+
+    wildcard_query = contract_client.post(
+        "/api/search_xrefs_to.json",
+        json={"address": "0x00100000", "query": "*", "limit": 5, "page": 1},
+    )
+
+    assert wildcard_query.status_code == 400
+    assert wildcard_query.json()["ok"] is False
+
+
 def test_search_xrefs_zero_limit(contract_client: TestClient) -> None:
     response = contract_client.post(
         "/api/search_xrefs_to.json",

@@ -15,7 +15,8 @@
         "properties": {
           "s": {"type": "string", "maxLength": 120},
           "addr": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "refs": {"type": "integer", "minimum": 0}
+          "refs": {"type": "integer", "minimum": 0},
+          "literal": {"type": "string"}
         }
       }
     }

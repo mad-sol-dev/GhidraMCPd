@@ -15,6 +15,15 @@
           {"type": "null"}
         ]
       }
+    },
+    "literals": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {"type": "null"}
+        ]
+      }
     }
   }
 }

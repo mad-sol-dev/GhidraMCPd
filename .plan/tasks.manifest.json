@@ -156,7 +156,7 @@
         "Read/search endpoints accept include_literals flag",
         "Docs cover defaults + impact on result budgets"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.4",

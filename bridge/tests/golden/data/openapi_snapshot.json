@@ -3038,6 +3038,10 @@
                     "pattern": "^0x[0-9a-fA-F]+$",
                     "type": "string"
                   },
+                  "include_literals": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "length": {
                     "maximum": 4096,
                     "minimum": 1,
@@ -3079,6 +3083,9 @@
                     "length": {
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "literal": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3660,6 +3667,10 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": false,
                 "properties": {
+                  "include_literals": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "limit": {
                     "minimum": 1,
                     "type": "integer"
@@ -3761,7 +3772,7 @@
                     "type": "integer"
                   },
                   "query": {
-                    "minLength": 0,
+                    "minLength": 1,
                     "type": "string"
                   }
                 },
@@ -3947,6 +3958,10 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": false,
                 "properties": {
+                  "include_literals": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "limit": {
                     "minimum": 1,
                     "type": "integer"
@@ -3980,6 +3995,9 @@
                         "properties": {
                           "addr": {
                             "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
+                          },
+                          "literal": {
                             "type": "string"
                           },
                           "refs": {

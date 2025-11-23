@@ -8,6 +8,7 @@
     "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
     "length": {"type": "integer", "minimum": 0},
     "encoding": {"type": "string", "enum": ["base64"]},
-    "data": {"type": "string"}
+    "data": {"type": "string"},
+    "literal": {"type": "string"}
   }
 }
