@@ -9,6 +9,8 @@
 - {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words)
 - {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths
 
+Recommended next focus: start {R.8} program selection helpers so upcoming tool flows can anchor to an explicit active program context.
+
 ## NEXT
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)

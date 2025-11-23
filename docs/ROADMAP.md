@@ -4,6 +4,8 @@
 - ✅ Core program metadata and firmware set visibility via `/api/project_info.json` and `/api/project_overview.json`, including schema validation and contract/unit coverage.
 - ✅ Composite and budgeting flows: `/api/analyze_function_complete.json`, `/api/collect.json`, cursor streaming, request budgeting with auto-trim/strict enforcement, and short-term caching for deterministic multi-query runs.
 - ✅ Guarded write support: `/api/write_bytes.json` and `/api/project_rebase.json` are behind explicit environment gates; datatype introspection endpoints are live; the MMIO annotator stays dry-run unless writes are enabled.
+- ✅ Literal-inclusive memory and string search: `include_literals` plumbing is available across memory reads and string search requests so callers can pull bytes/strings in one pass when needed.
+- ✅ Expanded audit logging on gated operations: write/rebase/datatype flows emit structured audit entries that capture caller context, parameters, gating state, and outcomes for better observability.
 
 ## A. Program navigation & context
 - ✅ Solidify `project_overview`
