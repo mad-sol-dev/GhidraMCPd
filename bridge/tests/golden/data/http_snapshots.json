@@ -127,12 +127,12 @@
   "collect": {
     "data": {
       "meta": {
-        "estimate_tokens": 23,
+        "estimate_tokens": 39,
         "result_budget": {
-          "consumed_tokens": 23,
+          "consumed_tokens": 39,
           "max_result_tokens": 2048,
           "mode": "auto_trim",
-          "remaining_tokens": 2025
+          "remaining_tokens": 2009
         }
       },
       "queries": [
