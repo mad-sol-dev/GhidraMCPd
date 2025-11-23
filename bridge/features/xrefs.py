@@ -26,7 +26,7 @@ def search_xrefs_to(
     Args:
         client: Ghidra client instance
         address: Target address as hex string
-        query: Search query string (must be empty; filtering is unsupported)
+        query: Search query string
         limit: Maximum number of results per page
         page: 1-based page number for pagination
         
@@ -46,11 +46,8 @@ def search_xrefs_to(
     if window > MAX_ITEMS_PER_BATCH:
         raise SafetyLimitExceeded("xrefs.search.window", MAX_ITEMS_PER_BATCH, window)
 
-    # Reject filters; backend only supports empty queries
     normalized_query = normalize_search_query(query)
-    if normalized_query not in {"", None}:
-        raise ValueError("query must be empty")
-    search_query = ""
+    search_query = normalized_query
 
     cache_key = None
     digest = get_program_digest(client)
@@ -107,7 +104,7 @@ def search_xrefs_to(
     has_more = end < total
 
     result = {
-        "query": query,
+        "query": search_query,
         "total": total,
         "page": page,
         "limit": limit,

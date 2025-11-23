@@ -104,20 +104,28 @@ def test_search_xrefs_invalid_page(contract_client: TestClient) -> None:
     assert response.json()["ok"] is False
 
 
-def test_search_xrefs_rejects_non_empty_query(contract_client: TestClient) -> None:
-    """Non-empty queries should be rejected with a clear error message."""
+def test_search_xrefs_passes_query(contract_client: TestClient) -> None:
+    """Queries should be normalized, forwarded to the backend, and return results."""
 
-    wildcard_query = contract_client.post(
+    response = contract_client.post(
         "/api/search_xrefs_to.json",
-        json={"address": "0x00100000", "query": "*", "limit": 5, "page": 1},
+        json={
+            "address": "0x00100000",
+            "query": "  CALL   at   00100008  ",
+            "limit": 5,
+            "page": 1,
+        },
     )
 
-    assert wildcard_query.status_code == 400
-    payload = wildcard_query.json()
-    assert payload["ok"] is False
-    error = payload["errors"][0]
-    assert error["code"] == "INVALID_REQUEST"
-    assert "query must be empty" in error["message"]
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["query"] == "call at 00100008"
+
+    items = data["items"]
+    assert items, "Expected at least one filtered xref match"
+    assert all(item["from_address"] == "0x00100008" for item in items)
 
 
 def test_search_xrefs_zero_limit(contract_client: TestClient) -> None:
