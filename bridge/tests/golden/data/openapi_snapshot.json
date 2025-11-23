@@ -1061,6 +1061,70 @@
         "x-response-model": "collect.v1.json"
       }
     },
+    "/api/current_program.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "domain_file_id": {
+                      "type": "string"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "domain_file_id",
+                    "locked"
+                  ],
+                  "title": "current_program.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "current_program",
+        "x-response-model": "current_program.v1.json"
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "domain_file_id": {
+                      "type": "string"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "domain_file_id",
+                    "locked"
+                  ],
+                  "title": "current_program.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "current_program",
+        "x-response-model": "current_program.v1.json"
+      }
+    },
     "/api/datatypes/create.json": {
       "post": {
         "requestBody": {
@@ -3856,6 +3920,60 @@
         },
         "summary": "search_xrefs_to_route",
         "x-response-model": "search_xrefs_to.v1.json"
+      }
+    },
+    "/api/select_program.json": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "additionalProperties": false,
+                "properties": {
+                  "domain_file_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "domain_file_id"
+                ],
+                "title": "select_program.request.v1",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "additionalProperties": false,
+                  "properties": {
+                    "domain_file_id": {
+                      "type": "string"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "domain_file_id",
+                    "locked"
+                  ],
+                  "title": "current_program.v1",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "select_program",
+        "x-response-model": "current_program.v1.json"
       }
     },
     "/api/string_xrefs.json": {

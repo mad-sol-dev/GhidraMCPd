@@ -11,6 +11,7 @@ from bridge.ghidra.client import CursorPageResult, DataTypeOperationResult, Requ
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 from bridge.utils import config
+from bridge.utils.program_context import PROGRAM_SELECTIONS
 
 
 _RUN_CONTRACT_TESTS = env_flag("RUN_CONTRACT_TESTS", default=not in_ci())
@@ -156,6 +157,13 @@ class StubGhidraClient:
                 "path": "/sample_program",
                 "type": "Program",
                 "size": 1024,
+            },
+            {
+                "domain_file_id": "4",
+                "name": "backup_program",
+                "path": "/backup_program",
+                "type": "Program",
+                "size": 2048,
             },
             {
                 "domain_file_id": "2",
@@ -632,6 +640,7 @@ def contract_client() -> TestClient:
     def factory() -> StubGhidraClient:
         return StubGhidraClient()
 
+    PROGRAM_SELECTIONS.clear()
     app = Starlette(routes=make_routes(factory, enable_writes=False))
     install_error_handlers(app)
     return TestClient(app)
@@ -646,6 +655,7 @@ def contract_client_writable(
     def factory() -> StubGhidraClient:
         return StubGhidraClient()
 
+    PROGRAM_SELECTIONS.clear()
     app = Starlette(routes=make_routes(factory, enable_writes=True))
     install_error_handlers(app)
     client = TestClient(app)

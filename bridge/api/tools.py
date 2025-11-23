@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from functools import wraps
 from typing import Any, Callable, Dict, List, Mapping, Sequence
 
 from mcp.server.fastmcp import FastMCP
@@ -36,6 +37,14 @@ from ..utils.logging import (
     request_scope,
 )
 from ..utils.hex import int_to_hex, parse_hex
+from ..utils.program_context import (
+    PROGRAM_SELECTIONS,
+    ProgramSelectionError,
+    mark_used_for_context,
+    normalize_selection,
+    requestor_from_context,
+    validate_program_id,
+)
 from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
 from .validators import validate_payload
 
@@ -153,8 +162,25 @@ def register_tools(
     tool_client = inject_client(client_factory)
     logger = logging.getLogger("bridge.mcp.tools")
 
+    def _wrap_usage(fn: Callable[..., Any], *, lock_usage: bool = True):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            mark_used_for_context(server, lock_usage=lock_usage)
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    def tracked_tool(*, lock_usage: bool = True):
+        def decorator(fn: Callable[..., Any]):
+            return tool_client(_wrap_usage(fn, lock_usage=lock_usage))
+
+        return decorator
+
+    def _current_requestor() -> object:
+        return requestor_from_context(server)
+
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def project_info(client) -> Dict[str, object]:
         with request_scope(
             "project_info",
@@ -185,7 +211,7 @@ def register_tools(
         return envelope_ok(normalized)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def project_overview(client) -> Dict[str, object]:
         with request_scope(
             "project_overview",
@@ -218,7 +244,89 @@ def register_tools(
         return envelope_ok(response_payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool(lock_usage=False)
+    def get_current_program(client) -> Dict[str, object]:
+        with request_scope(
+            "current_program",
+            logger=logger,
+            extra={"tool": "get_current_program"},
+        ):
+            files = client.get_project_files()
+            if files is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to enumerate project files.",
+                    upstream_error=upstream,
+                )
+
+            try:
+                state = normalize_selection(files, requestor=_current_requestor())
+            except ProgramSelectionError as exc:
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    (
+                        "Program selection is locked for this session; "
+                        f"previous selection '{exc.current}' is unavailable."
+                    ),
+                    recovery=("Start a new session to switch programs.",),
+                )
+            if state.domain_file_id is None:
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "No program files are available in the current project.",
+                )
+
+        payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+        valid, errors = validate_payload("current_program.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tracked_tool(lock_usage=False)
+    def select_program(client, domain_file_id: str) -> Dict[str, object]:
+        with request_scope(
+            "select_program",
+            logger=logger,
+            extra={"tool": "select_program"},
+        ):
+            files = client.get_project_files()
+            if files is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to enumerate project files.",
+                    upstream_error=upstream,
+                )
+
+            if not validate_program_id(files, domain_file_id):
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    f"Unknown program id '{domain_file_id}'.",
+                    recovery=("Use a domain_file_id from project_overview.",),
+                )
+
+            try:
+                state = PROGRAM_SELECTIONS.select(_current_requestor(), domain_file_id)
+            except ProgramSelectionError as exc:
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    (
+                        "Program selection is locked for this session; "
+                        f"currently using '{exc.current}'."
+                    ),
+                    recovery=("Start a new session to switch programs.",),
+                )
+
+        payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+        valid, errors = validate_payload("current_program.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
+    @tracked_tool()
     def project_rebase(
         client,
         new_base: str,
@@ -264,7 +372,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def analyze_function_complete(
         client,
         address: str,
@@ -322,7 +430,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def collect(
         client,
         *,
@@ -524,7 +632,7 @@ def register_tools(
         return envelope_ok(response_payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def datatypes_create(
         client,
         *,
@@ -572,7 +680,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def datatypes_update(
         client,
         *,
@@ -617,7 +725,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def datatypes_delete(
         client,
         *,
@@ -659,7 +767,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def write_bytes(
         client,
         address: str,
@@ -709,7 +817,7 @@ def register_tools(
         return envelope_ok(payload)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def jt_slot_check(
         client,
         jt_base: str,
@@ -749,7 +857,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def jt_slot_process(
         client,
         jt_base: str,
@@ -803,7 +911,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def jt_scan(
         client,
         jt_base: str,
@@ -846,7 +954,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def string_xrefs_compact(
         client,
         string_addr: str,
@@ -876,7 +984,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_strings(
         client,
         query: str,
@@ -916,7 +1024,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def strings_compact(
         client,
         limit: int = 50,
@@ -969,7 +1077,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_imports(
         client,
         query: str,
@@ -1006,7 +1114,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_exports(
         client,
         query: str,
@@ -1043,7 +1151,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_xrefs_to(
         client,
         address: str,
@@ -1089,7 +1197,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_functions(
         client,
         query: str,
@@ -1155,7 +1263,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def mmio_annotate_compact(
         client,
         function_addr: str,
@@ -1195,7 +1303,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_scalars(
         client,
         value: str | int,
@@ -1242,7 +1350,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def list_functions_in_range(
         client,
         address_min: str,
@@ -1286,7 +1394,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def disassemble_at(
         client,
         address: str,
@@ -1319,7 +1427,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def read_bytes(
         client,
         address: str,
@@ -1358,7 +1466,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def disassemble_batch(
         client,
         addresses: list[str],
@@ -1402,7 +1510,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def read_words(
         client,
         address: str,
@@ -1453,7 +1561,7 @@ def register_tools(
         return envelope_ok(data)
 
     @server.tool()
-    @tool_client
+    @tracked_tool()
     def search_scalars_with_context(
         client,
         value: str | int,

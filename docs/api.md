@@ -1188,6 +1188,86 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
+## `/api/current_program.json`
+
+Use `x-requestor-id` to scope selections when issuing parallel requests from a single client. Program selection is locked once any non-selection endpoint is used in a session; start a new session or requestor ID to switch afterward. If the previously selected program disappears while unlocked, the server falls back to the first available program; locked sessions receive `INVALID_REQUEST` until a new session is started.
+
+### GET
+
+**Summary:** current_program
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `domain_file_id` | string | Yes | ID of the active Program in the Ghidra project |
+  | `locked` | boolean | Yes | True when mid-session switches are blocked for this requestor |
+
+  ```json
+  {
+    "domain_file_id": "string",
+    "locked": false
+  }
+  ```
+
+### HEAD
+
+**Summary:** current_program
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `domain_file_id` | string | Yes | ID of the active Program in the Ghidra project |
+  | `locked` | boolean | Yes | True when mid-session switches are blocked for this requestor |
+
+  ```json
+  {
+    "domain_file_id": "string",
+    "locked": false
+  }
+  ```
+
+## `/api/select_program.json`
+
+### POST
+
+**Summary:** select_program
+
+#### Request body
+- Schema ID: `urn:schema:select-program.request.v1`
+- Declares: `https://json-schema.org/draft/2020-12/schema`
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `domain_file_id` | string | Yes | A Program `domain_file_id` from `/api/project_overview.json` |
+
+```json
+{
+  "domain_file_id": "string"
+}
+```
+
+#### Responses
+- `200` — Successful Response
+  - Declares: `https://json-schema.org/draft/2020-12/schema`
+
+  | Field | Type | Required | Notes |
+  | --- | --- | --- | --- |
+  | `domain_file_id` | string | Yes | The selected Program |
+  | `locked` | boolean | Yes | Whether this requestor is locked against switching |
+
+  ```json
+  {
+    "domain_file_id": "string",
+    "locked": false
+  }
+  ```
+
 ## `/api/project_info.json`
 
 ### GET

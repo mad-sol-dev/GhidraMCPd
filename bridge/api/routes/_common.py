@@ -12,6 +12,7 @@ from starlette.responses import JSONResponse
 
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
+from ...utils.program_context import PROGRAM_SELECTIONS, requestor_from_request
 from ..validators import validate_payload
 from .._shared import error_response
 
@@ -54,6 +55,18 @@ def build_with_client(
         @wraps(func)
         async def wrapper(request: Request) -> JSONResponse:
             request.state.enable_writes = enable_writes
+            requestor = requestor_from_request(request)
+            request.state.program_requestor = requestor
+            skip_paths = {
+                "/api/current_program.json",
+                "/api/select_program.json",
+                "/api/capabilities.json",
+                "/api/health.json",
+                "/openapi.json",
+                "/state",
+            }
+            if request.url.path not in skip_paths:
+                PROGRAM_SELECTIONS.mark_used(requestor)
             client = factory()
             try:
                 async with call_semaphore:
