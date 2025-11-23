@@ -196,13 +196,14 @@ def _fetch_strings(client: GhidraClient, *, limit: int, offset: int) -> Iterable
 def _op_strings_compact(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     limit = int(params.get("limit", 0))
     offset = int(params.get("offset", 0))
+    include_literals = bool(params.get("include_literals", False))
     if limit <= 0:
         raise ValueError("limit must be a positive integer")
     if offset < 0:
         raise ValueError("offset must be a non-negative integer")
     enforce_batch_limit(limit, counter="strings.compact.limit")
     entries = _fetch_strings(client, limit=limit, offset=offset)
-    return strings.strings_compact_view(entries)
+    return strings.strings_compact_view(entries, include_literals=include_literals)
 
 
 def _op_string_xrefs(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
