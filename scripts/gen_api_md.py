@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
 from urllib.request import urlopen
+from textwrap import dedent
 
 
 def load_openapi(source: str) -> Mapping[str, Any]:
@@ -415,6 +416,355 @@ def render_method(path: str, method: str, spec: Mapping[str, Any]) -> list[str]:
     return lines
 
 
+CURATED_SECTIONS = dedent(
+    """
+    ## Overview
+
+    All endpoints use the envelope `{ok, data|null, errors[]}` with error entries shaped as `{status, code, message, recovery[]}` plus strict JSON schemas.
+
+    - `POST /api/search_strings.json`
+    - `POST /api/search_functions.json`
+    - `POST /api/search_imports.json`
+    - `POST /api/search_exports.json`
+    - `POST /api/search_xrefs_to.json`
+    - `POST /api/search_scalars.json`
+    - `POST /api/list_functions_in_range.json`
+    - `POST /api/disassemble_at.json`
+    - `POST /api/read_bytes.json`
+    - `POST /api/write_bytes.json`
+    - `POST /api/jt_slot_check.json`
+    - `POST /api/jt_scan.json`
+    - `POST /api/strings_compact.json`
+    - `POST /api/mmio_annotate.json`
+    - `POST /api/analyze_function_complete.json`
+    - `GET /api/project_info.json`
+
+    See the sections below for parameters and invariants.
+
+    > OpenAPI: `GET /openapi.json`
+    > **Conventions:** `data.total` is an integer; `data.page` is **1-based** on search endpoints.
+
+    ## Search endpoints
+
+    ### Common semantics
+
+    - **Server-side filtering first** (no information loss), then pagination.
+    - Responses unify on: `query`, `total`, `page` (1-based), `limit`, `items`, `has_more`.
+
+    ### Strings
+
+    `POST /api/search_strings.json`
+
+    ```json
+    { "query": "memcpy", "limit": 50, "page": 1 }
+    ```
+
+    ### Functions / Imports / Exports / Xrefs
+
+    Same shape; each filters in its domain. See OpenAPI for item fields.
+
+    ### Scalars
+
+    `POST /api/search_scalars.json`
+
+    Search for immediate/constant values in code.
+
+    **Request:**
+    ```json
+    { "value": "0xB0000084", "limit": 100, "page": 1 }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "ok": true,
+      "data": {
+        "query": "0xB0000084",
+        "total": 42,
+        "page": 1,
+        "limit": 100,
+        "items": [
+          {
+            "address": "0x0020A1C0",
+            "value": "0xB0000084",
+            "function": "init_board",
+            "context": "LDR R0, =0xB0000084"
+          }
+        ],
+        "has_more": false
+      },
+      "errors": []
+    }
+    ```
+
+    - `value`: hex string (0x...) or integer
+    - `limit`: max 500
+    - `page`: 1-based pagination
+    - `has_more`: true when another page exists (`page * limit < total`)
+
+    ### Functions in range
+
+    `POST /api/list_functions_in_range.json`
+
+    List all functions within an address range.
+
+    **Request:**
+    ```json
+    { "address_min": "0x00000000", "address_max": "0x00001000", "limit": 200, "page": 1 }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "ok": true,
+      "data": {
+        "total": 12,
+        "page": 1,
+        "limit": 200,
+        "items": [
+          {
+            "name": "Reset",
+            "address": "0x00000000",
+            "size": 3
+          }
+        ]
+      },
+      "errors": []
+    }
+    ```
+
+    - `address_min`, `address_max`: hex strings (inclusive range)
+    - `size`: optional, number of addresses in function body
+    - `limit`: max 500
+
+    ### Disassemble at
+
+    `POST /api/disassemble_at.json`
+
+    Disassemble N instructions starting at an address.
+
+    **Request:**
+    ```json
+    { "address": "0x00000000", "count": 16 }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "ok": true,
+      "data": {
+        "items": [
+          {
+            "address": "0x00000000",
+            "bytes": "DBF021E3",
+            "text": "msr cpsr_c,#0xdb"
+          }
+        ]
+      },
+      "errors": []
+    }
+    ```
+
+    - `count`: max 128, default 16
+    - `bytes`: uppercase hex string of instruction bytes
+
+    ### Read bytes
+
+    `POST /api/read_bytes.json`
+
+    Read raw bytes from memory.
+
+    **Request:**
+    ```json
+    { "address": "0x00000000", "length": 16 }
+    ```
+
+    **Response:**
+    ```json
+    {
+    "ok": true,
+    "data": {
+      "address": "0x00000000",
+      "length": 16,
+      "encoding": "base64",
+      "data": "2/Ah4zTQn+XX8CHjMNCf5Q==",
+      "literal": "\\xDB\\xF0!\\xE35\\x10\\x9F\\xE5\\xD7\\xF0!\\xE30\\xD0\\x9F\\xE5"
+    },
+    "errors": []
+    }
+    ```
+
+    - `length`: max 4096 bytes
+    - `encoding`: always "base64"
+    - `data`: Base64-encoded bytes
+    - `literal`: Optional raw byte string (Latin-1 safe) when `include_literals: true` is requested
+
+    ### Wildcard queries
+
+    The following endpoints support wildcard queries (return all items without filtering):
+    - `search_functions`: use `query: "*"` or `query: ""`
+
+    `search_xrefs_to` requires an empty `query` string. Requests with non-empty or wildcard queries are rejected with `400` because upstream filtering is not available.
+
+    All search endpoints enforce the shared batch window cap (`page * limit <= 256` by default). Oversized windows return `413 Payload Too Large` so callers can retry with a smaller page or limit.
+
+    ## String endpoints
+
+    ### `strings_compact`
+
+    Returns a compact listing of program strings with deterministic ordering:
+
+    - Items contain `addr`, `s`, and `refs` counts with optional full `literal` text.
+    - Results are bounded by `limit` and always include `total` metadata.
+    - Empty strings are omitted; ASCII/UTF-16 variants are normalized to UTF-8 output.
+    - When Ghidra bindings do not implement `list_strings_compact`, the bridge falls back to `list_strings` or a wildcard `search_strings("")` call before applying `offset`/`limit`. Some environments may still return an empty catalog if upstream discovery is unavailable.
+    - Set `include_literals: true` to include the full normalized literal (without truncation) alongside the compact `s` preview.
+
+    ### `search_strings`
+
+    See [Search endpoints](#search-endpoints) for shared pagination semantics. Query terms are matched server-side with no client-side filtering. Set `include_literals: true` to ask for full normalized string contents in addition to the compact snippet, which stays capped at 120 characters.
+
+    ## Xref endpoints
+
+    ### `search_xrefs_to`
+
+    Search for references pointing to a target address:
+
+    - Accepts `target`, `limit`, and `page` parameters plus a required **empty** `query` string. Non-empty queries return `400 Bad Request` because filtering is not supported upstream.
+    - Results include caller/callee metadata plus reference kinds and repeat the `target_address` on each item for clarity.
+    - Pagination mirrors other search endpoints with deterministic totals (`has_more` flips to `false` on the last page).
+    - Oversized windows (`page * limit` over the configured maximum, default `256`) fail fast with `413 Payload Too Large` so callers can retry with a smaller batch.
+
+    ## Jump-table endpoints
+
+    ### `jt_slot_check`
+
+    Validates a single pointer as ARM/Thumb (or none), enforcing `[code_min, code_max)`.
+
+    **Tip — Deriving CODE_MIN/MAX:** fetch segments from the plugin and choose the `.text`/code bounds.
+
+    ### `jt_scan`
+
+    Batch over many slots; invariants:
+
+    - `summary.total == len(items)`
+    - `summary.valid + summary.invalid == summary.total`
+
+    ## MMIO endpoint
+
+    ### `mmio_annotate`
+
+    Annotates addresses for memory-mapped IO while respecting write guards:
+
+    - Requires explicit `addresses` and `annotation` payloads.
+    - Honors `dry_run` to preview changes without writes.
+    - When writes execute, they are limited by `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` and logged if `GHIDRA_MCP_AUDIT_LOG` is configured.
+
+    #### Response format
+
+    **Request:**
+    ```json
+    {
+      "function_addr": "0x0002df2c",
+      "dry_run": true,
+      "max_samples": 4
+    }
+    ```
+
+    **Response:**
+    ```json
+    {
+      "ok": true,
+      "data": {
+        "function": "0x0002df2c",
+        "reads": 10,
+        "writes": 9,
+        "bitwise_or": 2,
+        "bitwise_and": 1,
+        "toggles": 0,
+        "annotated": 0,
+        "samples": [
+          {
+            "addr": "0x0002df30",
+            "op": "READ",
+            "target": "0x00000018",
+            "address_abs": "0x00000018"
+          },
+          {
+            "addr": "0x0002df34",
+            "op": "OR",
+            "target": "0x00004000",
+            "address_abs": "0x00004000"
+          }
+        ],
+        "notes": ["dry-run requested: annotations were not applied"]
+      },
+      "errors": []
+    }
+    ```
+
+    ##### Fields
+
+    - `addr`: instruction address where the operation occurs
+    - `op`: operation type (READ, WRITE, OR, AND, TOGGLE)
+    - `target`: immediate value extracted from the instruction
+    - `address_abs`: **absolute address** for the operation
+      - If `target` is a valid address (non-zero), uses `target`
+      - Otherwise falls back to `addr` (the instruction address)
+    - `annotated`: number of comments actually written (0 when `dry_run: true`)
+    - `notes`: array of informational messages
+
+    ##### Limits
+
+    - `max_samples`: max 8 (default), caps the number of sample operations returned
+    - Write operations require `dry_run: false` and `GHIDRA_MCP_ENABLE_WRITES=1`
+
+    ## Data-type management API
+
+    The bridge exposes helper endpoints for creating, updating, and deleting structures and unions inside the active Ghidra program. All endpoints share the same safety model used elsewhere in the bridge: write operations are disabled by default, calls honour the per-request write counters, and every response is wrapped in the standard envelope returned by the API gateway.
+
+    Each route accepts a JSON payload that describes the type to manipulate and responds with a stable summary of the operation that was attempted. When `dry_run` is set to `true` (the default) no writes are forwarded to the Ghidra plugin. Clearing `dry_run` requires the server to be started with `GHIDRA_MCP_ENABLE_WRITES=1` and still consumes one write token from the current request scope.
+
+    ### POST `/api/datatypes/create.json`
+
+    Create a new structure or union in the active project. The request schema is `datatypes_create.request.v1.json`.
+
+    ```json
+    {
+      "kind": "structure",
+      "name": "Widget",
+      "category": "/structs",
+      "fields": [
+        {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+        {"name": "flags", "type": "uint16", "offset": 4, "length": 2}
+      ],
+      "dry_run": false
+    }
+    ```
+
+    Responses conform to `datatypes_create.v1.json` and always include the computed path, the normalised field list, and the inferred size (when available). During a dry run the `written` flag remains `false` and a note describing the simulated operation is included.
+
+    ### POST `/api/datatypes/update.json`
+
+    Update an existing structure or union in-place. The request schema is `datatypes_update.request.v1.json` and requires the fully-qualified data-type path plus the new field definitions. Response envelopes follow `datatypes_update.v1.json` and echo the final layout reported by the plugin (or the requested layout if the plugin returned no additional metadata).
+
+    ### POST `/api/datatypes/delete.json`
+
+    Delete a structure or union by path. The request schema is `datatypes_delete.request.v1.json` and the response schema is `datatypes_delete.v1.json`. Successful deletes set `written` to `true` and return the canonicalised `kind` and `path`. Dry runs add notes explaining that no data types were removed.
+
+    ### Safety limits
+
+    All three routes share the standard per-request write guard. Each successful write consumes a single token and will raise an error if the configured limit is exceeded. The bridge will also reject attempts to proceed while writes are disabled, returning `WRITE_DISABLED` in the response envelope.
+    """
+).strip()
+
+
+def curated_sections() -> list[str]:
+    """Return the curated human-written notes to prepend to the generated API docs."""
+
+    return CURATED_SECTIONS.splitlines()
+
+
 def render_api(doc: Mapping[str, Any], source: str) -> str:
     parts: list[str] = []
     info = doc.get("info", {})
@@ -423,6 +773,8 @@ def render_api(doc: Mapping[str, Any], source: str) -> str:
     parts.append("# Ghidra MCPd API reference")
     parts.append("")
     parts.append(f"_Source: {source} — {title} v{version}_")
+    parts.append("")
+    parts.extend(curated_sections())
     parts.append("")
     paths = doc.get("paths", {})
     for path in sorted(paths):
