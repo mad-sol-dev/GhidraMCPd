@@ -335,7 +335,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
-- `read_bytes` — Read a raw byte window. Required: address (hex). Optional: length in bytes (default 64) and `include_literals` (default `false`) to echo the literal byte string alongside base64.
+- `read_bytes` — Read a raw byte window. Required: address (hex). Optional: length in bytes (default 64).
 
   ```json
   {
@@ -343,13 +343,12 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
     "op": "read_bytes",
     "params": {
       "address": "0x401000",
-      "length": 32,
-      "include_literals": true
+      "length": 32
     }
   }
   ```
 
-- `read_words` — Read machine words. Required: address (hex). Optional: count (default 1) and `include_literals` (default `false`) to return base64-encoded word bytes beside decoded integers.
+- `read_words` — Read machine words. Required: address (hex). Optional: count (default 1).
 
   ```json
   {
@@ -441,7 +440,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   }
   ```
 
-- `search_xrefs_to` — Search inbound references to an address. Required: address (hex) and non-empty query string. Optional: limit (default 100), page (default 1).
+- `search_xrefs_to` — Search inbound references to an address. Required: address (hex). Optional: query, limit (default 100), page (default 1).
 
   ```json
   {
@@ -449,7 +448,6 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
     "op": "search_xrefs_to",
     "params": {
       "address": "0x401050",
-      "query": "call",
       "limit": 50
     }
   }
@@ -1420,11 +1418,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+| `include_literals` | boolean | No | default=False |
 | `length` | integer | Yes | min=1, max=4096 |
 
 ```json
 {
   "address": "0x0",
+  "include_literals": false,
   "length": 0
 }
 ```
@@ -1440,13 +1440,15 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
   | `data` | string | Yes |  |
   | `encoding` | string | Yes | enum=['base64'] |
   | `length` | integer | Yes | min=0 |
+  | `literal` | string | No |  |
 
   ```json
   {
     "address": "0x0",
     "data": "string",
     "encoding": "base64",
-    "length": 0
+    "length": 0,
+    "literal": "string"
   }
   ```
 
@@ -1464,7 +1466,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | --- | --- | --- | --- |
 | `limit` | integer | No | default=100, min=1, max=1000 |
 | `page` | integer | No | default=1, min=1 |
-| `query` | string | Yes | minLength=1; empty or wildcard (`"*"`) values are rejected |
+| `query` | string | Yes |  |
 
 ```json
 {
@@ -1716,12 +1718,14 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `include_literals` | boolean | No | default=False |
 | `limit` | integer | No | min=1 |
 | `page` | integer | No | min=1 |
 | `query` | string | Yes |  |
 
 ```json
 {
+  "include_literals": false,
   "limit": 0,
   "page": 0,
   "query": "string"
@@ -1770,7 +1774,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
 | `limit` | integer | No | default=100, min=1, max=1000 |
 | `page` | integer | No | default=1, min=1 |
-| `query` | string | Yes | minLength=1; empty or wildcard (`"*"`) values are rejected |
+| `query` | string | Yes |  |
 
 ```json
 {
@@ -1872,11 +1876,13 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
+| `include_literals` | boolean | No | default=False |
 | `limit` | integer | Yes | min=1 |
 | `offset` | integer | No | min=0 |
 
 ```json
 {
+  "include_literals": false,
   "limit": 0,
   "offset": 0
 }
@@ -1897,6 +1903,7 @@ _Source: bridge/tests/golden/data/openapi_snapshot.json — Ghidra MCP Bridge AP
     "items": [
       {
         "addr": "0x0",
+        "literal": "string",
         "refs": 0,
         "s": "string"
       }
