@@ -180,7 +180,8 @@
         "Configurable origin whitelist enforced for bridge endpoints",
         "Docs cover deployment toggles + failure modes"
       ],
-      "status": "todo"
+      "status": "done",
+      "commit": "pending"
     },
     {
       "id": "R.6",
@@ -247,13 +248,14 @@
       "depends_on": [
         "D.1"
       ],
-      "dod": [
-        "MCP tools expose select_program/domain_file_id and get_current_program",
-        "Analysis endpoints consume the active program context",
-        "Docs clarify switching rules and validation"
-      ],
-      "status": "todo"
-    },
+        "dod": [
+          "MCP tools expose select_program/domain_file_id and get_current_program",
+          "Analysis endpoints consume the active program context",
+          "Docs clarify switching rules and validation"
+        ],
+        "status": "done",
+        "commit": "pending"
+      },
     {
       "id": "R.9",
       "title": "Firmware-set workflows",

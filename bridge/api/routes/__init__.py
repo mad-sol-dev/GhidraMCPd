@@ -17,6 +17,7 @@ from .datatypes_routes import create_datatype_routes
 from .disasm_routes import create_disasm_routes
 from .health_routes import create_health_routes
 from .jt_routes import create_jt_routes
+from .program_routes import create_program_routes
 from .memory_routes import create_memory_routes
 from .mmio_routes import create_mmio_routes
 from .project_routes import create_project_routes
@@ -45,6 +46,7 @@ def make_routes(
         create_health_routes(client_factory, enable_writes, logger, semaphore),
         create_meta_routes(deps),
         create_project_routes(deps),
+        create_program_routes(deps),
         create_jt_routes(deps),
         create_search_routes(deps),
         create_collect_routes(deps),
