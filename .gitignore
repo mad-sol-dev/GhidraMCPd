@@ -53,7 +53,10 @@ hs_err_pid*
 replay_pid*
 
 # Third party JAR files from Ghidra
-lib/*.jar
+lib/
+
+# Archived downloads
+ghidra.zip
 
 # Python artifacts
 __pycache__/

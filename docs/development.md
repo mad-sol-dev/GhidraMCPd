@@ -6,7 +6,9 @@
 python -m pytest -q bridge/tests/unit bridge/tests/contract bridge/tests/golden
 ```
 
-## Building the Ghidra Plugin
+## Java Development
+
+Use this path when you need IDE support or want to iterate on the Ghidra extension outside the Docker builder.
 
 ### Prerequisites
 
