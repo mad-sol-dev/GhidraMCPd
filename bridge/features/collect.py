@@ -177,20 +177,7 @@ def _op_search_strings(client: GhidraClient, params: Mapping[str, object]) -> Ma
 
 
 def _fetch_strings(client: GhidraClient, *, limit: int, offset: int) -> Iterable[Mapping[str, object]]:
-    fetcher = getattr(client, "list_strings_compact", None)
-    if callable(fetcher):
-        result = fetcher(limit=limit, offset=offset)
-        return [] if result is None else list(result)
-
-    fallback = getattr(client, "list_strings", None)
-    if callable(fallback):
-        try:
-            result = fallback(limit=limit, offset=offset)
-        except TypeError:
-            result = fallback(limit=limit)
-        return [] if result is None else list(result)
-
-    return []
+    return strings.fetch_strings_compact_entries(client, limit=limit, offset=offset)
 
 
 def _op_strings_compact(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:

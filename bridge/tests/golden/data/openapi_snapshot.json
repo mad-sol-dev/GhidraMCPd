@@ -3836,7 +3836,9 @@
                     "type": "integer"
                   },
                   "query": {
-                    "minLength": 1,
+                    "default": "",
+                    "description": "Must be an empty string; filtering is not supported",
+                    "minLength": 0,
                     "type": "string"
                   }
                 },
@@ -4081,7 +4083,7 @@
                     "type": "boolean"
                   },
                   "limit": {
-                    "minimum": 1,
+                    "minimum": 0,
                     "type": "integer"
                   },
                   "offset": {

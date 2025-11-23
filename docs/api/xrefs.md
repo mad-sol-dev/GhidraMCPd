@@ -4,7 +4,7 @@
 
 Search for references pointing to a target address:
 
-- Accepts `target`, `limit`, and `page` parameters.
+- Accepts `target`, `limit`, and `page` parameters plus a required **empty** `query` string. Non-empty queries return `400 Bad Request` because filtering is not supported upstream.
 - Results include caller/callee metadata plus reference kinds and repeat the `target_address` on each item for clarity.
 - Pagination mirrors other search endpoints with deterministic totals (`has_more` flips to `false` on the last page).
-- Requests must include a non-empty `query`; empty or wildcard (`"*"`) queries return `400 Bad Request` to avoid accidental full listings.
+- Oversized windows (`page * limit` over the configured maximum, default `256`) fail fast with `413 Payload Too Large` so callers can retry with a smaller batch.
