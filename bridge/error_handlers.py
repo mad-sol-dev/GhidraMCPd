@@ -69,18 +69,19 @@ def _render_validation_error(
 def install_error_handlers(app) -> None:
     """Install error handlers on the Starlette app."""
 
-    @app.exception_handler(400)
     async def _on_bad_request(request: Request, exc: Exception) -> JSONResponse:
         return _render_validation_error(request, exc, "bad_request")
 
-    @app.exception_handler(json.JSONDecodeError)
     async def _on_json_decode_error(request: Request, exc: json.JSONDecodeError) -> JSONResponse:
         return _render_validation_error(request, exc, "json_decode_error")
 
-    @app.exception_handler(ValueError)
     async def _on_value_error(request: Request, exc: ValueError) -> JSONResponse:
         return _render_validation_error(request, exc, "value_error")
 
-    @app.exception_handler(TypeError)
     async def _on_type_error(request: Request, exc: TypeError) -> JSONResponse:
         return _render_validation_error(request, exc, "type_error")
+
+    app.add_exception_handler(400, _on_bad_request)
+    app.add_exception_handler(json.JSONDecodeError, _on_json_decode_error)
+    app.add_exception_handler(ValueError, _on_value_error)
+    app.add_exception_handler(TypeError, _on_type_error)
