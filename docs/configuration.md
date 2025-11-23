@@ -14,8 +14,9 @@ Set via environment variables:
   you understand the workflow impact.
 
 - `GHIDRA_MCP_AUDIT_LOG` (default: unset)
-  Optional filesystem path for JSONL write audits. When unset, successful writes are not
-  recorded.
+  Optional filesystem path for JSONL write audits. When set, deterministic write endpoints
+  append structured entries (including dry-run and disabled attempts) that capture caller
+  context, parameters, and outcome metadata.
 
 - `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (default: `2`)
   Hard limit of writes any single request may perform.

@@ -1,4 +1,5 @@
 import base64
+import json
 
 import pytest
 from starlette.applications import Starlette
@@ -7,6 +8,7 @@ from starlette.testclient import TestClient
 from bridge.api import routes
 from bridge.api.routes import make_routes
 from bridge.features import jt, memory, mmio
+from bridge.utils import audit
 
 
 class RecordingJTClient:
@@ -378,3 +380,81 @@ def test_memory_write_executes_when_enabled(monkeypatch) -> None:
     assert data["notes"] == []
     assert client.write_calls == [(0x00400000, b"ABC")]
     assert recorded == [1]
+
+
+def test_memory_write_audit_records_dry_run(tmp_path, monkeypatch) -> None:
+    audit_path = tmp_path / "audit.log"
+    previous_path = audit.get_audit_log_path()
+    attempts: list[None] = []
+    monkeypatch.setattr(memory, "record_write_attempt", lambda amount=1: attempts.append(None))
+
+    factory = RecordingMemoryFactory()
+    app = Starlette(routes=make_routes(factory, enable_writes=True))
+    payload = {
+        "address": "0x00400000",
+        "data": base64.b64encode(b"\x01\x02").decode("ascii"),
+        "dry_run": True,
+    }
+
+    audit.set_audit_log_path(audit_path)
+    try:
+        with TestClient(app) as http:
+            body = _post(http, "/api/write_bytes.json", payload)
+    finally:
+        audit.set_audit_log_path(previous_path)
+
+    data = body["data"]
+    client = factory.last
+
+    assert any("dry-run" in note for note in data["notes"])
+    assert client.write_calls == []
+    assert attempts == []
+
+    entries = audit_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(entries) == 1
+    entry = json.loads(entries[0])
+    assert entry["category"] == "memory.write_bytes"
+    assert entry["dry_run"] is True
+    assert entry["writes_enabled"] is True
+    assert entry["result"]["ok"] is True
+    assert entry["result"]["written"] is False
+    assert entry["parameters"]["address"] == "0x00400000"
+
+
+def test_memory_write_audit_records_disabled(tmp_path, monkeypatch) -> None:
+    audit_path = tmp_path / "audit.log"
+    previous_path = audit.get_audit_log_path()
+    attempts: list[None] = []
+    monkeypatch.setattr(memory, "record_write_attempt", lambda amount=1: attempts.append(None))
+
+    factory = RecordingMemoryFactory()
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
+    payload = {
+        "address": "0x00400000",
+        "data": base64.b64encode(b"\x01\x02").decode("ascii"),
+        "dry_run": False,
+    }
+
+    audit.set_audit_log_path(audit_path)
+    try:
+        with TestClient(app) as http:
+            body = _post(http, "/api/write_bytes.json", payload)
+    finally:
+        audit.set_audit_log_path(previous_path)
+
+    data = body["data"]
+    client = factory.last
+
+    assert "WRITE_DISABLED" in data["errors"]
+    assert any("writes disabled" in note for note in data["notes"])
+    assert client.write_calls == []
+    assert attempts == []
+
+    entries = audit_path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(entries) == 1
+    entry = json.loads(entries[0])
+    assert entry["category"] == "memory.write_bytes"
+    assert entry["dry_run"] is False
+    assert entry["writes_enabled"] is False
+    assert entry["result"]["ok"] is False
+    assert "WRITE_DISABLED" in entry["result"]["errors"]

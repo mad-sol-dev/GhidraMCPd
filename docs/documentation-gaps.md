@@ -10,10 +10,6 @@ The Java plugin exposes a set of HTTP endpoints directly from Ghidra (e.g., `/me
 
 The `aggregate_transcripts` helper parses transcripts, extracts the first JSON object per record, validates it against a schema, and produces ok/failure summaries. There is no user-facing guidance on when to use this utility, what input shape it expects, or how to interpret the resulting summary counts.
 
-## Audit log format for jump-table writes
-
-`bridge.utils.audit` writes structured JSONL entries for jump-table slot updates (rename/comment/verify data), including request metadata and verification flags. The configuration docs mention enabling an audit log path but do not document the payload schema, fields emitted, or the circumstances under which entries are recorded.
-
 ## Ghidra call whitelist and adapter coverage
 
 The bridge hard-codes a whitelist of permitted Ghidra bridge calls (reads, searches, write operations, and datatype mutations) plus optional architecture adapters. The public docs list environment flags to toggle adapters but do not enumerate the whitelisted call surface or explain how adapter selection affects available operations.

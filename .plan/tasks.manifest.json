@@ -169,7 +169,7 @@
         "Write/rebase/datatypes flows emit structured JSONL traces",
         "CI enforces audit log schema coverage"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.5",

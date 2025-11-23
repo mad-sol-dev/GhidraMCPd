@@ -53,6 +53,53 @@ def _write_entry(entry: Mapping[str, Any]) -> None:
     except OSError:
         logger.exception("Failed to write audit log entry", extra={"path": str(_audit_path)})
 
+def _base_entry(category: str, *, context: Optional[RequestContext] = None) -> MutableMapping[str, Any]:
+    payload: MutableMapping[str, Any] = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "category": category,
+    }
+    payload.update(_request_metadata(context))
+    return payload
+
+
+def _normalize_result(result: Mapping[str, Any] | None) -> MutableMapping[str, Any]:
+    normalized: MutableMapping[str, Any] = {}
+    if isinstance(result, Mapping):
+        normalized.update(result)
+    errors = normalized.get("errors", [])
+    notes = normalized.get("notes", [])
+    normalized["errors"] = list(errors if isinstance(errors, Sequence) else [errors])
+    normalized["notes"] = list(notes if isinstance(notes, Sequence) else [notes])
+    if "ok" not in normalized:
+        normalized["ok"] = not normalized["errors"]
+    return normalized
+
+
+def record_write_event(
+    *,
+    category: str,
+    parameters: Mapping[str, Any],
+    dry_run: bool,
+    writes_enabled: bool,
+    result: Mapping[str, Any] | None,
+    controls: Mapping[str, Any] | None = None,
+) -> None:
+    """Persist a structured audit entry for a deterministic write action."""
+
+    context = current_request()
+    payload = _base_entry(category, context=context)
+    payload.update(
+        {
+            "parameters": dict(parameters),
+            "dry_run": bool(dry_run),
+            "writes_enabled": bool(writes_enabled),
+            "result": _normalize_result(result),
+        }
+    )
+    if controls:
+        payload["controls"] = dict(controls)
+    _write_entry(payload)
+
 
 def record_jt_write(
     *,
@@ -76,31 +123,36 @@ def record_jt_write(
         return
 
     context = current_request()
-    payload: MutableMapping[str, Any] = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "category": "jt_slot_process",
-        "slot": slot,
-        "slot_address": slot_address,
-        "function": f"0x{function_address:08x}",
-        "rename": {
-            "ok": rename_ok,
-            "from": rename_from,
-            "to": rename_to,
-        },
-        "comment": {
-            "ok": comment_ok,
-            "from": comment_from,
-            "to": comment_to,
-        },
-        "verify": {
-            "name": verify_name,
-            "comment_present": verify_comment_present,
-        },
-        "notes": list(notes),
-        "errors": list(errors),
-    }
-    payload.update(_request_metadata(context))
+    payload = _base_entry("jt_slot_process", context=context)
+    payload.update(
+        {
+            "slot": slot,
+            "slot_address": slot_address,
+            "function": f"0x{function_address:08x}",
+            "rename": {
+                "ok": rename_ok,
+                "from": rename_from,
+                "to": rename_to,
+            },
+            "comment": {
+                "ok": comment_ok,
+                "from": comment_from,
+                "to": comment_to,
+            },
+            "verify": {
+                "name": verify_name,
+                "comment_present": verify_comment_present,
+            },
+            "notes": list(notes),
+            "errors": list(errors),
+        }
+    )
     _write_entry(payload)
 
 
-__all__ = ["get_audit_log_path", "record_jt_write", "set_audit_log_path"]
+__all__ = [
+    "get_audit_log_path",
+    "record_jt_write",
+    "record_write_event",
+    "set_audit_log_path",
+]

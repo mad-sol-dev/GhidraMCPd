@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from ..ghidra.client import GhidraClient
+from ..utils import audit
 from ..utils.hex import int_to_hex
 from ..utils.logging import (
     SafetyLimitExceeded,
@@ -116,5 +117,23 @@ def rebase_project(
         payload["offset"] = int_to_hex(offset)
     else:
         payload["offset"] = None
+
+    audit.record_write_event(
+        category="project.rebase",
+        parameters={
+            "requested_base": int_to_hex(new_base),
+            "previous_base": payload["previous_base"],
+            "offset": payload["offset"],
+            "confirm": bool(confirm),
+        },
+        dry_run=dry_run,
+        writes_enabled=writes_enabled,
+        controls={"rebases_enabled": rebases_enabled},
+        result={
+            "rebased": rebased,
+            "errors": list(errors),
+            "notes": list(notes),
+        },
+    )
 
     return payload

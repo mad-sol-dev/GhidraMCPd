@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
@@ -8,6 +10,7 @@ from bridge.api.routes import make_routes
 from bridge.api.validators import validate_payload
 from bridge.error_handlers import install_error_handlers
 from bridge.tests.contract.conftest import StubGhidraClient
+from bridge.utils import audit
 from bridge.utils.cache import get_search_cache
 
 def _assert_valid(schema_name: str, payload: dict) -> None:
@@ -262,6 +265,72 @@ def test_datatypes_delete_contract(contract_client_writable: TestClient) -> None
     data = body["data"]
     _assert_valid("datatypes_delete.v1.json", data)
     assert data["datatype"] == {"kind": "structure", "path": "/structs/Packet"}
+
+
+def test_datatypes_update_audit_success(
+    contract_client_writable: TestClient, tmp_path
+) -> None:
+    audit_path = tmp_path / "audit.jsonl"
+    previous_path = audit.get_audit_log_path()
+    audit.set_audit_log_path(audit_path)
+    try:
+        response = contract_client_writable.post(
+            "/api/datatypes/update.json",
+            json={
+                "kind": "structure",
+                "path": "/structs/Packet",
+                "fields": [
+                    {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                    {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+                ],
+                "dry_run": False,
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        _assert_envelope(body)
+    finally:
+        audit.set_audit_log_path(previous_path)
+
+    entry = json.loads(audit_path.read_text(encoding="utf-8").strip())
+    assert entry["category"] == "datatypes.update"
+    assert entry["dry_run"] is False
+    assert entry["writes_enabled"] is True
+    assert entry["parameters"]["path"] == "/structs/Packet"
+    assert entry["result"]["ok"] is True
+
+
+def test_datatypes_update_audit_writes_disabled(
+    contract_client: TestClient, tmp_path
+) -> None:
+    audit_path = tmp_path / "audit.jsonl"
+    previous_path = audit.get_audit_log_path()
+    audit.set_audit_log_path(audit_path)
+    try:
+        response = contract_client.post(
+            "/api/datatypes/update.json",
+            json={
+                "kind": "structure",
+                "path": "/structs/Packet",
+                "fields": [
+                    {"name": "id", "type": "uint32", "offset": 0, "length": 4},
+                    {"name": "flags", "type": "uint16", "offset": 4, "length": 2},
+                ],
+                "dry_run": False,
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        _assert_envelope(body)
+    finally:
+        audit.set_audit_log_path(previous_path)
+
+    entry = json.loads(audit_path.read_text(encoding="utf-8").strip())
+    assert entry["category"] == "datatypes.update"
+    assert entry["dry_run"] is False
+    assert entry["writes_enabled"] is False
+    assert entry["result"]["ok"] is False
+    assert "WRITE_DISABLED" in entry["result"]["errors"]
 
 
 class _CountingStub(StubGhidraClient):
