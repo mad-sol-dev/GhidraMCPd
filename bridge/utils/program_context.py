@@ -194,13 +194,23 @@ def requestor_from_context(server: FastMCP) -> object:
 
     try:
         ctx = server.get_context()
+    except ValueError:
+        # Outside of an MCP request (e.g., direct unit invocation) there is no
+        # request_context. Use a stable fallback key so non-request usage still
+        # participates in program tracking without crashing tests.
+        return ("mcp", "default")
     except Exception:  # pragma: no cover - defensive fallback
         raise RuntimeError("MCP context unavailable")
 
     try:
         return ctx.session
+    except ValueError:
+        return ("mcp", "default")
     except Exception:  # pragma: no cover - defensive fallback
-        client_id = getattr(ctx, "client_id", None)
+        try:
+            client_id = getattr(ctx, "client_id", None)
+        except Exception:
+            client_id = None
         if client_id:
             return ("mcp", client_id)
     return ("mcp", getattr(ctx, "request_id", "unknown"))
