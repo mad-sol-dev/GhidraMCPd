@@ -493,9 +493,9 @@ def register_tools(
           ``k`` best results, cursor-based pagination via ``resume_cursor``
           (mutually exclusive with ranking), and ``context_lines`` (0–16).
           Example: ``{"id": "init-funcs", "op": "search_functions", "params": {"query": "init", "limit": 20, "context_lines": 2}}``
-        * ``search_xrefs_to`` – destination ``address`` (hex), optional ``query``
-          filter plus ``limit``/``page`` (defaults ``100``/``1``).
-          Example: ``{"id": "xref", "op": "search_xrefs_to", "params": {"address": "0x401050", "limit": 50}}``
+        * ``search_xrefs_to`` – destination ``address`` (hex) with required
+          empty ``query`` plus ``limit``/``page`` (defaults ``100``/``1``).
+          Example: ``{"id": "xref", "op": "search_xrefs_to", "params": {"address": "0x401050", "query": "", "limit": 50}}``
         * ``search_scalars`` – numeric ``value`` (decimal or hex), optional
           ``query`` label, ``limit``/``page`` pagination, and ``resume_cursor``
           for deep paging.

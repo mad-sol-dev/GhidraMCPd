@@ -143,19 +143,9 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             increment_counter("strings.compact.calls")
 
-            raw_entries: list[dict[str, object]] = []
-            fetcher = getattr(client, "list_strings_compact", None)
-            if callable(fetcher):
-                result = fetcher(limit=limit, offset=offset)
-                raw_entries = [] if result is None else list(result)
-            else:
-                fallback = getattr(client, "list_strings", None)
-                if callable(fallback):
-                    try:
-                        result = fallback(limit=limit, offset=offset)
-                    except TypeError:
-                        result = fallback(limit=limit)
-                    raw_entries = [] if result is None else list(result)
+            raw_entries = strings.fetch_strings_compact_entries(
+                client, limit=limit, offset=offset
+            )
 
             try:
                 payload = strings.strings_compact_view(
@@ -258,6 +248,11 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 page = int(data.get("page", 1))
             except (KeyError, TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
+            if query.strip():
+                return error_response(
+                    ErrorCode.INVALID_REQUEST,
+                    "query must be empty; filtering is not supported.",
+                )
             pagination_error = _validate_pagination(limit, page)
             if pagination_error is not None:
                 return pagination_error

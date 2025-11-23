@@ -192,12 +192,22 @@
                   "context": "BL log_debug",
                   "from_address": "0x00005000",
                   "target_address": "0x00102004"
+                },
+                {
+                  "context": "BL printf",
+                  "from_address": "0x00006000",
+                  "target_address": "0x00102004"
+                },
+                {
+                  "context": "B other_handler",
+                  "from_address": "0x00007000",
+                  "target_address": "0x00102004"
                 }
               ],
               "limit": 5,
               "page": 1,
-              "query": "log",
-              "total": 1
+              "query": "",
+              "total": 3
             },
             "errors": [],
             "ok": true

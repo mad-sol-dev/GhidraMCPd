@@ -17,7 +17,7 @@
 
 ## B. ghidra-bridge tooling
 - ◻ Round out tool landscape
-  - Investigate why `strings_compact` returns empty catalogs while `search_strings` works; either document the limitation or activate population. Clarify error messaging for tools like `search_xrefs_to` where empty `query` strings are mandatory.
+  - ✅ `strings_compact` now falls back to `search_strings("")` with documented limitations, and `search_xrefs_to` errors clearly when queries are non-empty.
 - ◻ High-level analysis recipes on existing tools
   - Formalize LLM-side “String → Xrefs → Disasm,” “Scalar → MMIO → mmio_annotate_compact,” and “Region → list_functions_in_range → analyze_function_complete” workflows. Future: optional MCP meta-tools that package these.
 - ◻ Write-path hygiene (rename/comments/labels)

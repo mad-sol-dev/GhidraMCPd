@@ -256,6 +256,38 @@ def search_strings(
     return result
 
 
+def fetch_strings_compact_entries(
+    client: object, *, limit: int, offset: int
+) -> List[Mapping[str, object]]:
+    """Collect raw string metadata for ``strings_compact`` responses.
+
+    Attempts the most specific provider first (``list_strings_compact``),
+    followed by older ``list_strings`` implementations, and finally the
+    broad ``search_strings`` API when compact listings are unavailable.
+    """
+
+    fetcher = getattr(client, "list_strings_compact", None)
+    if callable(fetcher):
+        result = fetcher(limit=limit, offset=offset)
+        return [] if result is None else list(result)
+
+    fallback = getattr(client, "list_strings", None)
+    if callable(fallback):
+        try:
+            result = fallback(limit=limit, offset=offset)
+        except TypeError:
+            result = fallback(limit=limit)
+        return [] if result is None else list(result)
+
+    search_fallback = getattr(client, "search_strings", None)
+    if callable(search_fallback):
+        result = search_fallback("")
+        entries: Iterable[Mapping[str, object]] = [] if result is None else result
+        return list(entries)[offset : offset + limit]
+
+    return []
+
+
 _ELLIPSIS = "…"
 
 
@@ -336,4 +368,9 @@ def strings_compact_view(
     return {"total": len(items), "items": items}
 
 
-__all__ = ["search_strings", "strings_compact_view", "xrefs_compact"]
+__all__ = [
+    "fetch_strings_compact_entries",
+    "search_strings",
+    "strings_compact_view",
+    "xrefs_compact",
+]
