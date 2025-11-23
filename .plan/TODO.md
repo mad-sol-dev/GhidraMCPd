@@ -4,7 +4,6 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.3} `include_literals` plumbing across read/search APIs
 - {R.4} Expanded audit logging for write/rebase/datatypes flows
 - {R.8} Program selection helpers (`select_program`, `get_current_program`) to anchor analysis tools on the active Ghidra program
 - {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)
@@ -42,6 +41,7 @@
 - [x] Maven deps via GHIDRA_DIR — CI downloads Ghidra, pom.xml uses GHIDRA_DIR system paths, docs note local build.
 - [x] {R.1} Batch project analysis lanes for multi-program dossiers — collector lanes span multiple Ghidra projects with deterministic envelopes and docs/tests.
 - [x] {R.2} Enhanced search ranking + expanded context windows — function search supports opt-in context windows with deterministic ordering coverage across unit/contract/golden suites.
+- [x] {R.3} `include_literals` plumbing across memory and string search endpoints.
 - [x] {T-202511-019} Refresh roadmap and .plan with navigation/context/backlog alignment.
 
 ## Invariants
