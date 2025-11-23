@@ -380,3 +380,13 @@ Mirror task status and short SHA from `/.plan/TODO.md` → `/.plan/state.json`. 
 - Add short docstrings to `die()` and `ok()`.
 **What changed:** Reused manifest raw text for parsing/mojibake and added helper docstrings.
 
+### ✅ R.10 — Clarify strings_compact and xref errors (ID: R.10)
+**Status:** ✅
+**Summary:** Implemented substring filtering for `search_xrefs_to` (surpassing the original scope of just error messages) and validated `strings_compact` contracts.
+**Commit:** 609bb9a
+
+### ✅ R.8 — Program selection helpers (ID: R.8)
+**Status:** ✅
+**Summary:** Added `select_program`/`get_current_program` helpers that normalize names, accept defaults, and pin tool execution to the active Ghidra program context.
+**Commit:** 134f760
+
