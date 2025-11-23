@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Sanity-check MCP tools against a running Ghidra session.
 
-This script launches ``uvicorn bridge.app:create_app --factory`` via the MCP
-Python client (stdio transport) and exercises a handful of tools in order:
-``project_info``, ``search_strings``, ``search_functions``, and ``read_bytes``.
-It exits non-zero on any failure, MCP error envelope, or empty result.
+This script launches ``scripts/bridge_stdio.py --transport stdio`` via the MCP
+Python client and exercises a handful of tools in order: ``project_info``,
+``search_strings``, ``search_functions``, and ``read_bytes``. It exits non-zero
+on any failure, MCP error envelope, or empty result.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import asyncio
 import os
 import sys
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import mcp.types as types
@@ -56,8 +57,8 @@ async def _run_sequence(args: argparse.Namespace) -> int:
         env["GHIDRA_SERVER_URL"] = args.ghidra_server_url
 
     server = StdioServerParameters(
-        command=args.uvicorn_command,
-        args=["bridge.app:create_app", "--factory"],
+        command=args.python_command,
+        args=[str(args.bridge_script), "--transport", "stdio"],
         env=env,
         cwd=args.cwd,
     )
@@ -70,7 +71,13 @@ async def _run_sequence(args: argparse.Namespace) -> int:
                 read_timeout_seconds=timedelta(seconds=args.timeout),
             ) as session:
 
-                await session.initialize()
+                init_result = await session.initialize()
+                server_info = init_result.serverInfo
+                print(
+                    f"Connected to {server_info.name} {server_info.version}"
+                    if server_info
+                    else "Connected to MCP bridge"
+                )
 
                 project_info = await _call_tool(session, "project_info")
                 print(_first_text_content(project_info) or "project_info returned data")
@@ -110,14 +117,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         description=(
-            "Launch uvicorn bridge.app:create_app --factory via the MCP stdio client "
+            "Launch scripts/bridge_stdio.py --transport stdio via the MCP client "
             "and verify common tools succeed."
         )
     )
     parser.add_argument(
-        "--uvicorn-command",
-        default="uvicorn",
-        help="Command used to launch the bridge (default: uvicorn)",
+        "--python-command",
+        default=sys.executable,
+        help="Python interpreter used to launch the bridge (default: current interpreter)",
+    )
+    parser.add_argument(
+        "--bridge-script",
+        type=Path,
+        default=Path(__file__).resolve().with_name("bridge_stdio.py"),
+        help="Path to bridge_stdio.py (default: scripts/bridge_stdio.py)",
     )
     parser.add_argument(
         "--ghidra-server-url",
@@ -126,7 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cwd",
         default=os.getcwd(),
-        help="Working directory for the uvicorn subprocess (default: repo root)",
+        help="Working directory for the bridge subprocess (default: repo root)",
     )
     parser.add_argument(
         "--string-query",
