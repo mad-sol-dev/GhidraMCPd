@@ -118,6 +118,13 @@ public final class CursorPager {
      * Serialize a page into JSON using the provided escaper.
      */
     public static String toJson(CursorPage page, Function<String, String> escaper) {
+        return toJson(page, escaper, null);
+    }
+
+    /**
+     * Serialize a page into JSON using the provided escaper and optional error message.
+     */
+    public static String toJson(CursorPage page, Function<String, String> escaper, String error) {
         Function<String, String> safeEscaper = escaper != null ? escaper : CursorPager::defaultEscaper;
         StringBuilder sb = new StringBuilder();
         sb.append("{\"items\":[");
@@ -131,6 +138,9 @@ public final class CursorPager {
         sb.append("],\"has_more\":").append(page.hasMore());
         if (page.hasMore() && page.cursor() != null && !page.cursor().isEmpty()) {
             sb.append(",\"cursor\":\"").append(page.cursor()).append('\"');
+        }
+        if (error != null && !error.isEmpty()) {
+            sb.append(",\"error\":\"").append(safeEscaper.apply(error)).append('\"');
         }
         sb.append('}');
         return sb.toString();
