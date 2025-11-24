@@ -417,6 +417,44 @@
       "status": "todo"
     },
     {
+      "id": "R.22",
+      "title": "Data type lookup cache",
+      "area": "plugin",
+      "depends_on": [],
+      "dod": [
+        "Per-DataTypeManager cache mapping normalized type names to DataType instances",
+        "Cache invalidated on manager switch or reload; fast lookup before full scans",
+        "Safe fallback scan populates cache when needed; behavior matches existing resolution"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.23",
+      "title": "open_program readiness gating",
+      "area": "bridge, plugin",
+      "depends_on": [
+        "R.21"
+      ],
+      "dod": [
+        "Program load state tracked (IDLE/LOADING/READY) with auto-analysis awareness",
+        "Status endpoint exposes readiness without blocking heavy calls",
+        "Bridge waits/polls after open/select before analysis tools, surfacing wait guidance"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.24",
+      "title": "Port 8080 error response cleanup",
+      "area": "plugin, bridge",
+      "depends_on": [],
+      "dod": [
+        "Consistent 8080 error convention (text vs JSON) documented and implemented",
+        "readBytes/readBytesBase64 return clear success payloads and error markers",
+        "Python client maps 8080 errors deterministically without misinterpreting payloads; tests cover success/failure"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "R.21",
       "title": "Single-port multi-context server",
       "area": "plugin",
