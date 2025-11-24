@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import os
 from dataclasses import dataclass
 from typing import Any, Callable, Hashable, Mapping, MutableMapping, Sequence
 from weakref import WeakKeyDictionary
@@ -78,18 +79,22 @@ class ProgramSelectionStore:
         state = self._state_for(key)
         state.locked = True
 
-    def select(self, key: Hashable | object, domain_file_id: str) -> ProgramState:
+    def select(self, key: Hashable | object, domain_file_id: str) -> "SelectionResult":
         """Record a selection for *key* with gating on mid-session switches."""
 
         state = self._state_for(key)
+        warning = None
         if (
             state.locked
             and state.domain_file_id is not None
             and state.domain_file_id != domain_file_id
         ):
-            raise ProgramSelectionError(current=state.domain_file_id)
+            policy = program_switch_policy()
+            if policy == "strict":
+                raise ProgramSelectionError(current=state.domain_file_id)
+            warning = _mid_session_warning(state.domain_file_id, domain_file_id)
         state.domain_file_id = domain_file_id
-        return state
+        return SelectionResult(state=state, warning=warning)
 
     def snapshot(self, key: Hashable | object) -> ProgramState:
         """Return a shallow copy of the current state for *key*."""
@@ -128,7 +133,7 @@ def default_program_id(files: object) -> str | None:
 
 def normalize_selection(
     files: object, *, requestor: Hashable | object, store: ProgramSelectionStore = PROGRAM_SELECTIONS
-) -> ProgramState:
+) -> "SelectionResult":
     """Ensure the stored selection for *requestor* matches available files.
 
     * When no selection exists, the first available Program is used.
@@ -140,22 +145,26 @@ def normalize_selection(
     """
 
     state = store.ensure_default(requestor, lambda: default_program_id(files))
+    warning = None
 
     normalized = _normalize_domain_file_id(state.domain_file_id)
     if normalized and validate_program_id(files, normalized):
         state.domain_file_id = normalized
-        return state
+        return SelectionResult(state=state, warning=None)
 
     fallback = default_program_id(files)
     if fallback is None:
         state.domain_file_id = None
-        return state
+        return SelectionResult(state=state, warning=None)
 
     if normalized and state.locked and normalized != fallback:
-        raise ProgramSelectionError(current=normalized)
+        policy = program_switch_policy()
+        if policy == "strict":
+            raise ProgramSelectionError(current=normalized)
+        warning = _mid_session_warning(normalized, fallback)
 
     state.domain_file_id = fallback
-    return state
+    return SelectionResult(state=state, warning=warning)
 
 
 def validate_program_id(files: object, domain_file_id: str) -> bool:
@@ -221,9 +230,40 @@ def mark_used_for_context(server: FastMCP, *, lock_usage: bool = True) -> None:
 
     if not lock_usage:
         return
+    policy = program_switch_policy()
+    if policy not in {"soft", "strict"}:  # pragma: no cover - defensive fallback
+        return
     try:
         key = requestor_from_context(server)
     except RuntimeError:
         return
     PROGRAM_SELECTIONS.mark_used(key)
+
+
+def program_switch_policy() -> str:
+    """Return the configured mid-session program switching policy."""
+
+    value = os.getenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "strict")
+    normalized = value.strip().lower()
+    if normalized == "soft":
+        return "soft"
+    return "strict"
+
+
+def _mid_session_warning(previous: str | None, requested: str | None) -> str:
+    current = previous or "unknown"
+    target = requested or "unknown"
+    return (
+        "Program selection switched mid-session from "
+        f"'{current}' to '{target}'. Confirm this change before continuing; "
+        "start a new session if you want to avoid mixed context."
+    )
+
+
+@dataclass(slots=True)
+class SelectionResult:
+    """Return type for program selection normalization operations."""
+
+    state: ProgramState
+    warning: str | None = None
 
