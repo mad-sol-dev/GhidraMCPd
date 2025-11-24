@@ -4,11 +4,10 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
 - {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words)
 - {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths
 
-Recommended next focus: implement {R.21} to fix the Project Manager workflow gap, then advance {R.15}/{R.16}.
+Recommended next focus: advance {R.15}/{R.16} with the smoke-test script and broader unit coverage.
 
 ## NEXT
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
@@ -27,6 +26,7 @@ Recommended next focus: implement {R.21} to fix the Project Manager workflow gap
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
 - [x] {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)
 - [x] {R.8} Program selection helpers (`select_program`, `get_current_program`) to anchor analysis tools on the active Ghidra program
 - [x] {D.1} GET /api/project_info.json (read-only) — deterministic metadata envelope, contract/unit coverage, docs snapshot updated.

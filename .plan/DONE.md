@@ -1,6 +1,7 @@
 # DONE (archive)
 
 ## 2025-11
+- 2025-11-24 **R.21** — Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program) _commit:pending_
 - 2025-11-22 **R.3** — `include_literals` plumbing across memory and string search endpoints _commit:pending_
 - 2025-11-23 **R.4** — Expanded audit logging for write/rebase/datatypes flows _commit:pending_
 - 2025-11-23 **R.8** — Program selection helpers (`select_program`, `get_current_program`) to anchor analysis tools on the active Ghidra program _commit:pending_
