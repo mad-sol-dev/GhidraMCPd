@@ -70,6 +70,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;
 import java.util.Base64;
@@ -104,6 +105,7 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
     interface ProgramCapable {
         boolean hasProgramContext();
+        boolean hasProgramManagerService();
     }
 
     static final class PluginContextRegistry<T extends ProgramCapable> {
@@ -112,14 +114,15 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         synchronized void register(T context) {
             contexts.add(context);
-            if (active == null || context.hasProgramContext()) {
+            if (active == null || context.hasProgramContext() ||
+                (!active.hasProgramManagerService() && context.hasProgramManagerService())) {
                 active = context;
             }
         }
 
         synchronized void promote(T context) {
             if (contexts.contains(context)) {
-                if (context.hasProgramContext()) {
+                if (context.hasProgramContext() || context.hasProgramManagerService()) {
                     active = context;
                 }
                 else if (active == null) {
@@ -129,8 +132,15 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         }
 
         synchronized Optional<T> active(boolean requireProgramContext) {
-            if (active != null && (!requireProgramContext || active.hasProgramContext())) {
-                return Optional.of(active);
+            if (active != null) {
+                if (requireProgramContext && active.hasProgramContext()) {
+                    return Optional.of(active);
+                }
+
+                if (!requireProgramContext &&
+                    (active.hasProgramContext() || active.hasProgramManagerService())) {
+                    return Optional.of(active);
+                }
             }
 
             Optional<T> programCapable = contexts.stream()
@@ -143,11 +153,25 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
                 return programCapable;
             }
 
+            if (!requireProgramContext) {
+                Optional<T> programManagerCapable = contexts.stream()
+                    .filter(ProgramCapable::hasProgramManagerService)
+                    .findFirst();
+                if (programManagerCapable.isPresent()) {
+                    active = programManagerCapable.get();
+                    return programManagerCapable;
+                }
+            }
+
             if (requireProgramContext) {
                 return Optional.empty();
             }
 
             return contexts.stream().findFirst();
+        }
+
+        synchronized Optional<T> firstMatching(Predicate<T> predicate) {
+            return contexts.stream().filter(predicate).findFirst();
         }
 
         synchronized void unregister(T context) {
@@ -2424,6 +2448,11 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
     public boolean hasProgramContext() {
         ProgramManager pm = tool.getService(ProgramManager.class);
         return pm != null && pm.getCurrentProgram() != null;
+    }
+
+    @Override
+    public boolean hasProgramManagerService() {
+        return tool.getService(ProgramManager.class) != null;
     }
 
     public Program getCurrentProgram() {
