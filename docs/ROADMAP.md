@@ -24,6 +24,10 @@
   - Build small gated write tools such as `rename_function`, `set_comment`, or `apply_label`, each with dry-run options, explicit error codes, and clear docs about `GHIDRA_MCP_ENABLE_WRITES` requirements.
 
 ## C. GhidraMCP plugin & packaging
+- ◻ Single-port multi-context server (R.21) (NOW)
+  - Refactor Java plugin to use a singleton HTTP server instance shared across Ghidra tools.
+  - Allow FrontEnd (Project Manager) to start the server without blocking subsequent CodeBrowser instances.
+  - Dispatch requests to the active tool instance or handle global actions (like `open_program`) directly.
 - ◻ Extension ZIP packaging story
   - Beyond the Maven-built `GhidraMCP.jar`, produce a reproducible Extension ZIP (proper layout + `extension.properties` + JAR) and installation checklist. CI/script should fetch Ghidra (11.4.2), build the plugin, emit the ZIP, and run a minimal smoke test (`project_info`, etc.).
 - ◻ Early detection of Ghidra version incompatibilities

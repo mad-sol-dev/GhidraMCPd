@@ -280,7 +280,7 @@
         "search_xrefs_to error messages cover empty query requirements",
         "Contract tests for expected envelopes"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.11",
@@ -413,6 +413,21 @@
         "Design gated hooks for actions like auto-analysis and mark-as-library",
         "Dry-run or confirmation steps documented",
         "Safety constraints aligned with GHIDRA_MCP_ENABLE_WRITES"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.21",
+      "title": "Single-port multi-context server",
+      "area": "plugin",
+      "depends_on": [
+        "R.8"
+      ],
+      "dod": [
+        "Java plugin uses static/singleton HttpServer to share port 8080 across FrontEnd and CodeBrowser",
+        "FrontEnd loads plugin without blocking subsequent CodeBrowser instances",
+        "Requests delegate to active CodeBrowser or FrontEnd as appropriate",
+        "`/api/open_program` (or equivalent) allows switching tools/files via API"
       ],
       "status": "todo"
     },

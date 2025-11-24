@@ -4,10 +4,11 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
+- {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
 - {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words)
 - {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths
 
-Recommended next focus: advance {R.15}/{R.16} coverage so smoke tests and invalid-parameter paths are stable before expanding tool flows.
+Recommended next focus: implement {R.21} to fix the Project Manager workflow gap, then advance {R.15}/{R.16}.
 
 ## NEXT
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
