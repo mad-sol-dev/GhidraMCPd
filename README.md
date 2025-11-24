@@ -69,7 +69,8 @@ The helper boots `scripts/reference_mcp_server.py` (FastMCP over stdio with the
 fixture-backed stub client) and asserts that `project_info`, `project_overview`,
 `search_strings`, `search_functions`, `search_scalars_with_context`,
 `mmio_annotate_compact`, `read_bytes`, and `read_words` all return data matching
-the fixture's layout.
+the fixture's layout. See `docs/smoke-test.md` for sample output and runtime
+options.
 
 ---
 
