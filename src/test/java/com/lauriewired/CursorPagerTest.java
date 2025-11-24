@@ -168,4 +168,24 @@ public class CursorPagerTest {
         walked.addAll(second.items());
         assertEquals(fixture, walked);
     }
+
+    @Test
+    public void includesErrorWhenInspectionCapHit() {
+        CursorPager.CursorRequest request = new CursorPager.CursorRequest(
+            "capTest",
+            "discriminator",
+            0,
+            2,
+            2,
+            10,
+            null
+        );
+
+        CursorPager.ResolvedRequest resolved = CursorPager.resolve(request);
+        CursorPager.CursorPage page = CursorPager.buildPage(resolved, List.of("hit-0"), false);
+        String json = CursorPager.toJson(page, CursorPager::defaultEscaper,
+            "inspection cap reached after 3 instructions");
+
+        assertEquals("{\"items\":[\"hit-0\"],\"has_more\":false,\"error\":\"inspection cap reached after 3 instructions\"}", json);
+    }
 }

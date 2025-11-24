@@ -2239,6 +2239,8 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         int requestedLimit = limit > 0 ? limit : 100;
         int effectiveLimit = Math.min(requestedLimit, 500);
 
+        final int inspectionCap = 500_000;
+
         try {
             // Parse value as hex or decimal
             long searchValue;
@@ -2260,13 +2262,23 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
             CursorPager.ResolvedRequest resolved = CursorPager.resolve(request);
             InstructionIterator instructions = program.getListing().getInstructions(true);
+            TaskMonitor monitor = new ConsoleTaskMonitor();
 
             List<String> pageItems = new ArrayList<>();
             int matchIndex = 0;
             boolean hasMore = false;
+            int inspected = 0;
+            boolean inspectionLimitHit = false;
+            boolean cancelled = false;
 
             while (instructions.hasNext()) {
+                if (monitor.isCancelled()) {
+                    cancelled = true;
+                    break;
+                }
+
                 Instruction instr = instructions.next();
+                inspected++;
                 if (!instructionHasScalarValue(instr, searchValue)) {
                     continue;
                 }
@@ -2283,9 +2295,20 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
                 }
 
                 matchIndex++;
+
+                if (pageItems.size() < resolved.limit() && inspected >= inspectionCap) {
+                    inspectionLimitHit = true;
+                    break;
+                }
             }
 
             CursorPager.CursorPage page = CursorPager.buildPage(resolved, pageItems, hasMore);
+            if ((inspectionLimitHit || cancelled) && pageItems.size() < resolved.limit()) {
+                String errorMessage = inspectionLimitHit
+                    ? "inspection cap of " + inspectionCap + " instructions reached before completing the page"
+                    : "search cancelled after inspecting " + inspected + " instructions";
+                return CursorPager.toJson(page, this::jsonEscape, errorMessage);
+            }
             return CursorPager.toJson(page, this::jsonEscape);
 
         } catch (NumberFormatException e) {

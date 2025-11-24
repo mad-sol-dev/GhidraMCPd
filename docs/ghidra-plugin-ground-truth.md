@@ -62,6 +62,7 @@ Raw plugin routes are exposed on **port 8080** for non-MCP access:
 
   * First token is the **address**, followed by `:`, then free disassembly text.
   * The Python client fills in `value` and (optionally) the function name itself.
+  * Scans honor **cancellation** and a **hard inspection cap (500k instructions)**; if hit before filling a page, the envelope returns gathered items with an `error` message explaining the interruption.
 
 ---
 
