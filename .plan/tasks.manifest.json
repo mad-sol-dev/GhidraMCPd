@@ -429,7 +429,7 @@
         "Requests delegate to active CodeBrowser or FrontEnd as appropriate",
         "`/api/open_program` (or equivalent) allows switching tools/files via API"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "T-202511-019",

@@ -81,7 +81,7 @@ import java.util.Base64;
     shortDescription = "HTTP server plugin",
     description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options."
 )
-public class GhidraMCPPlugin extends Plugin {
+public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
     private HttpServer server;
     private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
@@ -91,6 +91,108 @@ public class GhidraMCPPlugin extends Plugin {
     private static final int MAX_BYTE_READ = 0x200;      // 512 bytes
     private static final int MAX_DATA_WINDOW = 0x800;    // 2048 bytes
     private static final int MAX_CSTRING_LEN = 0x800;    // 2048 chars
+
+    private static final PluginContextRegistry<GhidraMCPPlugin> CONTEXT_REGISTRY =
+        new PluginContextRegistry<>();
+    private static final SharedHttpServerState SERVER_STATE = new SharedHttpServerState();
+    private static final AtomicBoolean ROUTES_REGISTERED = new AtomicBoolean(false);
+
+    @FunctionalInterface
+    private interface PluginExchangeHandler {
+        void handle(GhidraMCPPlugin plugin, HttpExchange exchange) throws Exception;
+    }
+
+    interface ProgramCapable {
+        boolean hasProgramContext();
+    }
+
+    static final class PluginContextRegistry<T extends ProgramCapable> {
+        private final LinkedHashSet<T> contexts = new LinkedHashSet<>();
+        private T active;
+
+        synchronized void register(T context) {
+            contexts.add(context);
+            if (active == null || context.hasProgramContext()) {
+                active = context;
+            }
+        }
+
+        synchronized void promote(T context) {
+            if (contexts.contains(context)) {
+                if (context.hasProgramContext()) {
+                    active = context;
+                }
+                else if (active == null) {
+                    active = context;
+                }
+            }
+        }
+
+        synchronized Optional<T> active(boolean requireProgramContext) {
+            if (active != null && (!requireProgramContext || active.hasProgramContext())) {
+                return Optional.of(active);
+            }
+
+            Optional<T> programCapable = contexts.stream()
+                .filter(ProgramCapable::hasProgramContext)
+                .findFirst();
+            if (programCapable.isPresent()) {
+                if (!requireProgramContext) {
+                    active = programCapable.get();
+                }
+                return programCapable;
+            }
+
+            if (requireProgramContext) {
+                return Optional.empty();
+            }
+
+            return contexts.stream().findFirst();
+        }
+
+        synchronized void unregister(T context) {
+            contexts.remove(context);
+            if (Objects.equals(active, context)) {
+                active = contexts.stream().findFirst().orElse(null);
+            }
+        }
+
+        synchronized boolean isEmpty() {
+            return contexts.isEmpty();
+        }
+    }
+
+    static final class SharedHttpServerState {
+        record ServerHandle(HttpServer server, boolean newlyCreated, int boundPort) {}
+
+        private HttpServer server;
+        private int port = -1;
+
+        synchronized ServerHandle ensureServer(int requestedPort, ServerFactory factory)
+                throws IOException {
+            if (server == null) {
+                HttpServer created = factory.create();
+                server = created;
+                port = requestedPort;
+                return new ServerHandle(created, true, port);
+            }
+            return new ServerHandle(server, false, port);
+        }
+
+        synchronized void stopIfIdle(boolean idle) {
+            if (idle && server != null) {
+                server.stop(1);
+                server = null;
+                port = -1;
+                ROUTES_REGISTERED.set(false);
+            }
+        }
+    }
+
+    @FunctionalInterface
+    interface ServerFactory {
+        HttpServer create() throws IOException;
+    }
 
     public GhidraMCPPlugin(PluginTool tool) {
         super(tool);
@@ -113,255 +215,267 @@ public class GhidraMCPPlugin extends Plugin {
     }
 
     private void startServer() throws IOException {
-        // Read the configured port
         Options options = tool.getOptions(OPTION_CATEGORY_NAME);
         int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
 
-        // Stop existing server if running (e.g., if plugin is reloaded)
-        if (server != null) {
-            Msg.info(this, "Stopping existing HTTP server before starting new one.");
-            server.stop(0);
-            server = null;
+        CONTEXT_REGISTRY.register(this);
+
+        SharedHttpServerState.ServerHandle handle =
+            SERVER_STATE.ensureServer(port, () -> HttpServer.create(new InetSocketAddress(port), 0));
+        server = handle.server();
+
+        if (!ROUTES_REGISTERED.get()) {
+            registerRoutes(handle.server());
+            ROUTES_REGISTERED.set(true);
         }
 
-        server = HttpServer.create(new InetSocketAddress(port), 0);
+        if (handle.newlyCreated()) {
+            handle.server().setExecutor(null);
+            new Thread(() -> {
+                try {
+                    handle.server().start();
+                    Msg.info(this, "GhidraMCP HTTP server started on port " + handle.boundPort());
+                } catch (Exception e) {
+                    Msg.error(this, "Failed to start HTTP server on port " + handle.boundPort() + ". Port might be in use.", e);
+                    SERVER_STATE.stopIfIdle(true);
+                }
+            }, "GhidraMCP-HTTP-Server").start();
+        }
 
-        // Each listing endpoint uses offset & limit from query params:
-        server.createContext("/methods", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
-            sendResponse(exchange, getAllFunctionNames(offset, limit));
+        if (hasProgramContext()) {
+            CONTEXT_REGISTRY.promote(this);
+        }
+    }
+
+    private static void registerRoutes(HttpServer server) {
+        registerProgramHandler(server, "/methods", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
+            plugin.sendResponse(exchange, plugin.getAllFunctionNames(offset, limit));
         });
 
-        server.createContext("/classes", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
-            sendResponse(exchange, getAllClassNames(offset, limit));
+        registerProgramHandler(server, "/classes", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
+            plugin.sendResponse(exchange, plugin.getAllClassNames(offset, limit));
         });
 
-        server.createContext("/decompile", exchange -> {
+        registerProgramHandler(server, "/decompile", (plugin, exchange) -> {
             String name = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            sendResponse(exchange, decompileFunctionByName(name));
+            plugin.sendResponse(exchange, plugin.decompileFunctionByName(name));
         });
 
-        server.createContext("/read_dword", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/read_dword", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, readDword(address));
+            plugin.sendResponse(exchange, plugin.readDword(address));
         });
 
-        server.createContext("/read_bytes", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/read_bytes", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            int length = parseIntOrDefault(qparams.get("length"), 16);
-            sendResponse(exchange, readBytesHexdump(address, length));
+            int length = plugin.parseIntOrDefault(qparams.get("length"), 16);
+            plugin.sendResponse(exchange, plugin.readBytesHexdump(address, length));
         });
 
-        server.createContext("/read_cstring", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/read_cstring", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            int maxLen = parseIntOrDefault(qparams.get("max_len"), 256);
-            sendResponse(exchange, readCString(address, maxLen));
+            int maxLen = plugin.parseIntOrDefault(qparams.get("max_len"), 256);
+            plugin.sendResponse(exchange, plugin.readCString(address, maxLen));
         });
 
-        server.createContext("/renameFunction", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
-            String response = renameFunction(params.get("oldName"), params.get("newName"))
+        registerProgramHandler(server, "/renameFunction", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            String response = plugin.renameFunction(params.get("oldName"), params.get("newName"))
                     ? "Renamed successfully" : "Rename failed";
-            sendResponse(exchange, response);
+            plugin.sendResponse(exchange, response);
         });
 
-        server.createContext("/renameData", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
-            renameDataAtAddress(params.get("address"), params.get("newName"));
-            sendResponse(exchange, "Rename data attempted");
+        registerProgramHandler(server, "/renameData", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.renameDataAtAddress(params.get("address"), params.get("newName"));
+            plugin.sendResponse(exchange, "Rename data attempted");
         });
 
-        server.createContext("/renameVariable", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/renameVariable", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String functionName = params.get("functionName");
             String oldName = params.get("oldName");
             String newName = params.get("newName");
-            String result = renameVariableInFunction(functionName, oldName, newName);
-            sendResponse(exchange, result);
+            String result = plugin.renameVariableInFunction(functionName, oldName, newName);
+            plugin.sendResponse(exchange, result);
         });
 
-        server.createContext("/segments", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
-            sendResponse(exchange, listSegments(offset, limit));
+        registerProgramHandler(server, "/segments", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
+            plugin.sendResponse(exchange, plugin.listSegments(offset, limit));
         });
 
-        server.createContext("/imports", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
+        registerProgramHandler(server, "/imports", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
             String filter = qparams.get("filter");
-            sendJsonResponse(exchange, listImports(filter, offset, limit));
+            plugin.sendJsonResponse(exchange, plugin.listImports(filter, offset, limit));
         });
 
-        server.createContext("/exports", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
+        registerProgramHandler(server, "/exports", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
             String filter = qparams.get("filter");
-            sendJsonResponse(exchange, listExports(filter, offset, limit));
+            plugin.sendJsonResponse(exchange, plugin.listExports(filter, offset, limit));
         });
 
-        server.createContext("/namespaces", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
-            sendResponse(exchange, listNamespaces(offset, limit));
+        registerProgramHandler(server, "/namespaces", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
+            plugin.sendResponse(exchange, plugin.listNamespaces(offset, limit));
         });
 
-        server.createContext("/data", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"),  100);
-            sendResponse(exchange, listDefinedData(offset, limit));
+        registerProgramHandler(server, "/data", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"),  100);
+            plugin.sendResponse(exchange, plugin.listDefinedData(offset, limit));
         });
 
-        server.createContext("/data_window", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/data_window", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String start = qparams.get("start");
             String end = qparams.get("end");
-            sendResponse(exchange, readDataWindow(start, end));
+            plugin.sendResponse(exchange, plugin.readDataWindow(start, end));
         });
 
-        server.createContext("/searchFunctions", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/searchFunctions", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String searchTerm = qparams.get("query");
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 100);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 100);
             String cursor = qparams.get("cursor");
-            sendJsonResponse(exchange, searchFunctionsByName(searchTerm, cursor, offset, limit));
+            plugin.sendJsonResponse(exchange, plugin.searchFunctionsByName(searchTerm, cursor, offset, limit));
         });
 
-        // New API endpoints based on requirements
-        
-        server.createContext("/get_function_by_address", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/get_function_by_address", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, getFunctionByAddress(address));
+            plugin.sendResponse(exchange, plugin.getFunctionByAddress(address));
         });
 
-        server.createContext("/get_current_address", exchange -> {
-            sendResponse(exchange, getCurrentAddress());
+        registerProgramHandler(server, "/get_current_address", (plugin, exchange) -> {
+            plugin.sendResponse(exchange, plugin.getCurrentAddress());
         });
 
-        server.createContext("/get_current_function", exchange -> {
-            sendResponse(exchange, getCurrentFunction());
+        registerProgramHandler(server, "/get_current_function", (plugin, exchange) -> {
+            plugin.sendResponse(exchange, plugin.getCurrentFunction());
         });
 
-        server.createContext("/list_functions", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"), 100);
-            sendResponse(exchange, listFunctions(offset, limit));
+        registerProgramHandler(server, "/list_functions", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"), 100);
+            plugin.sendResponse(exchange, plugin.listFunctions(offset, limit));
         });
 
-        server.createContext("/functions", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit  = parseIntOrDefault(qparams.get("limit"), 100);
-            sendResponse(exchange, listFunctions(offset, limit));
+        registerProgramHandler(server, "/functions", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit  = plugin.parseIntOrDefault(qparams.get("limit"), 100);
+            plugin.sendResponse(exchange, plugin.listFunctions(offset, limit));
         });
 
-        server.createContext("/decompile_function", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/decompile_function", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, decompileFunctionByAddress(address));
+            plugin.sendResponse(exchange, plugin.decompileFunctionByAddress(address));
         });
 
-        server.createContext("/decompile_by_addr", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/decompile_by_addr", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, decompileFunctionByAddress(address));
+            plugin.sendResponse(exchange, plugin.decompileFunctionByAddress(address));
         });
 
-        server.createContext("/disassemble_function", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/disassemble_function", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, disassembleFunction(address));
+            plugin.sendResponse(exchange, plugin.disassembleFunction(address));
         });
 
-        server.createContext("/disassemble", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/disassemble", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            sendResponse(exchange, disassembleFunction(address));
+            plugin.sendResponse(exchange, plugin.disassembleFunction(address));
         });
 
-        server.createContext("/set_decompiler_comment", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/set_decompiler_comment", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
-            boolean success = setDecompilerComment(address, comment);
-            sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+            boolean success = plugin.setDecompilerComment(address, comment);
+            plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
         });
 
-        server.createContext("/set_disassembly_comment", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/set_disassembly_comment", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
-            boolean success = setDisassemblyComment(address, comment);
-            sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+            boolean success = plugin.setDisassemblyComment(address, comment);
+            plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
         });
 
-        server.createContext("/rename_function_by_address", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/rename_function_by_address", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String newName = params.get("new_name");
-            boolean success = renameFunctionByAddress(functionAddress, newName);
-            sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
+            boolean success = plugin.renameFunctionByAddress(functionAddress, newName);
+            plugin.sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
         });
 
-        server.createContext("/set_function_prototype", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/set_function_prototype", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String prototype = params.get("prototype");
 
-            // Call the set prototype function and get detailed result
-            PrototypeResult result = setFunctionPrototype(functionAddress, prototype);
+            PrototypeResult result = plugin.setFunctionPrototype(functionAddress, prototype);
 
             if (result.isSuccess()) {
-                // Even with successful operations, include any warning messages for debugging
                 String successMsg = "Function prototype set successfully";
                 if (!result.getErrorMessage().isEmpty()) {
                     successMsg += "\n\nWarnings/Debug Info:\n" + result.getErrorMessage();
                 }
-                sendResponse(exchange, successMsg);
+                plugin.sendResponse(exchange, successMsg);
             } else {
-                // Return the detailed error message to the client
-                sendResponse(exchange, "Failed to set function prototype: " + result.getErrorMessage());
+                plugin.sendResponse(exchange, "Failed to set function prototype: " + result.getErrorMessage());
             }
         });
 
-        server.createContext("/set_local_variable_type", exchange -> {
-            Map<String, String> params = parsePostParams(exchange);
+        registerProgramHandler(server, "/set_local_variable_type", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String variableName = params.get("variable_name");
             String newType = params.get("new_type");
 
-            // Capture detailed information about setting the type
             StringBuilder responseMsg = new StringBuilder();
             responseMsg.append("Setting variable type: ").append(variableName)
                       .append(" to ").append(newType)
                       .append(" in function at ").append(functionAddress).append("\n\n");
 
-            // Attempt to find the data type in various categories
-            Program program = getCurrentProgram();
+            Program program = plugin.getCurrentProgram();
             if (program != null) {
                 DataTypeManager dtm = program.getDataTypeManager();
-                DataType directType = findDataTypeByNameInAllCategories(dtm, newType);
+                DataType directType = plugin.findDataTypeByNameInAllCategories(dtm, newType);
                 if (directType != null) {
                     responseMsg.append("Found type: ").append(directType.getPathName()).append("\n");
                 } else if (newType.startsWith("P") && newType.length() > 1) {
                     String baseTypeName = newType.substring(1);
-                    DataType baseType = findDataTypeByNameInAllCategories(dtm, baseTypeName);
+                    DataType baseType = plugin.findDataTypeByNameInAllCategories(dtm, baseTypeName);
                     if (baseType != null) {
                         responseMsg.append("Found base type for pointer: ").append(baseType.getPathName()).append("\n");
                     } else {
@@ -372,109 +486,148 @@ public class GhidraMCPPlugin extends Plugin {
                 }
             }
 
-            // Try to set the type
-            boolean success = setLocalVariableType(functionAddress, variableName, newType);
+            boolean success = plugin.setLocalVariableType(functionAddress, variableName, newType);
 
             String successMsg = success ? "Variable type set successfully" : "Failed to set variable type";
             responseMsg.append("\nResult: ").append(successMsg);
 
-            sendResponse(exchange, responseMsg.toString());
+            plugin.sendResponse(exchange, responseMsg.toString());
         });
 
-        server.createContext("/xrefs_to", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/xrefs_to", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 100);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 100);
             String filter = qparams.get("filter");
-            sendJsonResponse(exchange, getXrefsTo(address, offset, limit, filter));
+            plugin.sendJsonResponse(exchange, plugin.getXrefsTo(address, offset, limit, filter));
         });
 
-        server.createContext("/xrefs_from", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/xrefs_from", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 100);
-            sendResponse(exchange, getXrefsFrom(address, offset, limit));
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 100);
+            plugin.sendResponse(exchange, plugin.getXrefsFrom(address, offset, limit));
         });
 
-        server.createContext("/function_xrefs", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/function_xrefs", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String name = qparams.get("name");
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 100);
-            sendResponse(exchange, getFunctionXrefs(name, offset, limit));
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 100);
+            plugin.sendResponse(exchange, plugin.getFunctionXrefs(name, offset, limit));
         });
 
-        server.createContext("/strings", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 100);
+        registerProgramHandler(server, "/strings", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 100);
             String filter = qparams.get("filter");
-            sendJsonResponse(exchange, listDefinedStrings(offset, limit, filter));
+            plugin.sendJsonResponse(exchange, plugin.listDefinedStrings(offset, limit, filter));
         });
 
-        server.createContext("/searchScalars", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/searchScalars", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String value = qparams.get("value");
-            int offset = parseIntOrDefault(qparams.get("offset"), 0);
-            int limit = parseIntOrDefault(qparams.get("limit"), 500);
+            int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
+            int limit = plugin.parseIntOrDefault(qparams.get("limit"), 500);
             String cursor = qparams.get("cursor");
-            sendJsonResponse(exchange, handleSearchScalars(value, cursor, offset, limit));
+            plugin.sendJsonResponse(exchange, plugin.handleSearchScalars(value, cursor, offset, limit));
         });
 
-        server.createContext("/functionsInRange", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/functionsInRange", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String min = qparams.get("min");
             String max = qparams.get("max");
-            sendResponse(exchange, handleFunctionsInRange(min, max));
+            plugin.sendResponse(exchange, plugin.handleFunctionsInRange(min, max));
         });
 
-        server.createContext("/disassembleAt", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProgramHandler(server, "/disassembleAt", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            int count = parseIntOrDefault(qparams.get("count"), 16);
-            sendResponse(exchange, handleDisassembleAt(address, count));
+            int count = plugin.parseIntOrDefault(qparams.get("count"), 16);
+            plugin.sendResponse(exchange, plugin.handleDisassembleAt(address, count));
         });
 
-        server.createContext("/project_info", exchange -> {
-            sendResponse(exchange, getProjectInfo());
+        registerProgramHandler(server, "/project_info", (plugin, exchange) -> {
+            plugin.sendResponse(exchange, plugin.getProjectInfo());
         });
 
-        server.createContext("/projectInfo", exchange -> {
-            sendResponse(exchange, getProjectInfo());
+        registerProgramHandler(server, "/projectInfo", (plugin, exchange) -> {
+            plugin.sendResponse(exchange, plugin.getProjectInfo());
         });
 
-        server.createContext("/project_files", exchange -> {
-            sendResponse(exchange, getProjectFiles());
+        registerProjectHandler(server, "/project_files", (plugin, exchange) -> {
+            plugin.sendResponse(exchange, plugin.getProjectFiles());
         });
 
-        server.createContext("/readBytes", exchange -> {
-            Map<String, String> qparams = parseQueryParams(exchange);
+        registerProjectHandler(server, "/open_program", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            plugin.sendJsonResponse(exchange, plugin.openProgramFromPath(qparams.get("path")));
+        });
+
+        registerProgramHandler(server, "/readBytes", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
             String lengthStr = qparams.get("length");
             if (lengthStr == null) {
-                sendJsonResponse(exchange, errorResponse("length parameter is required"));
+                plugin.sendJsonResponse(exchange, plugin.errorResponse("length parameter is required"));
                 return;
             }
-            int length = parseIntOrDefault(lengthStr, -1);
+            int length = plugin.parseIntOrDefault(lengthStr, -1);
             if (length < 0) {
-                sendJsonResponse(exchange, errorResponse("invalid length parameter"));
+                plugin.sendJsonResponse(exchange, plugin.errorResponse("invalid length parameter"));
                 return;
             }
-            sendResponse(exchange, readBytesBase64(address, length));
+            plugin.sendResponse(exchange, plugin.readBytesBase64(address, length));
         });
+    }
 
-        server.setExecutor(null);
-        new Thread(() -> {
-            try {
-                server.start();
-                Msg.info(this, "GhidraMCP HTTP server started on port " + port);
-            } catch (Exception e) {
-                Msg.error(this, "Failed to start HTTP server on port " + port + ". Port might be in use.", e);
-                server = null; // Ensure server isn't considered running
-            }
-        }, "GhidraMCP-HTTP-Server").start();
+    private static void registerProgramHandler(HttpServer server, String path, PluginExchangeHandler handler) {
+        registerContext(server, path, true, handler);
+    }
+
+    private static void registerProjectHandler(HttpServer server, String path, PluginExchangeHandler handler) {
+        registerContext(server, path, false, handler);
+    }
+
+    private static void registerContext(
+            HttpServer server, String path, boolean requireProgramContext, PluginExchangeHandler handler) {
+        server.createContext(path, exchange -> dispatchToTool(requireProgramContext, handler, exchange));
+    }
+
+    private static void dispatchToTool(
+            boolean requireProgramContext, PluginExchangeHandler handler, HttpExchange exchange) throws IOException {
+        Optional<GhidraMCPPlugin> target = CONTEXT_REGISTRY.active(requireProgramContext);
+        if (target.isEmpty()) {
+            writeUnavailable(exchange, requireProgramContext);
+            return;
+        }
+
+        GhidraMCPPlugin plugin = target.get();
+        if (plugin.hasProgramContext()) {
+            CONTEXT_REGISTRY.promote(plugin);
+        }
+
+        try {
+            handler.handle(plugin, exchange);
+        } catch (Exception e) {
+            Msg.error(plugin, "Error handling request for " + exchange.getRequestURI(), e);
+            plugin.sendJsonResponse(exchange, plugin.errorResponse("Internal error: " + e.getMessage()));
+        }
+    }
+
+    private static void writeUnavailable(HttpExchange exchange, boolean requireProgramContext) throws IOException {
+        String message = requireProgramContext
+            ? "{\"error\":\"No active tool with a program context\",\"status\":\"error\"}"
+            : "{\"error\":\"No active tool available\",\"status\":\"error\"}";
+        byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.sendResponseHeaders(requireProgramContext ? 425 : 503, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
     }
 
     // ----------------------------------------------------------------------------------
@@ -2267,6 +2420,12 @@ public class GhidraMCPPlugin extends Plugin {
         }
     }
 
+    @Override
+    public boolean hasProgramContext() {
+        ProgramManager pm = tool.getService(ProgramManager.class);
+        return pm != null && pm.getCurrentProgram() != null;
+    }
+
     public Program getCurrentProgram() {
         ProgramManager pm = tool.getService(ProgramManager.class);
         return pm != null ? pm.getCurrentProgram() : null;
@@ -2287,6 +2446,44 @@ public class GhidraMCPPlugin extends Plugin {
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
+        }
+    }
+
+    private String openProgramFromPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return errorResponse("path parameter is required");
+        }
+
+        Project project = tool.getProject();
+        if (project == null) {
+            return errorResponse("No project loaded");
+        }
+
+        ProjectData projectData = project.getProjectData();
+        if (projectData == null) {
+            return errorResponse("Project data unavailable");
+        }
+
+        DomainFile file = projectData.getFile(path);
+        if (file == null) {
+            return errorResponse("File not found at path: " + path);
+        }
+
+        ProgramManager pm = tool.getService(ProgramManager.class);
+        if (pm == null) {
+            return errorResponse("ProgramManager service unavailable; launch CodeBrowser and retry");
+        }
+
+        try {
+            Method openProgramMethod = pm.getClass().getMethod("openProgram", DomainFile.class);
+            openProgramMethod.invoke(pm, file);
+            return "{\"status\":\"ok\",\"path\":\"" + jsonEscape(path) + "\"}";
+        }
+        catch (NoSuchMethodException e) {
+            return errorResponse("ProgramManager missing openProgram(DomainFile) support");
+        }
+        catch (InvocationTargetException | IllegalAccessException e) {
+            return errorResponse("Failed to open program: " + e.getMessage());
         }
     }
 
@@ -2595,10 +2792,11 @@ public class GhidraMCPPlugin extends Plugin {
 
     @Override
     public void dispose() {
-        if (server != null) {
+        CONTEXT_REGISTRY.unregister(this);
+        if (CONTEXT_REGISTRY.isEmpty() && server != null) {
             Msg.info(this, "Stopping GhidraMCP HTTP server...");
-            server.stop(1); // Stop with a small delay (e.g., 1 second) for connections to finish
-            server = null; // Nullify the reference
+            SERVER_STATE.stopIfIdle(true);
+            server = null;
             Msg.info(this, "GhidraMCP HTTP server stopped.");
         }
         super.dispose();
