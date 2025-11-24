@@ -32,4 +32,5 @@ Set via environment variables:
 - `BRIDGE_OPTIONAL_ADAPTERS` (default: unset, e.g., `"x86,i386"`)
   Enables optional architecture adapters. Unknown names raise a descriptive error at startup.
 
-Place local defaults in `.env.sample` → `.env` and load them before running the bridge.
+Place local defaults in `.env.sample` → `.env`. The bridge automatically loads `.env`
+at startup via `python-dotenv`, so no manual `export` is required.

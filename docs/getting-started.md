@@ -75,7 +75,8 @@ Set environment variables before starting the server to adjust safety limits, au
 - `BRIDGE_OPTIONAL_ADAPTERS`
   - Comma-separated list of optional Ghidra adapters to enable. Unknown entries fail fast at startup.
 
-For reproducibility, copy `.env.sample` to `.env`, edit values, and load via `export $(cat .env | xargs)` (or a shell equivalent) prior to launching Uvicorn.
+For reproducibility, copy `.env.sample` to `.env` and edit values; the bridge will load
+the file automatically at startup (no manual `export` needed).
 
 > **Batch caps**
 > - Search windows, compact string listings, and disassembly batches default to **256** items via `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`.
@@ -93,7 +94,7 @@ The bridge enforces deterministic caps on batch-style operations to keep token u
 | `search_strings`, `search_imports`, `search_exports`, `search_xrefs_to`, `strings_compact` | Window size (`page * limit` for search APIs, `offset + limit` for compact listings) | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
 | `search_scalars_with_context` | Matches returned | 256 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`
 
-Set the environment variable before starting the server to raise the ceiling, for example:
+Set the environment variable before starting the server to raise the ceiling, for example (values in `.env` are picked up automatically):
 
 ```bash
 GHIDRA_MCP_MAX_ITEMS_PER_BATCH=512 uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
