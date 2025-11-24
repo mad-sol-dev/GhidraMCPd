@@ -45,6 +45,13 @@ class ToolExpectation:
     validator: Callable[[types.CallToolResult], None]
 
 
+@dataclass
+class ToolOutcome:
+    expectation: ToolExpectation
+    success: bool
+    error: str | None = None
+
+
 def _first_json(result: types.CallToolResult) -> Any:
     for content in result.content:
         if isinstance(content, types.TextContent):
@@ -185,6 +192,7 @@ def _render_status(name: str, success: bool) -> str:
 
 async def _run(args: argparse.Namespace) -> int:
     server_params = _build_server(args)
+    outcomes: list[ToolOutcome] = []
     async with stdio_client(server_params) as (read_stream, write_stream):
         async with ClientSession(read_stream, write_stream) as session:
             init_result = await session.initialize()
@@ -194,12 +202,20 @@ async def _run(args: argparse.Namespace) -> int:
                 try:
                     result = await session.call_tool(expectation.name, expectation.args)
                     expectation.validator(result)
+                    outcomes.append(ToolOutcome(expectation, True))
                 except Exception as exc:  # pragma: no cover - smoke test path
+                    outcomes.append(ToolOutcome(expectation, False, str(exc)))
                     print(_render_status(expectation.name, False))
                     print(f"  {exc}")
-                    return 1
                 else:
                     print(_render_status(expectation.name, True))
+
+    failures = [outcome for outcome in outcomes if not outcome.success]
+    if failures:
+        print(f"Completed with {len(failures)} failing tool(s).")
+        return 1
+
+    print("All smoke tests passed.")
     return 0
 
 
