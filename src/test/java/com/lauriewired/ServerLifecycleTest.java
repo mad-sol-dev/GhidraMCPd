@@ -15,14 +15,21 @@ public class ServerLifecycleTest {
 
     private static final class DummyContext implements GhidraMCPPlugin.ProgramCapable {
         private final boolean programContext;
+        private final boolean programManagerService;
 
-        DummyContext(boolean programContext) {
+        DummyContext(boolean programContext, boolean programManagerService) {
             this.programContext = programContext;
+            this.programManagerService = programManagerService;
         }
 
         @Override
         public boolean hasProgramContext() {
             return programContext;
+        }
+
+        @Override
+        public boolean hasProgramManagerService() {
+            return programManagerService;
         }
     }
 
@@ -30,8 +37,8 @@ public class ServerLifecycleTest {
     public void promotesProgramCapableInstanceWhenAvailable() {
         GhidraMCPPlugin.PluginContextRegistry<DummyContext> registry =
             new GhidraMCPPlugin.PluginContextRegistry<>();
-        DummyContext projectManager = new DummyContext(false);
-        DummyContext codeBrowser = new DummyContext(true);
+        DummyContext projectManager = new DummyContext(false, true);
+        DummyContext codeBrowser = new DummyContext(true, false);
 
         registry.register(projectManager);
         assertTrue(registry.active(false).isPresent());
