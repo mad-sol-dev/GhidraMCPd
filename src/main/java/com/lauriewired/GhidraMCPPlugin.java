@@ -2279,6 +2279,10 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
                 Instruction instr = instructions.next();
                 inspected++;
+                if (pageItems.size() < resolved.limit() && inspected >= inspectionCap) {
+                    inspectionLimitHit = true;
+                    break;
+                }
                 if (!instructionHasScalarValue(instr, searchValue)) {
                     continue;
                 }
