@@ -24,6 +24,11 @@ public class ServerLifecycleTest {
         public boolean hasProgramContext() {
             return programContext;
         }
+
+        @Override
+        public boolean hasProgramManagerService() {
+            return false;
+        }
     }
 
     @Test
