@@ -10,6 +10,9 @@
 Recommended next focus: advance {R.15}/{R.16} with the smoke-test script and broader unit coverage.
 
 ## NEXT
+- {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
+- {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
+- {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
 - {R.12} Write-path utilities (rename_function/set_comment/apply_label) with dry-run + env gate + error codes
