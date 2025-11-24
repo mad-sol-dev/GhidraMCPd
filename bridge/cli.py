@@ -10,6 +10,8 @@ from typing import Callable
 import uvicorn
 from starlette.applications import Starlette
 
+from .utils.env import load_env
+
 
 ShimFactory = Callable[[str], Starlette]
 StartSSE = Callable[[str, int], None]
@@ -74,6 +76,7 @@ def run(
     shim_factory: ShimFactory,
 ) -> None:
     """Execute the CLI behaviour shared by legacy and modular entry points."""
+    load_env()
     if args.debug:
         logger.setLevel(logging.DEBUG)
 

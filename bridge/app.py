@@ -26,10 +26,12 @@ from .api.routes import make_routes
 from .api.tools import register_tools
 from .error_handlers import install_error_handlers
 from .ghidra.client import GhidraClient
+from .utils.env import load_env
 from .utils.errors import ErrorCode
 from .utils.logging import configure_root
 
 MCP_SERVER = FastMCP("ghidra-bridge")
+load_env()
 _ghidra_server_url = os.getenv("GHIDRA_SERVER_URL", "http://127.0.0.1:8080/")
 _CONFIGURED = False
 
