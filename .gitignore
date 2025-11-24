@@ -66,3 +66,5 @@ __pycache__/
 .aider*
 
 docs/api.tmp.md
+ghidra_*.zip
+images/ghidraMCPd_video_logo.png
