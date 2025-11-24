@@ -28,6 +28,10 @@
   - Java plugin now uses a singleton HTTP server shared across Project Manager and CodeBrowser contexts.
   - FrontEnd can start the server without blocking later CodeBrowser launches, with request routing to the active tool.
   - Global operations such as `open_program` are handled even when no program context is available.
+- ◻ Data type lookup caching (R.22)
+  - Cache type-name lookups per DataTypeManager with safe invalidation and a single fallback scan for misses to speed repeated resolutions.
+- ◻ Open-program readiness gating (R.23)
+  - Track IDLE/LOADING/READY states through open/auto-analysis and expose a cheap status check so the bridge can defer heavy calls until READY.
 - ◻ Extension ZIP packaging story
   - Beyond the Maven-built `GhidraMCP.jar`, produce a reproducible Extension ZIP (proper layout + `extension.properties` + JAR) and installation checklist. CI/script should fetch Ghidra (11.4.2), build the plugin, emit the ZIP, and run a minimal smoke test (`project_info`, etc.).
 - ◻ Early detection of Ghidra version incompatibilities
@@ -44,6 +48,8 @@
   - Capture recommended tool sequencing (start with `project_info`/`project_overview`; strings via `search_strings` → `string_xrefs_compact`/`search_xrefs_to`; IO via `search_scalars_with_context` → `disassemble_at` → `mmio_annotate_compact`; eventually `select_program`).
 - ◻ User-facing cookbooks
   - Curate markdown snippets for recurring asks (USB handlers, update/flash paths, bootloader reset-to-main walks, MMIO register surveys) that rely solely on ghidra-bridge tools.
+- ◻ Port 8080 error response cleanup (R.24)
+  - Settle on consistent text/JSON conventions for plugin 8080 errors, keep bridge parsing tolerant but deterministic, and document the finalized behavior alongside readBytes/readBytesBase64 expectations.
 
 ## F. Future bets
 - ◻ Cross-binary analyses
