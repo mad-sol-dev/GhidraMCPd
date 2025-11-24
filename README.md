@@ -55,6 +55,22 @@ calls `project_info`, `search_strings` (defaults to the query `boot`),
 `0x401000`). The script exits non-zero if any tool returns an error envelope or
 empty content.
 
+### Deterministic smoke test (stub firmware)
+
+The repository ships with a tiny reference firmware fixture at
+`bridge/tests/fixtures/reference.bin`. To sanity-check common tools without a
+running Ghidra instance, run the stubbed MCP smoke test:
+
+```
+python scripts/mcp_smoke_test.py
+```
+
+The helper boots `scripts/reference_mcp_server.py` (FastMCP over stdio with the
+fixture-backed stub client) and asserts that `project_info`, `project_overview`,
+`search_strings`, `search_functions`, `search_scalars_with_context`,
+`mmio_annotate_compact`, `read_bytes`, and `read_words` all return data matching
+the fixture's layout.
+
 ---
 
 ## Motivation
