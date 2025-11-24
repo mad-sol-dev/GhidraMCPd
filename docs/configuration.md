@@ -24,6 +24,11 @@ Set via environment variables:
 - `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` (default: `256`)
   Bound for batch payload sizes across deterministic endpoints.
 
+- `GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY` (default: `strict`)
+  Governs mid-session program switching. `strict` enforces hard errors once a session
+  has used program-scoped tools; `soft` returns warnings and confirmation guidance while
+  allowing the change.
+
 - `BRIDGE_OPTIONAL_ADAPTERS` (default: unset, e.g., `"x86,i386"`)
   Enables optional architecture adapters. Unknown names raise a descriptive error at startup.
 

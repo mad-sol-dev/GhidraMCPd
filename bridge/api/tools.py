@@ -261,7 +261,7 @@ def register_tools(
                 )
 
             try:
-                state = normalize_selection(files, requestor=_current_requestor())
+                selection = normalize_selection(files, requestor=_current_requestor())
             except ProgramSelectionError as exc:
                 return envelope_error(
                     ErrorCode.INVALID_REQUEST,
@@ -271,6 +271,10 @@ def register_tools(
                     ),
                     recovery=("Start a new session to switch programs.",),
                 )
+            state = selection.state
+            warnings: list[str] = []
+            if selection.warning:
+                warnings.append(selection.warning)
             if state.domain_file_id is None:
                 return envelope_error(
                     ErrorCode.UNAVAILABLE,
@@ -278,6 +282,8 @@ def register_tools(
                 )
 
         payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+        if warnings:
+            payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -308,7 +314,7 @@ def register_tools(
                 )
 
             try:
-                state = PROGRAM_SELECTIONS.select(_current_requestor(), domain_file_id)
+                selection = PROGRAM_SELECTIONS.select(_current_requestor(), domain_file_id)
             except ProgramSelectionError as exc:
                 return envelope_error(
                     ErrorCode.INVALID_REQUEST,
@@ -318,8 +324,14 @@ def register_tools(
                     ),
                     recovery=("Start a new session to switch programs.",),
                 )
+            state = selection.state
+            warnings: list[str] = []
+            if selection.warning:
+                warnings.append(selection.warning)
 
         payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+        if warnings:
+            payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))

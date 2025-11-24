@@ -912,13 +912,19 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `warnings` | array<string> | No | Returned when mid-session switching is allowed under the soft policy. |
 
   ```json
   {
     "domain_file_id": "string",
-    "locked": false
+    "locked": false,
+    "warnings": ["Program selection switched mid-session from 'prog-1' to 'prog-2'. Confirm this change before continuing; start a new session if you want to avoid mixed context."]
   }
   ```
+
+  When `GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY=soft`, mid-session program changes return
+  warnings like the above rather than hard errors. The default `strict` policy continues
+  to block conflicting switches after program-dependent tools have run.
 
 ### HEAD
 
@@ -932,11 +938,13 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `warnings` | array<string> | No | Returned when mid-session switching is allowed under the soft policy. |
 
   ```json
   {
     "domain_file_id": "string",
-    "locked": false
+    "locked": false,
+    "warnings": ["Program selection switched mid-session from 'prog-1' to 'prog-2'. Confirm this change before continuing; start a new session if you want to avoid mixed context."]
   }
   ```
 
@@ -2223,11 +2231,13 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `warnings` | array<string> | No | Returned when mid-session switching is allowed under the soft policy. |
 
   ```json
   {
     "domain_file_id": "string",
-    "locked": false
+    "locked": false,
+    "warnings": ["Program selection switched mid-session from 'prog-1' to 'prog-2'. Confirm this change before continuing; start a new session if you want to avoid mixed context."]
   }
   ```
 

@@ -46,7 +46,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                 )
 
             try:
-                state = normalize_selection(files, requestor=requestor)
+                selection = normalize_selection(files, requestor=requestor)
             except ProgramSelectionError as exc:
                 message = (
                     "Program selection is locked for this session; "
@@ -60,6 +60,10 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                         status=400,
                     )
                 )
+            state = selection.state
+            warnings: list[str] = []
+            if selection.warning:
+                warnings.append(selection.warning)
             if state.domain_file_id is None:
                 return envelope_response(
                     envelope_error(
@@ -71,6 +75,8 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                 )
 
             payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+            if warnings:
+                payload["warnings"] = warnings
             valid, errors = validate_payload("current_program.v1.json", payload)
             if not valid:
                 return envelope_response(
@@ -115,7 +121,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                 )
 
             try:
-                state = PROGRAM_SELECTIONS.select(requestor, domain_file_id)
+                selection = PROGRAM_SELECTIONS.select(requestor, domain_file_id)
             except ProgramSelectionError as exc:
                 message = (
                     "Program selection is locked for this session; "
@@ -129,8 +135,14 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                         status=400,
                     )
                 )
+            state = selection.state
+            warnings: list[str] = []
+            if selection.warning:
+                warnings.append(selection.warning)
 
             payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+            if warnings:
+                payload["warnings"] = warnings
             valid, errors = validate_payload("current_program.v1.json", payload)
             if not valid:
                 return envelope_response(

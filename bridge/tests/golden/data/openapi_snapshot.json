@@ -1076,6 +1076,12 @@
                     },
                     "locked": {
                       "type": "boolean"
+                    },
+                    "warnings": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [
@@ -1107,6 +1113,12 @@
                     },
                     "locked": {
                       "type": "boolean"
+                    },
+                    "warnings": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [
@@ -3960,6 +3972,12 @@
                     },
                     "locked": {
                       "type": "boolean"
+                    },
+                    "warnings": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [
