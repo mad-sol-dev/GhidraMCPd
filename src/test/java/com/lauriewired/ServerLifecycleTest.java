@@ -13,7 +13,7 @@ import com.sun.net.httpserver.HttpServer;
 
 public class ServerLifecycleTest {
 
-    private static final class DummyContext implements GhidraMCPPlugin.ProgramCapable {
+    private static final class DummyContext implements ProgramCapable {
         private final boolean programContext;
         private final boolean programManagerService;
 
