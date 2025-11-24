@@ -6,6 +6,9 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
+from bridge.api.routes import project_routes
+from bridge.ghidra.client import RequestError
+from bridge.utils.errors import ErrorCode
 
 
 class _ProjectInfoStub:
@@ -27,6 +30,18 @@ def _make_client(payload: Dict[str, object]) -> Iterable[TestClient]:
     app = Starlette(routes=make_routes(factory, enable_writes=False))
     with TestClient(app) as client:
         yield client
+
+
+class _ProjectErrorStub(_ProjectInfoStub):
+    def __init__(self) -> None:
+        super().__init__({})
+        self.last_error = RequestError(status=503, reason="upstream unavailable", retryable=False)
+
+    def get_project_info(self) -> None:  # type: ignore[override]
+        return None
+
+    def get_project_files(self) -> None:  # pragma: no cover - exercised via HTTP
+        return None
 
 
 def test_project_info_route_normalises_payload() -> None:
@@ -92,3 +107,68 @@ def test_project_info_route_normalises_payload() -> None:
             assert isinstance(block["rwx"], str)
             assert isinstance(block["loaded"], bool)
             assert isinstance(block["initialized"], bool)
+
+
+def test_project_info_route_surfaces_upstream_error() -> None:
+    """The envelope should carry upstream transport failures with determinism."""
+
+    def factory() -> _ProjectErrorStub:
+        return _ProjectErrorStub()
+
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
+    with TestClient(app) as client:
+        response = client.get("/api/project_info.json")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["ok"] is False
+    assert body["data"] is None
+    errors = body["errors"]
+    assert isinstance(errors, list) and errors
+    error = errors[0]
+    assert error["code"] == ErrorCode.UNAVAILABLE.value
+    assert error["status"] == 503
+    upstream = error.get("upstream")
+    assert upstream == {
+        "status": 503,
+        "reason": "upstream unavailable",
+        "retryable": False,
+    }
+
+
+def test_project_overview_schema_failure_returns_envelope(monkeypatch) -> None:
+    """Schema validation errors should propagate through the standard envelope."""
+
+    monkeypatch.setattr(
+        project_routes,
+        "validate_payload",
+        lambda schema, payload: (False, ["invalid schema"]),
+    )
+
+    class _ProjectOverviewStub(_ProjectErrorStub):
+        def get_project_files(self) -> List[Dict[str, object]]:  # type: ignore[override]
+            return [
+                {
+                    "domain_file_id": 1,
+                    "name": "demo.bin",
+                    "path": "/demo.bin",
+                    "type": "Program",
+                    "size": 1024,
+                }
+            ]
+
+    def factory() -> _ProjectOverviewStub:
+        return _ProjectOverviewStub()
+
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
+    with TestClient(app) as client:
+        response = client.get("/api/project_overview.json")
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["ok"] is False
+    assert body["data"] is None
+    errors = body["errors"]
+    assert isinstance(errors, list) and errors
+    assert errors[0]["code"] == ErrorCode.INVALID_REQUEST.value
+    assert "invalid schema" in errors[0]["message"]
