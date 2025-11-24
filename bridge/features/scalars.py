@@ -1,7 +1,7 @@
 """Scalar value search helpers."""
 from typing import Dict, List, Optional, Union
 
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import GhidraClient, RequestError
 from ..utils.cache import (
     build_search_cache_key,
     get_program_digest,
@@ -9,7 +9,20 @@ from ..utils.cache import (
     normalize_search_query,
 )
 from ..utils.hex import int_to_hex, parse_hex
-from ..utils.logging import enforce_batch_limit, increment_counter, SafetyLimitExceeded
+from ..utils.logging import increment_counter, SafetyLimitExceeded
+
+
+_LIMIT_ERROR_MARKERS = ("scan limit", "too large")
+
+
+def _is_limit_error(error: object) -> bool:
+    if error is None:
+        return False
+    if isinstance(error, RequestError):
+        message = error.reason
+    else:
+        message = str(error)
+    return any(marker in message.lower() for marker in _LIMIT_ERROR_MARKERS)
 
 
 def search_scalars(
@@ -79,6 +92,11 @@ def search_scalars(
         if cache_key is not None:
             cache.invalidate(cache_key)
         raise
+
+    if _is_limit_error(page_result.error):
+        if cache_key is not None:
+            cache.invalidate(cache_key)
+        raise SafetyLimitExceeded("scalars.search.plugin_limit", limit, request_offset + limit)
 
     raw_items = page_result.items if page_result.items is not None else []
 
