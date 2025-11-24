@@ -58,6 +58,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import com.lauriewired.CursorPager;
+import com.lauriewired.ProgramCapable;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
@@ -101,11 +102,6 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
     @FunctionalInterface
     private interface PluginExchangeHandler {
         void handle(GhidraMCPPlugin plugin, HttpExchange exchange) throws Exception;
-    }
-
-    interface ProgramCapable {
-        boolean hasProgramContext();
-        boolean hasProgramManagerService();
     }
 
     static final class PluginContextRegistry<T extends ProgramCapable> {
