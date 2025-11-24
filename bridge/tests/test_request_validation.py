@@ -5,19 +5,39 @@ from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
-from bridge.error_handlers import install_error_handlers
+from bridge.error_handlers import GENERIC_400, install_error_handlers
 from bridge.tests.golden.test_http_parity import GoldenStubGhidraClient
+from bridge.utils import logging as logging_utils
+
+
+def _build_app(*, enable_writes: bool = True) -> Starlette:
+    """Create a Starlette test app with deterministic stub wiring."""
+
+    def factory() -> GoldenStubGhidraClient:
+        return GoldenStubGhidraClient()
+
+    app = Starlette(routes=make_routes(factory, enable_writes=enable_writes))
+    install_error_handlers(app)
+    return app
 
 
 @pytest.fixture()
 def client() -> TestClient:
-    def factory() -> GoldenStubGhidraClient:
-        return GoldenStubGhidraClient()
-
-    app = Starlette(routes=make_routes(factory, enable_writes=True))
-    install_error_handlers(app)
+    app = _build_app()
     with TestClient(app) as test_client:
         yield test_client
+
+
+def _assert_generic_400(body: dict, *, summary: str) -> None:
+    """Assert the standard 400 envelope produced by request validation guards."""
+
+    assert body["ok"] is False
+    assert body["data"] is None
+    assert body["errors"] == [GENERIC_400]
+    meta = body.get("meta")
+    assert meta, "Expected response metadata for triage"
+    assert meta.get("correlation_id"), "Correlation ID should be provided"
+    assert meta.get("summary") == summary
 
 
 def _valid_payloads() -> dict[str, dict[str, object]]:
@@ -146,3 +166,72 @@ def test_rejects_invalid_json(client: TestClient) -> None:
     assert meta, "Expected response metadata for triage"
     assert meta.get("correlation_id"), "Correlation ID should be provided"
     assert meta.get("summary") == "json_decode_error"
+
+
+def test_datatypes_create_rejects_empty_fields(client: TestClient) -> None:
+    """Schema validation should reject empty field arrays on newer datatype endpoints."""
+
+    response = client.post(
+        "/api/datatypes/create.json",
+        json={
+            "kind": "structure",
+            "name": "Widget",
+            "category": "/structs",
+            "fields": [],
+        },
+    )
+    assert response.status_code == 400
+    _assert_generic_400(response.json(), summary="value_error")
+
+
+def test_read_bytes_rejects_zero_length(client: TestClient) -> None:
+    """Memory reads must enforce the minimum length constraint and envelope shape."""
+
+    response = client.post(
+        "/api/read_bytes.json",
+        json={"address": "0x00100000", "length": 0},
+    )
+    assert response.status_code == 400
+    _assert_generic_400(response.json(), summary="value_error")
+
+
+def test_write_bytes_rejects_non_hex_address(client: TestClient) -> None:
+    """Invalid hex input should surface deterministic INVALID_REQUEST envelopes."""
+
+    response = client.post(
+        "/api/write_bytes.json",
+        json={
+            "address": "0xnot-hex",
+            "data": "AAE=",
+            "dry_run": True,
+        },
+    )
+    assert response.status_code == 400
+    _assert_generic_400(response.json(), summary="value_error")
+
+
+def test_mmio_annotate_rejects_oversized_max_samples(monkeypatch) -> None:
+    """Oversized MMIO annotation requests should emit RESULT_TOO_LARGE envelopes."""
+
+    monkeypatch.setattr(logging_utils, "MAX_ITEMS_PER_BATCH", 1)
+    app = _build_app()
+    with TestClient(app) as http:
+        response = http.post(
+            "/api/mmio_annotate.json",
+            json={"function_addr": "0x00007000", "max_samples": 2},
+        )
+
+    assert response.status_code == 413
+    body = response.json()
+    assert body["ok"] is False
+    assert body["data"] is None
+    assert body["errors"] == [
+        {
+            "status": 413,
+            "code": "RESULT_TOO_LARGE",
+            "message": "mmio.max_samples limit exceeded: attempted 2 > allowed 1",
+            "recovery": [
+                "Narrow the scope or reduce limits to shrink the result.",
+            ],
+        }
+    ]
