@@ -240,6 +240,15 @@ def mark_used_for_context(server: FastMCP, *, lock_usage: bool = True) -> None:
     PROGRAM_SELECTIONS.mark_used(key)
 
 
+def lock_selection_for_requestor(key: Hashable | object) -> None:
+    """Mark the given requester as having established a program selection."""
+
+    policy = program_switch_policy()
+    if policy not in {"soft", "strict"}:  # pragma: no cover - defensive fallback
+        return
+    PROGRAM_SELECTIONS.mark_used(key)
+
+
 def program_switch_policy() -> str:
     """Return the configured mid-session program switching policy."""
 
