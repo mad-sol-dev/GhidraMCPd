@@ -142,7 +142,12 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
             warnings: list[str] = []
             if selection.warning:
                 warnings.append(selection.warning)
-            warnings.extend(_maybe_autoopen_program(client, files, state.domain_file_id))
+            autoopen_warnings, autoopen_error = _maybe_autoopen_program(
+                client, files, state.domain_file_id
+            )
+            if autoopen_error:
+                return envelope_response(autoopen_error)
+            warnings.extend(autoopen_warnings)
 
             payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
             if warnings:
