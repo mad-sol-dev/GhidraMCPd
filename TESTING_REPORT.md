@@ -263,28 +263,9 @@ This report documents systematic testing of GhidraMCP base functionality to ensu
 **Test**: Switch to a different program in project
 **Tool**: `mcp__ghidra__select_program`
 
-**Status**: 🔴 FAILED
-**Result (trying to switch to different program)**:
-```json
-{
-  "ok": false,
-  "errors": [{
-    "status": 400,
-    "code": "INVALID_REQUEST",
-    "message": "Automatic program open failed upstream: ProgramManager service unavailable; launch a program-capable tool manually.",
-    "upstream": {
-      "status": "error",
-      "path": "/ZK-INKJET-NANO-BOOT.bin",
-      "domain_file_id": "7f011a9c518283402470126",
-      "name": "ZK-INKJET-NANO-BOOT.bin",
-      "message": "ProgramManager service unavailable; launch a program-capable tool manually",
-      "warnings": ["ToolServices class not found; cannot auto-open program tool"]
-    }
-  }]
-}
-```
+**Status**: ✅ **PASSED** (after fix in v1.1.1)
 
-**Result (trying to select currently open program)**:
+**Initial Result (v1.0-SNAPSHOT)**: 🔴 FAILED
 ```json
 {
   "ok": false,
@@ -299,7 +280,28 @@ This report documents systematic testing of GhidraMCP base functionality to ensu
 }
 ```
 
-**Notes**: This was the feature being worked on before testing. Both switching to a different program and re-selecting the current program fail with the same error. The ProgramManager service is unavailable and ToolServices class cannot be found, preventing auto-opening of program tools (code viewer).
+**Result After Fix (v1.1.1)**: ✅ **SUCCESS**
+```json
+{
+  "ok": true,
+  "data": {
+    "domain_file_id": "7f011a9c518283402470126",
+    "locked": true,
+    "state": "READY",
+    "warnings": [
+      "Program selection switched mid-session from '7f011b6c592307498348432' to '7f011a9c518283402470126'."
+    ]
+  }
+}
+```
+
+**Verification Tests After Switch**:
+- ✅ String search: Working
+- ✅ Function search: Working (returned 5 functions)
+- ✅ CodeBrowser auto-launched successfully
+- ✅ Program state: READY (not IDLE)
+
+**Notes**: This was the feature being worked on before testing. After applying the ToolServices fix (commit 90cfad2), the auto-launch functionality works perfectly. CodeBrowser launches automatically and the selected program is opened and analyzed.
 
 ---
 
@@ -335,18 +337,25 @@ Skipped due to program IDLE state - would fail like other operations
 
 ## Summary
 
+### Initial Test Results (2025-11-25, before fixes)
 **Total Tests**: 13
 **Passed**: 🟢 1 (7.7%)
 **Failed**: 🔴 9 (69.2%)
 **Warning**: ⚠️ 2 (15.4%)
 **Skipped**: ⏭️ 2 (15.4%)
 
-### Test Breakdown
+### Test Breakdown (Initial)
 - **Project & Program Status**: 1 passed, 2 warnings
 - **Search Operations**: 4 failed (all due to IDLE state)
 - **Memory Operations**: 4 failed (all due to IDLE state)
 - **Program Selection**: 1 failed (ProgramManager unavailable)
 - **Advanced Features**: 2 skipped (program not ready)
+
+### Final Results (2025-11-26, after v1.1.1 fix)
+**Program Selection & Auto-Launch**: ✅ **WORKING**
+- Auto-launch CodeBrowser: ✅ PASSED
+- Program switching: ✅ PASSED
+- Search operations on new program: ✅ PASSED
 
 ## Issues Found
 
@@ -360,18 +369,25 @@ Skipped due to program IDLE state - would fail like other operations
 - Manually trigger analysis in Ghidra GUI (Analysis → Auto Analyze)
 - Check Ghidra GUI for analysis progress
 
-### CRITICAL Issue 2: ProgramManager Service Unavailable
-**Severity**: 🔴 CRITICAL
-**Description**: `select_program` tool fails because ProgramManager service is unavailable.
-**Impact**: Cannot switch between programs in the project or auto-open programs.
+### CRITICAL Issue 2: ProgramManager Service Unavailable ✅ **RESOLVED**
+**Severity**: 🔴 CRITICAL → ✅ **FIXED in v1.1.1**
+**Description**: `select_program` tool failed because ToolServices was accessed incorrectly.
+**Impact**: Could not switch between programs or auto-open programs.
 **Root Cause**:
-- ToolServices class not found (classpath issue?)
-- ProgramManager service not available in current Ghidra session
+- ToolServices accessed via `tool.getService(ToolServices.class)` ❌
+- ToolServices is NOT a service - it's a direct method on PluginTool
+- Wrong package path: was trying `ghidra.app.services.ToolServices` instead of `ghidra.framework.model.ToolServices`
+
 **Error Message**: "ToolServices class not found; cannot auto-open program tool"
-**Recovery**:
-- Investigate Java plugin classpath for ToolServices
-- Check if ProgramManager requires a specific Ghidra tool to be open (CodeBrowser)
-- May need to manually open programs in Ghidra GUI before selecting via MCP
+
+**Resolution** (commit 90cfad2):
+- ✅ Fixed ToolServices access: `tool.getToolServices()` instead of `getService()`
+- ✅ Corrected import: `ghidra.framework.model.ToolServices`
+- ✅ Removed reflection-based access, use direct Ghidra API
+- ✅ Fixed method signatures: `launchTool(String, Collection<DomainFile>)`
+- ✅ Auto-launch now works perfectly
+
+**Testing**: Verified working in v1.1.1 - CodeBrowser auto-launches and programs switch successfully
 
 ### WARNING Issue 3: Program Selection Mismatch
 **Severity**: ⚠️ WARNING
