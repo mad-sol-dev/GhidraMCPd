@@ -6,6 +6,8 @@
 ## NOW
 - {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
+- {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance
+- {R.26} Write endpoint `domain_file_id` validation against the active program (reject mismatches before mutating)
 
 Recommended next focus: land {R.22}/{R.23} to improve plugin performance and readiness gating before tackling remaining NEXT items.
 
@@ -17,6 +19,8 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.13} Extension ZIP packaging + install checklist + CI/script smoke-test hook
 - {R.17} AGENTS.md guidance for ghidra-bridge usage and prompting defaults
 - {R.18} Cookbook snippets for USB/update/boot/MMIO workflows using MCP tools only
+- {R.27} LLM-visible comment tagging/prefixing for write calls (toolname/LLM annotations and format guidance)
+- {R.28} Audit logging for write operations (inputs, program context, and response outcomes with redaction rules)
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints
