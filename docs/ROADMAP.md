@@ -12,6 +12,10 @@
   - Tool is shipped and exercised; remaining work is UX/prompt guidance so LLMs reliably use the firmware-set context they receive.
 - ✅ Explicit program selection as global context
   - MCP endpoints `select_program(domain_file_id: str)` and `get_current_program()` track the active program per session/requestor with mid-session switch gating.
+- ◻ Explicit dirty-state handling when switching programs
+  - Gate `open_program` with a pre-switch dirty check so callers cannot silently discard edits when moving between programs.
+  - Surface explicit write-path endpoints (`/save_program` and `/discard_program_changes`) with warnings that LLMs should avoid destructive actions without user consent.
+  - Extend `/open_program` with `on_dirty=error|save|discard` flags (default `error`) to align with readiness gating work and keep dirty-state decisions explicit.
 - ◻ Firmware-set workflows
   - Define standard prompts/recipes for boot→app→res investigations (e.g., reset vectors in BOOT, update handlers in APP, resource container checks in RES). **Planning needed:** how to expose these as reusable flows for agents.
 
