@@ -44,6 +44,7 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
         "decompile_by_addr",
         "decompileByAddr",
     ),
+    "OPEN_PROGRAM": ("open_program",),
 }
 
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -589,6 +590,37 @@ class GhidraClient:
             return None
         if not isinstance(payload, list):
             logger.warning("Unexpected project_files payload type: %s", type(payload))
+            return None
+        return payload
+
+    def open_program(self, domain_file_id: str, *, path: str | None = None) -> Optional[Dict[str, Any]]:
+        """Request the plugin to open the specified program."""
+
+        increment_counter("ghidra.open_program")
+        params: Dict[str, Any] = {"domain_file_id": domain_file_id}
+        if path:
+            params["path"] = path
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="OPEN_PROGRAM",
+            params=params,
+        )
+        lines = self._get_resolver.resolve("OPEN_PROGRAM", requester)
+        if _is_error(lines) or not lines:
+            logger.warning("open_program request failed: %s", _error_summary(lines))
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("open_program returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode open_program payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("Unexpected open_program payload type: %s", type(payload))
             return None
         return payload
 
