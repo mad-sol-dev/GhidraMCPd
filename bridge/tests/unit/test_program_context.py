@@ -9,7 +9,8 @@ from bridge.utils.program_context import (
 )
 
 
-def test_selection_defaults_and_switch_gating() -> None:
+def test_selection_defaults_and_switch_gating(monkeypatch) -> None:
+    monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "strict")
     store = ProgramSelectionStore()
 
     # No default selection until provider runs
