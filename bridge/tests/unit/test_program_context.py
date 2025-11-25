@@ -75,18 +75,28 @@ def test_normalize_selection_raises_when_locked_and_stale() -> None:
         raise AssertionError("Expected ProgramSelectionError")
 
 
-def test_normalize_selection_soft_policy_warns(monkeypatch) -> None:
+def test_normalize_selection_locked_and_missing_fallback_raises() -> None:
+    store = ProgramSelectionStore()
+    store.select("req", "stale")
+    store.mark_used("req")
+
+    with pytest.raises(ProgramSelectionError) as exc:
+        normalize_selection([], requestor="req", store=store)
+
+    assert exc.value.current == "stale"
+
+
+def test_normalize_selection_locked_stale_raises_even_soft(monkeypatch) -> None:
     monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "soft")
     files = [{"type": "Program", "domain_file_id": "1"}]
     store = ProgramSelectionStore()
     store.select("req", "stale")
     store.mark_used("req")
 
-    result = normalize_selection(files, requestor="req", store=store)
+    with pytest.raises(ProgramSelectionError) as exc:
+        normalize_selection(files, requestor="req", store=store)
 
-    assert result.state.domain_file_id == "1"
-    assert result.warning
-    assert result.warning.startswith("Program selection switched mid-session")
+    assert exc.value.current == "stale"
 
 
 def test_select_normalizes_and_blocks_switch_when_locked(monkeypatch) -> None:

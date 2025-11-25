@@ -158,6 +158,10 @@ def normalize_selection(
         return SelectionResult(state=state, warning=None)
 
     fallback = default_program_id(files)
+
+    if normalized and state.locked:
+        raise ProgramSelectionError(current=normalized)
+
     if fallback is None:
         state.domain_file_id = None
         return SelectionResult(state=state, warning=None)
