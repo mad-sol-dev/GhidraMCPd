@@ -4,14 +4,12 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words)
-- {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths
-
-Recommended next focus: advance {R.15}/{R.16} with the smoke-test script and broader unit coverage.
-
-## NEXT
 - {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
+
+Recommended next focus: land {R.22}/{R.23} to improve plugin performance and readiness gating before tackling remaining NEXT items.
+
+## NEXT
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
@@ -49,6 +47,8 @@ Recommended next focus: advance {R.15}/{R.16} with the smoke-test script and bro
 - [x] {R.3} `include_literals` plumbing across memory and string search endpoints.
 - [x] {R.4} Expanded audit logging for write/rebase/datatypes flows.
 - [x] {T-202511-019} Refresh roadmap and .plan with navigation/context/backlog alignment.
+- [x] {R.15} MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words).
+- [x] {R.16} Unit-test expansion for new project/analysis tools and invalid-parameter paths.
 
 ## Invariants
 - CI green (Unit/Contract/Golden), OpenAPI drift-free.

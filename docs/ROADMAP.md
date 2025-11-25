@@ -38,10 +38,10 @@
   - Establish a small test matrix (e.g., minimum supported vs. latest Ghidra) and at least one unit test that mocks Ghidra APIs to ensure type compatibility, guarding against namespace clashes like `java.util.function.Function` vs. `ghidra.program.model.listing.Function`.
 
 ## D. Tests & quality net
-- ◻ MCP tool smoke tests (NOW)
-  - Automate the manual snippets used so far into a smoke-test script (Python/Shell) that exercises `project_info`, `project_overview`, `search_strings`, `search_functions`, `search_scalars_with_context`, `mmio_annotate_compact`, `read_bytes`, and `read_words` against a test firmware with “what good looks like” assertions.
-- ◻ Unit tests for new tools and error cases (NOW)
-  - Extend the `project_overview`-style unit coverage to additional project/analysis tools, including negative cases (invalid parameters, large limits) and schema validation paths.
+- ✅ MCP tool smoke tests (NOW)
+  - Deterministic stub-backed smoke test (`scripts/mcp_smoke_test.py`) exercises `project_info`, `project_overview`, `search_strings`, `search_functions`, `search_scalars_with_context`, `mmio_annotate_compact`, `read_bytes`, and `read_words` against the bundled reference firmware with CI automation.
+- ✅ Unit tests for new tools and error cases (NOW)
+  - Expanded unit suite covers additional project/analysis tools plus negative parameter and limit paths (e.g., scalars, strings, MMIO, collect, program selection), enforcing schema validation alongside contract/golden coverage.
 
 ## E. Documentation & UX
 - ◻ AGENTS.md / “How to talk to ghidra-bridge”
