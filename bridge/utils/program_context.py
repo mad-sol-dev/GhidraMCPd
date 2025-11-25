@@ -280,8 +280,9 @@ def _mid_session_warning(previous: str | None, requested: str | None) -> str:
     target = requested or "unknown"
     return (
         "Program selection switched mid-session from "
-        f"'{current}' to '{target}'. Confirm this change before continuing; "
-        "start a new session if you want to avoid mixed context."
+        f"'{current}' to '{target}'. Seek explicit user confirmation before "
+        "continuing any actions, and start a new session if you want to avoid "
+        "mixed context."
     )
 
 

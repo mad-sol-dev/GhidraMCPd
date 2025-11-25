@@ -124,7 +124,7 @@ def _maybe_autoopen_program(
     if isinstance(plugin_warnings, Sequence):
         warnings.extend(str(warning) for warning in plugin_warnings if str(warning).strip())
 
-    status_payload = client.get_project_info()
+    status_payload = client.get_current_program_status()
     if status_payload is None:
         upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
         warnings.append(
@@ -134,6 +134,26 @@ def _maybe_autoopen_program(
         if upstream:
             warnings.append(f"Upstream status error: {upstream}")
         return warnings, None
+
+    requested_id = str(domain_file_id).strip()
+    active_id_raw = status_payload.get("domain_file_id") if isinstance(status_payload, Mapping) else None
+    active_domain_id = str(active_id_raw).strip() if active_id_raw is not None else ""
+    if requested_id and active_domain_id and active_domain_id != requested_id:
+        return (
+            warnings,
+            envelope_error(
+                ErrorCode.INVALID_REQUEST,
+                (
+                    "Program open succeeded but the active program upstream does not match the "
+                    f"requested domain_file_id '{requested_id}' (current '{active_domain_id}')."
+                ),
+                upstream_error=status_payload if isinstance(status_payload, Mapping) else None,
+                recovery=(
+                    "Ask the user to confirm program switches during a session.",
+                    "Retry once the requested program is active in Ghidra.",
+                ),
+            ),
+        )
 
     expected_name = None
     if entry:
@@ -153,6 +173,10 @@ def _maybe_autoopen_program(
                 f"expected '{expected_name}', current '{current_name}'."
             )
         )
+
+    upstream_warnings = status_payload.get("warnings") if isinstance(status_payload, Mapping) else None
+    if isinstance(upstream_warnings, Sequence):
+        warnings.extend(str(item) for item in upstream_warnings if str(item).strip())
 
     return warnings, None
 
