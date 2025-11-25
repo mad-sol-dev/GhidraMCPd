@@ -1,16 +1,19 @@
-from mcp.server.fastmcp import FastMCP
+from __future__ import annotations
 
 import bridge.api.tools as tools
 from bridge.api.tools import register_tools
 from bridge.utils.program_context import PROGRAM_SELECTIONS
+from mcp.server.fastmcp import FastMCP
 
 
 class _SelectionClient:
     def __init__(self) -> None:
         self.base_url = "http://ghidra/"
         self.open_calls: list[dict[str, object]] = []
+        self._active_domain_file_id: str | None = None
 
-    def get_project_files(self):
+    @property
+    def _files(self) -> list[dict[str, object]]:
         return [
             {
                 "domain_file_id": "prog-1",
@@ -28,8 +31,20 @@ class _SelectionClient:
             },
         ]
 
+    def get_project_files(self):
+        return self._files
+
+    def get_project_info(self):
+        current = self._active_domain_file_id or self._files[0]["domain_file_id"]
+        selected = next(
+            (entry for entry in self._files if entry["domain_file_id"] == current), None
+        )
+        program_name = selected["name"] if selected else "unknown"
+        return {"program_name": program_name}
+
     def open_program(self, domain_file_id: str, *, path: str | None = None):
         self.open_calls.append({"domain_file_id": domain_file_id, "path": path})
+        self._active_domain_file_id = domain_file_id
         return {"status": "ok", "warnings": ["Program auto-opened for test"]}
 
     def close(self) -> None:  # pragma: no cover - exercised implicitly
@@ -48,7 +63,8 @@ def test_program_selection_tools_happy_path(monkeypatch) -> None:
     monkeypatch.setattr(tools, "validate_payload", fake_validate)
 
     server = FastMCP("selection")
-    register_tools(server, client_factory=_SelectionClient)
+    client = _SelectionClient()
+    register_tools(server, client_factory=lambda: client)
 
     current_tool = server._tool_manager._tools["get_current_program"]
     first = current_tool.fn()
@@ -60,7 +76,10 @@ def test_program_selection_tools_happy_path(monkeypatch) -> None:
     second = select_tool.fn("prog-2")
 
     assert second["ok"] is True
-    assert second["data"] == {"domain_file_id": "prog-2", "locked": True}
+    assert second["data"]["domain_file_id"] == "prog-2"
+    assert second["data"]["locked"] is True
+    assert client.open_calls == [{"domain_file_id": "prog-2", "path": "/beta"}]
+    assert any("auto-opened" in warning for warning in second["data"]["warnings"])
 
     # Schema validation should be enforced for each envelope
     assert validations.count("current_program.v1.json") == 2
@@ -122,14 +141,17 @@ def test_program_selection_tools_soft_policy_allows_switch(monkeypatch) -> None:
     assert payload["domain_file_id"] == "prog-2"
     assert payload["locked"] is True
     assert payload.get("warnings")
-    assert payload["warnings"][0].startswith("Program selection switched mid-session")
+    assert any(
+        warning.startswith("Program selection switched mid-session")
+        for warning in payload["warnings"]
+    )
+    assert any("auto-opened" in warning for warning in payload["warnings"])
 
     assert validations.count("current_program.v1.json") == 2
 
 
 def test_program_selection_autoopens_and_warns(monkeypatch) -> None:
     PROGRAM_SELECTIONS.clear()
-    monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_AUTOOPEN", "true")
 
     validations = []
 
@@ -154,3 +176,51 @@ def test_program_selection_autoopens_and_warns(monkeypatch) -> None:
     assert payload.get("warnings")
     assert any("auto-opened" in warning for warning in payload["warnings"])
     assert validations.count("current_program.v1.json") == 1
+
+
+def test_program_selection_propagates_open_errors(monkeypatch) -> None:
+    PROGRAM_SELECTIONS.clear()
+
+    validations = []
+
+    def fake_validate(name: str, payload):
+        validations.append(name)
+        return True, []
+
+    class _FailingClient(_SelectionClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.last_error = None
+
+        def open_program(self, domain_file_id: str, *, path: str | None = None):
+            class _Error:
+                def __init__(self):
+                    self.status = 500
+                    self.reason = "upstream failed"
+                    self.retryable = False
+
+                def as_dict(self):
+                    return {"status": self.status, "reason": self.reason, "retryable": self.retryable}
+
+            self.last_error = _Error()
+            return None
+
+        def get_project_info(self):
+            return None
+
+    monkeypatch.setattr(tools, "validate_payload", fake_validate)
+
+    server = FastMCP("selection-errors")
+    register_tools(server, client_factory=_FailingClient)
+
+    select_tool = server._tool_manager._tools["select_program"]
+    failure = select_tool.fn("prog-1")
+
+    assert failure["ok"] is False
+    assert failure["errors"][0]["code"] == "UNAVAILABLE"
+    assert "Automatic program open failed" in failure["errors"][0]["message"]
+    assert validations.count("current_program.v1.json") == 0
+
+    state = PROGRAM_SELECTIONS.snapshot(("mcp", "default"))
+    assert state.domain_file_id is None
+    assert state.locked is False
