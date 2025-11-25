@@ -6,6 +6,7 @@ import ghidra.framework.model.DomainFile;
 import ghidra.framework.model.DomainFolder;
 import ghidra.framework.model.Project;
 import ghidra.framework.model.ProjectData;
+import ghidra.framework.model.ToolServices;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
@@ -28,9 +29,9 @@ import ghidra.program.model.pcode.HighFunctionDBUtil.ReturnCommitOption;
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.plugin.PluginCategoryNames;
+import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.services.CodeViewerService;
 import ghidra.app.services.ProgramManager;
-import ghidra.app.services.ProgramManagerListener;
 import ghidra.app.util.PseudoDisassembler;
 import ghidra.app.cmd.function.SetVariableNameCmd;
 import ghidra.program.model.symbol.SourceType;
@@ -85,7 +86,7 @@ import java.util.Base64;
     shortDescription = "HTTP server plugin",
     description = "Starts an embedded HTTP server to expose program data. Port configurable via Tool Options."
 )
-public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
+public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private HttpServer server;
     private final ProgramStatusTracker statusTracker = new ProgramStatusTracker();
@@ -233,7 +234,7 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         }
     }
 
-    private final class ProgramStatusTracker implements ProgramManagerListener {
+    private final class ProgramStatusTracker {
         private final Object lock = new Object();
         private ProgramState state = ProgramState.IDLE;
         private String domainFileId;
@@ -273,18 +274,15 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
             }
         }
 
-        @Override
-        public void programActivated(Program program) {
+        void onProgramActivated(Program program) {
             trackProgram(program);
         }
 
-        @Override
-        public void programClosed(Program program) {
+        void onProgramClosed(Program program) {
             trackProgram(null);
         }
 
-        @Override
-        public void programOpened(Program program) {
+        void onProgramOpened(Program program) {
             trackProgram(program);
         }
 
@@ -421,9 +419,32 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         ProgramManager programManager = tool.getService(ProgramManager.class);
         if (programManager != null) {
-            programManager.addProgramManagerListener(statusTracker);
             statusTracker.initialise(programManager);
         }
+    }
+
+    @Override
+    protected void programActivated(Program program) {
+        super.programActivated(program);
+        statusTracker.onProgramActivated(program);
+    }
+
+    @Override
+    protected void programDeactivated(Program program) {
+        super.programDeactivated(program);
+        statusTracker.onProgramClosed(program);
+    }
+
+    @Override
+    protected void programOpened(Program program) {
+        super.programOpened(program);
+        statusTracker.onProgramOpened(program);
+    }
+
+    @Override
+    protected void programClosed(Program program) {
+        super.programClosed(program);
+        statusTracker.onProgramClosed(program);
     }
 
     private static void registerRoutes(HttpServer server) {
@@ -2739,82 +2760,45 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
     }
 
     private PluginTool launchProgramCapableTool(DomainFile file, List<String> warnings) {
-        try {
-            Class<?> toolServicesClass = Class.forName("ghidra.app.services.ToolServices");
-            Object toolServices = tool.getService(toolServicesClass);
-            if (toolServices == null) {
-                warnings.add("ToolServices unavailable; cannot auto-open a program tool");
-                return null;
-            }
-
-            Boolean autoOpenAllowed = invokeBooleanMethod(toolServices, "isAutoOpenAllowed");
-            if (Boolean.FALSE.equals(autoOpenAllowed)) {
-                warnings.add(
-                    "Automatic tool launch is disabled by policy; open a program-capable tool manually");
-                return null;
-            }
-
-            Method launchDefaultTool = findMethod(toolServicesClass, "launchDefaultTool", DomainFile.class);
-            if (launchDefaultTool != null) {
-                Object launched = launchDefaultTool.invoke(toolServices, file);
-                if (launched instanceof PluginTool) {
-                    return (PluginTool) launched;
-                }
-            }
-
-            Method launchTool = findMethod(toolServicesClass, "launchTool", DomainFile.class);
-            if (launchTool != null) {
-                Object launched = launchTool.invoke(toolServices, file);
-                if (launched instanceof PluginTool) {
-                    return (PluginTool) launched;
-                }
-            }
-
-            warnings.add("ToolServices did not return a PluginTool when launching a program tool");
-        }
-        catch (ClassNotFoundException e) {
-            warnings.add("ToolServices class not found; cannot auto-open program tool");
-        }
-        catch (InvocationTargetException | IllegalAccessException e) {
-            warnings.add("Failed to auto-open program tool: " + e.getMessage());
-        }
-
-        return null;
-    }
-
-    private Boolean invokeBooleanMethod(Object target, String methodName) {
-        try {
-            Method method = target.getClass().getMethod(methodName);
-            Object result = method.invoke(target);
-            if (result instanceof Boolean) {
-                return (Boolean) result;
-            }
-        }
-        catch (Exception e) {
-            // ignore and fall through
-        }
-        return null;
-    }
-
-    private Method findMethod(Class<?> clazz, String name, Class<?>... args) {
-        try {
-            return clazz.getMethod(name, args);
-        }
-        catch (NoSuchMethodException e) {
+        ToolServices toolServices = tool.getToolServices();
+        if (toolServices == null) {
+            warnings.add("ToolServices unavailable; cannot auto-open a program tool");
             return null;
         }
+
+        // Create a collection with the single file
+        Collection<DomainFile> files = Collections.singletonList(file);
+
+        // Try launching CodeBrowser specifically (best for program analysis)
+        try {
+            PluginTool launched = toolServices.launchTool("CodeBrowser", files);
+            if (launched != null) {
+                return launched;
+            }
+        } catch (Exception e) {
+            warnings.add("Failed to launch CodeBrowser: " + e.getMessage());
+        }
+
+        // Fallback to default tool
+        try {
+            PluginTool launched = toolServices.launchDefaultTool(files);
+            if (launched != null) {
+                return launched;
+            }
+        } catch (Exception e) {
+            warnings.add("Failed to launch default tool: " + e.getMessage());
+        }
+
+        warnings.add("ToolServices did not return a PluginTool when launching a program tool");
+        return null;
     }
 
     private boolean invokeOpenProgram(ProgramManager pm, DomainFile file, List<String> warnings) {
         try {
-            Method openProgramMethod = pm.getClass().getMethod("openProgram", DomainFile.class);
-            openProgramMethod.invoke(pm, file);
+            pm.openProgram(file);
             return true;
         }
-        catch (NoSuchMethodException e) {
-            return false;
-        }
-        catch (InvocationTargetException | IllegalAccessException e) {
+        catch (Exception e) {
             warnings.add("Failed to open program: " + e.getMessage());
             return false;
         }
