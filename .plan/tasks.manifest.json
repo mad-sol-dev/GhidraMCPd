@@ -38,7 +38,8 @@
         "All search endpoints return {query,total,page,limit,has_more,items}",
         "page is 1-based; has_more rule enforced",
         "Edge-case tests (0/limit/last), Golden samples"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.4",
@@ -64,7 +65,8 @@
         "errors[] entries = {status, code, message, recovery[]}",
         "Enum implemented + documented",
         "Golden examples for each code"
-      ]
+      ],
+      "status": "done"
     },
     {
       "id": "D.6",
@@ -180,8 +182,7 @@
         "Configurable origin whitelist enforced for bridge endpoints",
         "Docs cover deployment toggles + failure modes"
       ],
-      "status": "done",
-      "commit": "pending"
+      "status": "todo"
     },
     {
       "id": "R.6",
@@ -348,7 +349,7 @@
         "Assertions for known-good fixtures",
         "CI ready entrypoint"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.16",
@@ -362,7 +363,7 @@
         "Negative cases for bad parameters and large limits",
         "Schema validation enforced"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.17",

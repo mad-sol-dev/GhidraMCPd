@@ -1,6 +1,8 @@
 # DONE (archive)
 
 ## 2025-11
+- 2025-11-25 **R.16** — Unit-test expansion for new project/analysis tools and invalid-parameter paths _commit:pending_
+- 2025-11-25 **R.15** — MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words) _commit:pending_
 - 2025-11-24 **R.21** — Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program) _commit:pending_
 - 2025-11-22 **R.3** — `include_literals` plumbing across memory and string search endpoints _commit:pending_
 - 2025-11-23 **R.4** — Expanded audit logging for write/rebase/datatypes flows _commit:pending_
