@@ -631,6 +631,24 @@ class StubGhidraClient:
         self._clear_error()
         return [dict(entry) for entry in self._project_files]
 
+    def get_current_program_status(self) -> Dict[str, object]:
+        self._clear_error()
+        return {
+            "domain_file_id": "1",
+            "locked": False,
+            "state": "READY",
+            "warnings": [],
+        }
+
+    def open_program(self, domain_file_id: str, *, path: str | None = None) -> Dict[str, object]:
+        self._clear_error()
+        return {
+            "status": "ok",
+            "domain_file_id": str(domain_file_id),
+            "path": path,
+            "warnings": [],
+        }
+
     def close(self) -> None:
         return None
 

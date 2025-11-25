@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Mapping
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -30,6 +30,19 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
             logger=deps.logger,
             extra={"path": "/api/current_program.json"},
         ):
+            status_payload = client.get_current_program_status()
+            if status_payload is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_response(
+                    envelope_error(
+                        ErrorCode.UNAVAILABLE,
+                        "Failed to query the current program status upstream.",
+                        upstream_error=upstream,
+                        recovery=("Ensure a program is open in Ghidra.",),
+                        status=503,
+                    )
+                )
+
             requestor = getattr(request.state, "program_requestor", None) or requestor_from_request(
                 request
             )
@@ -76,9 +89,46 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                     )
                 )
 
-            payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
-            if warnings:
-                payload["warnings"] = warnings
+            upstream_warnings = (
+                status_payload.get("warnings")
+                if isinstance(status_payload, Mapping)
+                else None
+            )
+            state_value = str(status_payload.get("state", "IDLE")).upper()
+            upstream_domain_id = (
+                str(status_payload.get("domain_file_id"))
+                if isinstance(status_payload, Mapping)
+                else None
+            )
+            upstream_locked = bool(status_payload.get("locked"))
+
+            selected_domain = state.domain_file_id or upstream_domain_id
+            combined_warnings: list[str] = []
+            combined_warnings.extend(warnings)
+            if upstream_warnings:
+                combined_warnings.extend(str(item) for item in upstream_warnings)
+            if selected_domain and upstream_domain_id and selected_domain != upstream_domain_id:
+                combined_warnings.append(
+                    "Requested program selection does not match the active program upstream."
+                )
+
+            if selected_domain is None:
+                return envelope_response(
+                    envelope_error(
+                        ErrorCode.UNAVAILABLE,
+                        "No program files are available in the current project.",
+                        recovery=("Open a program in Ghidra and retry.",),
+                        status=503,
+                    )
+                )
+
+            payload = {
+                "domain_file_id": selected_domain,
+                "locked": state.locked or upstream_locked,
+                "state": state_value,
+            }
+            if combined_warnings:
+                payload["warnings"] = combined_warnings
             valid, errors = validate_payload("current_program.v1.json", payload)
             if not valid:
                 return envelope_response(
@@ -149,15 +199,28 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                 return envelope_response(autoopen_error)
             warnings.extend(autoopen_warnings)
 
-            payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
-            if warnings:
-                payload["warnings"] = warnings
-            valid, errors = validate_payload("current_program.v1.json", payload)
-            if not valid:
-                return envelope_response(
-                    envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-                )
-            return envelope_response(envelope_ok(payload))
+            status_payload = client.get_current_program_status()
+            if status_payload is None:
+                state_value = "IDLE"
+            else:
+                state_value = str(status_payload.get("state", "IDLE")).upper()
+                upstream_warnings = status_payload.get("warnings")
+                if isinstance(upstream_warnings, list):
+                    warnings.extend(str(item) for item in upstream_warnings)
+
+        payload = {
+            "domain_file_id": state.domain_file_id,
+            "locked": state.locked,
+            "state": state_value,
+        }
+        if warnings:
+            payload["warnings"] = warnings
+        valid, errors = validate_payload("current_program.v1.json", payload)
+        if not valid:
+            return envelope_response(
+                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            )
+        return envelope_response(envelope_ok(payload))
 
     return [
         Route(

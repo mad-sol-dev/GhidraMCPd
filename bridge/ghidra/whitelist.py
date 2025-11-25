@@ -53,6 +53,11 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         ),
         WhitelistEntry("GET", "PROJECT_INFO", ("projectInfo", "project_info")),
         WhitelistEntry("GET", "PROJECT_FILES", ("project_files",)),
+        WhitelistEntry(
+            "GET",
+            "CURRENT_PROGRAM_STATUS",
+            ("api/current_program.json", "current_program"),
+        ),
         WhitelistEntry("GET", "OPEN_PROGRAM", ("open_program",)),
     ),
     "POST": (
