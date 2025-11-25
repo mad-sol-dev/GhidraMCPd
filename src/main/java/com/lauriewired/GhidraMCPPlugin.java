@@ -2646,15 +2646,9 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         DomainFile file = null;
         if (domainFileIdParam != null && !domainFileIdParam.isEmpty()) {
-            try {
-                long domainFileId = Long.parseLong(domainFileIdParam);
-                file = findDomainFileById(projectData.getRootFolder(), domainFileId);
-                if (file == null) {
-                    warnings.add("No DomainFile found for ID " + domainFileIdParam);
-                }
-            }
-            catch (NumberFormatException e) {
-                warnings.add("Invalid domain_file_id provided; falling back to path lookup");
+            file = findDomainFileById(projectData.getRootFolder(), domainFileIdParam);
+            if (file == null) {
+                warnings.add("No DomainFile found for ID " + domainFileIdParam);
             }
         }
 
@@ -2668,9 +2662,10 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         return file;
     }
 
-    private DomainFile findDomainFileById(DomainFolder folder, long domainFileId) {
+    private DomainFile findDomainFileById(DomainFolder folder, String domainFileId) {
         for (DomainFile file : folder.getFiles()) {
-            if (file.getFileID() == domainFileId) {
+            String fileId = file.getFileID();
+            if (fileId != null && fileId.equals(domainFileId)) {
                 return file;
             }
         }
