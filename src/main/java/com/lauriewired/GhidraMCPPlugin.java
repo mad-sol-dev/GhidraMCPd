@@ -2670,8 +2670,14 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
     private DomainFile findDomainFileById(DomainFolder folder, long domainFileId) {
         for (DomainFile file : folder.getFiles()) {
-            if (file.getFileID() == domainFileId) {
-                return file;
+            try {
+                long fileId = Long.parseLong(String.valueOf(file.getFileID()));
+                if (fileId == domainFileId) {
+                    return file;
+                }
+            }
+            catch (NumberFormatException ignored) {
+                // skip files with non-numeric IDs when searching by numeric ID
             }
         }
 
