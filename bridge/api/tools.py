@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from functools import wraps
 from typing import Any, Callable, Dict, List, Mapping, Sequence
 
@@ -66,11 +65,6 @@ else:  # pragma: no cover - fallback when operations are unavailable
     _COLLECT_OP_HINT = f"See {COLLECT_DOCS_URL} for supported 'op' values."
 
 
-def _autoopen_enabled() -> bool:
-    value = os.getenv("GHIDRA_BRIDGE_PROGRAM_AUTOOPEN", "").strip().lower()
-    return value in {"1", "true", "yes", "on"}
-
-
 def _find_program_entry(files: object, domain_file_id: str) -> Mapping[str, object] | None:
     if not isinstance(files, Sequence):
         return None
@@ -85,10 +79,7 @@ def _find_program_entry(files: object, domain_file_id: str) -> Mapping[str, obje
 
 def _maybe_autoopen_program(
     client: GhidraClient, files: object, domain_file_id: str
-) -> List[str]:
-    if not _autoopen_enabled():
-        return []
-
+) -> tuple[list[str], Dict[str, object] | None]:
     entry = _find_program_entry(files, domain_file_id)
     path = None
     if entry:
@@ -98,30 +89,72 @@ def _maybe_autoopen_program(
 
     payload = client.open_program(domain_file_id, path=path)
     if payload is None:
-        return [
-            (
-                "Automatic program open failed; confirm the target program is active in "
-                "Ghidra before continuing."
-            )
-        ]
+        upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
+        return (
+            [],
+            envelope_error(
+                ErrorCode.UNAVAILABLE,
+                (
+                    "Automatic program open failed; confirm the target program is active in "
+                    "Ghidra before continuing."
+                ),
+                upstream_error=upstream,
+            ),
+        )
 
     warnings: List[str] = []
     status = str(payload.get("status", "")).lower()
     if status != "ok":
         message = payload.get("message")
         detail = message if isinstance(message, str) and message.strip() else "unknown error"
-        warnings.append(
-            (
-                "Automatic program open failed upstream: "
-                f"{detail}. Confirm the correct program is active before proceeding."
-            )
+        code = ErrorCode.INVALID_REQUEST if status == "error" else ErrorCode.UNAVAILABLE
+        return (
+            warnings,
+            envelope_error(
+                code,
+                (
+                    "Automatic program open failed upstream: "
+                    f"{detail}. Confirm the correct program is active before proceeding."
+                ),
+                upstream_error=payload if isinstance(payload, dict) else None,
+            ),
         )
 
     plugin_warnings = payload.get("warnings")
     if isinstance(plugin_warnings, Sequence):
         warnings.extend(str(warning) for warning in plugin_warnings if str(warning).strip())
 
-    return warnings
+    status_payload = client.get_project_info()
+    if status_payload is None:
+        upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
+        warnings.append(
+            "Program opened but current program status is unavailable upstream; "
+            "confirm the active file before proceeding."
+        )
+        if upstream:
+            warnings.append(f"Upstream status error: {upstream}")
+        return warnings, None
+
+    expected_name = None
+    if entry:
+        name_val = entry.get("name")
+        if isinstance(name_val, str) and name_val:
+            expected_name = name_val
+    if not expected_name:
+        name_val = payload.get("name") if isinstance(payload, Mapping) else None
+        if isinstance(name_val, str) and name_val:
+            expected_name = name_val
+
+    current_name = status_payload.get("program_name") if isinstance(status_payload, Mapping) else None
+    if expected_name and isinstance(current_name, str) and current_name and current_name != expected_name:
+        warnings.append(
+            (
+                "Requested program selection does not match the active program upstream: "
+                f"expected '{expected_name}', current '{current_name}'."
+            )
+        )
+
+    return warnings, None
 
 
 def _detect_collect_misspecifications(
@@ -390,7 +423,12 @@ def register_tools(
             warnings: list[str] = []
             if selection.warning:
                 warnings.append(selection.warning)
-            warnings.extend(_maybe_autoopen_program(client, files, state.domain_file_id))
+            autoopen_warnings, autoopen_error = _maybe_autoopen_program(
+                client, files, state.domain_file_id
+            )
+            if autoopen_error:
+                return autoopen_error
+            warnings.extend(autoopen_warnings)
 
         payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
         if warnings:
