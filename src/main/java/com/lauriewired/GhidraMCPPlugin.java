@@ -584,7 +584,8 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         registerProjectHandler(server, "/open_program", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
-            plugin.sendJsonResponse(exchange, plugin.openProgramFromPath(qparams.get("path")));
+            plugin.sendJsonResponse(exchange,
+                plugin.openProgram(qparams.get("domain_file_id"), qparams.get("path")));
         });
 
         registerProgramHandler(server, "/readBytes", (plugin, exchange) -> {
@@ -2501,9 +2502,11 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         }
     }
 
-    private String openProgramFromPath(String path) {
-        if (path == null || path.isEmpty()) {
-            return errorResponse("path parameter is required");
+    private String openProgram(String domainFileIdParam, String path) {
+        List<String> warnings = new ArrayList<>();
+
+        if ((path == null || path.isEmpty()) && (domainFileIdParam == null || domainFileIdParam.isEmpty())) {
+            return errorResponse("path or domain_file_id parameter is required");
         }
 
         Project project = tool.getProject();
@@ -2516,26 +2519,204 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
             return errorResponse("Project data unavailable");
         }
 
-        DomainFile file = projectData.getFile(path);
+        DomainFile file = resolveDomainFile(projectData, domainFileIdParam, path, warnings);
         if (file == null) {
-            return errorResponse("File not found at path: " + path);
+            return errorResponse("File not found for provided path or ID");
         }
 
-        ProgramManager pm = tool.getService(ProgramManager.class);
+        ProgramManager pm = ensureProgramManager(file, warnings);
         if (pm == null) {
-            return errorResponse("ProgramManager service unavailable; launch CodeBrowser and retry");
+            return openProgramResponse("error",
+                "ProgramManager service unavailable; launch a program-capable tool manually",
+                file, warnings);
         }
 
+        if (!invokeOpenProgram(pm, file, warnings)) {
+            return openProgramResponse("error",
+                "ProgramManager missing openProgram(DomainFile) support",
+                file, warnings);
+        }
+
+        return openProgramResponse("ok", null, file, warnings);
+    }
+
+    private ProgramManager ensureProgramManager(DomainFile file, List<String> warnings) {
+        ProgramManager pm = tool.getService(ProgramManager.class);
+        if (pm != null) {
+            return pm;
+        }
+
+        PluginTool launchedTool = launchProgramCapableTool(file, warnings);
+        if (launchedTool == null) {
+            return null;
+        }
+
+        ProgramManager launchedPm = launchedTool.getService(ProgramManager.class);
+        if (launchedPm == null) {
+            warnings.add("Program-capable tool launched but ProgramManager service remains unavailable");
+        }
+
+        return launchedPm;
+    }
+
+    private PluginTool launchProgramCapableTool(DomainFile file, List<String> warnings) {
+        try {
+            Class<?> toolServicesClass = Class.forName("ghidra.app.services.ToolServices");
+            Object toolServices = tool.getService(toolServicesClass);
+            if (toolServices == null) {
+                warnings.add("ToolServices unavailable; cannot auto-open a program tool");
+                return null;
+            }
+
+            Boolean autoOpenAllowed = invokeBooleanMethod(toolServices, "isAutoOpenAllowed");
+            if (Boolean.FALSE.equals(autoOpenAllowed)) {
+                warnings.add(
+                    "Automatic tool launch is disabled by policy; open a program-capable tool manually");
+                return null;
+            }
+
+            Method launchDefaultTool = findMethod(toolServicesClass, "launchDefaultTool", DomainFile.class);
+            if (launchDefaultTool != null) {
+                Object launched = launchDefaultTool.invoke(toolServices, file);
+                if (launched instanceof PluginTool) {
+                    return (PluginTool) launched;
+                }
+            }
+
+            Method launchTool = findMethod(toolServicesClass, "launchTool", DomainFile.class);
+            if (launchTool != null) {
+                Object launched = launchTool.invoke(toolServices, file);
+                if (launched instanceof PluginTool) {
+                    return (PluginTool) launched;
+                }
+            }
+
+            warnings.add("ToolServices did not return a PluginTool when launching a program tool");
+        }
+        catch (ClassNotFoundException e) {
+            warnings.add("ToolServices class not found; cannot auto-open program tool");
+        }
+        catch (InvocationTargetException | IllegalAccessException e) {
+            warnings.add("Failed to auto-open program tool: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    private Boolean invokeBooleanMethod(Object target, String methodName) {
+        try {
+            Method method = target.getClass().getMethod(methodName);
+            Object result = method.invoke(target);
+            if (result instanceof Boolean) {
+                return (Boolean) result;
+            }
+        }
+        catch (Exception e) {
+            // ignore and fall through
+        }
+        return null;
+    }
+
+    private Method findMethod(Class<?> clazz, String name, Class<?>... args) {
+        try {
+            return clazz.getMethod(name, args);
+        }
+        catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    private boolean invokeOpenProgram(ProgramManager pm, DomainFile file, List<String> warnings) {
         try {
             Method openProgramMethod = pm.getClass().getMethod("openProgram", DomainFile.class);
             openProgramMethod.invoke(pm, file);
-            return "{\"status\":\"ok\",\"path\":\"" + jsonEscape(path) + "\"}";
+            return true;
         }
         catch (NoSuchMethodException e) {
-            return errorResponse("ProgramManager missing openProgram(DomainFile) support");
+            return false;
         }
         catch (InvocationTargetException | IllegalAccessException e) {
-            return errorResponse("Failed to open program: " + e.getMessage());
+            warnings.add("Failed to open program: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private DomainFile resolveDomainFile(ProjectData projectData, String domainFileIdParam,
+            String path, List<String> warnings) {
+
+        DomainFile file = null;
+        if (domainFileIdParam != null && !domainFileIdParam.isEmpty()) {
+            try {
+                long domainFileId = Long.parseLong(domainFileIdParam);
+                file = findDomainFileById(projectData.getRootFolder(), domainFileId);
+                if (file == null) {
+                    warnings.add("No DomainFile found for ID " + domainFileIdParam);
+                }
+            }
+            catch (NumberFormatException e) {
+                warnings.add("Invalid domain_file_id provided; falling back to path lookup");
+            }
+        }
+
+        if (file == null && path != null && !path.isEmpty()) {
+            file = projectData.getFile(path);
+            if (file == null) {
+                warnings.add("File not found at path: " + path);
+            }
+        }
+
+        return file;
+    }
+
+    private DomainFile findDomainFileById(DomainFolder folder, long domainFileId) {
+        for (DomainFile file : folder.getFiles()) {
+            if (file.getFileID() == domainFileId) {
+                return file;
+            }
+        }
+
+        for (DomainFolder child : folder.getFolders()) {
+            DomainFile found = findDomainFileById(child, domainFileId);
+            if (found != null) {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private String openProgramResponse(String status, String message, DomainFile file,
+            List<String> warnings) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "status", status);
+        appendJsonField(sb, "path", file != null ? file.getPathname() : null);
+        appendJsonField(sb, "domain_file_id", file != null ? file.getFileID() : null);
+        appendJsonField(sb, "name", file != null ? file.getName() : null);
+        if (message != null && !message.isEmpty()) {
+            appendJsonField(sb, "message", message);
+        }
+        appendWarnings(sb, warnings);
+        trimTrailingComma(sb);
+        sb.append('}');
+        return sb.toString();
+    }
+
+    private void appendWarnings(StringBuilder sb, List<String> warnings) {
+        sb.append("\"warnings\": [");
+        for (int i = 0; i < warnings.size(); i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append('"').append(jsonEscape(warnings.get(i))).append('"');
+        }
+        sb.append(']').append(',');
+    }
+
+    private void trimTrailingComma(StringBuilder sb) {
+        int length = sb.length();
+        if (length > 0 && sb.charAt(length - 1) == ',') {
+            sb.setLength(length - 1);
         }
     }
 
