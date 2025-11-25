@@ -456,6 +456,62 @@
       "status": "todo"
     },
     {
+      "id": "R.25",
+      "title": "Default read-only mode and /info reporting",
+      "area": "platform, bridge",
+      "depends_on": [
+        "R.12"
+      ],
+      "dod": [
+        "Writes disabled by default when GHIDRA_MCP_ENABLE_WRITES is unset/false",
+        "`/info` (and equivalents) expose write enablement plus guidance for turning writes on",
+        "Docs call out defaults, gating, and user-facing messaging"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.26",
+      "title": "domain_file_id validation for writes",
+      "area": "platform, bridge",
+      "depends_on": [
+        "R.12"
+      ],
+      "dod": [
+        "All write endpoints require domain_file_id matching the active program",
+        "Mismatches rejected before performing mutations, with structured errors",
+        "Tests cover matching, mismatching, and missing domain_file_id cases"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.27",
+      "title": "LLM comment tagging/prefixing for writes",
+      "area": "platform, bridge",
+      "depends_on": [
+        "R.12"
+      ],
+      "dod": [
+        "Comment-setting endpoints accept/tool-name and LLM attribution prefixes",
+        "Server enforces standardized prefixes/tags to mark LLM-authored notes",
+        "Docs and examples show required formats and when to apply them"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "R.28",
+      "title": "Write-path audit logging",
+      "area": "platform, bridge",
+      "depends_on": [
+        "R.12"
+      ],
+      "dod": [
+        "Audit log records inputs, domain_file_id/program context, caller/tool identity, and outcomes",
+        "Sensitive fields redacted or hashed where appropriate",
+        "Operational guidance for log rotation/retention included"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "R.21",
       "title": "Single-port multi-context server",
       "area": "plugin",
