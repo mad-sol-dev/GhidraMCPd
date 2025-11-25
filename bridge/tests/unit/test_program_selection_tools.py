@@ -8,6 +8,7 @@ from bridge.utils.program_context import PROGRAM_SELECTIONS
 class _SelectionClient:
     def __init__(self) -> None:
         self.base_url = "http://ghidra/"
+        self.open_calls: list[dict[str, object]] = []
 
     def get_project_files(self):
         return [
@@ -26,6 +27,10 @@ class _SelectionClient:
                 "size": 2048,
             },
         ]
+
+    def open_program(self, domain_file_id: str, *, path: str | None = None):
+        self.open_calls.append({"domain_file_id": domain_file_id, "path": path})
+        return {"status": "ok", "warnings": ["Program auto-opened for test"]}
 
     def close(self) -> None:  # pragma: no cover - exercised implicitly
         pass
@@ -55,7 +60,7 @@ def test_program_selection_tools_happy_path(monkeypatch) -> None:
     second = select_tool.fn("prog-2")
 
     assert second["ok"] is True
-    assert second["data"] == {"domain_file_id": "prog-2", "locked": False}
+    assert second["data"] == {"domain_file_id": "prog-2", "locked": True}
 
     # Schema validation should be enforced for each envelope
     assert validations.count("current_program.v1.json") == 2
@@ -120,3 +125,32 @@ def test_program_selection_tools_soft_policy_allows_switch(monkeypatch) -> None:
     assert payload["warnings"][0].startswith("Program selection switched mid-session")
 
     assert validations.count("current_program.v1.json") == 2
+
+
+def test_program_selection_autoopens_and_warns(monkeypatch) -> None:
+    PROGRAM_SELECTIONS.clear()
+    monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_AUTOOPEN", "true")
+
+    validations = []
+
+    def fake_validate(name: str, payload):
+        validations.append(name)
+        return True, []
+
+    monkeypatch.setattr(tools, "validate_payload", fake_validate)
+
+    client = _SelectionClient()
+    server = FastMCP("selection-autoopen")
+    register_tools(server, client_factory=lambda: client)
+
+    select_tool = server._tool_manager._tools["select_program"]
+    result = select_tool.fn("prog-1")
+
+    assert result["ok"] is True
+    payload = result["data"]
+    assert payload["locked"] is True
+    assert payload["domain_file_id"] == "prog-1"
+    assert client.open_calls == [{"domain_file_id": "prog-1", "path": "/alpha"}]
+    assert payload.get("warnings")
+    assert any("auto-opened" in warning for warning in payload["warnings"])
+    assert validations.count("current_program.v1.json") == 1
