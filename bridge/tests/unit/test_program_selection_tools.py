@@ -34,13 +34,18 @@ class _SelectionClient:
     def get_project_files(self):
         return self._files
 
-    def get_project_info(self):
+    def get_current_program_status(self):
         current = self._active_domain_file_id or self._files[0]["domain_file_id"]
         selected = next(
             (entry for entry in self._files if entry["domain_file_id"] == current), None
         )
         program_name = selected["name"] if selected else "unknown"
-        return {"program_name": program_name}
+        return {
+            "program_name": program_name,
+            "domain_file_id": current,
+            "state": "READY",
+            "locked": False,
+        }
 
     def open_program(self, domain_file_id: str, *, path: str | None = None):
         self.open_calls.append({"domain_file_id": domain_file_id, "path": path})
@@ -70,7 +75,9 @@ def test_program_selection_tools_happy_path(monkeypatch) -> None:
     first = current_tool.fn()
 
     assert first["ok"] is True
-    assert first["data"] == {"domain_file_id": "prog-1", "locked": False}
+    assert first["data"]["domain_file_id"] == "prog-1"
+    assert first["data"]["locked"] is False
+    assert first["data"]["state"] == "READY"
 
     select_tool = server._tool_manager._tools["select_program"]
     second = select_tool.fn("prog-2")
@@ -128,6 +135,7 @@ def test_program_selection_tools_soft_policy_allows_switch(monkeypatch) -> None:
     initial = current_tool.fn()
     assert initial["ok"] is True
     assert initial["data"]["domain_file_id"] == "prog-1"
+    assert initial["data"]["state"] == "READY"
     assert initial["data"].get("warnings") is None
 
     # Simulate program-dependent usage that locks the session for switching decisions
@@ -140,9 +148,14 @@ def test_program_selection_tools_soft_policy_allows_switch(monkeypatch) -> None:
     payload = switched["data"]
     assert payload["domain_file_id"] == "prog-2"
     assert payload["locked"] is True
+    assert payload["state"] == "READY"
     assert payload.get("warnings")
     assert any(
         warning.startswith("Program selection switched mid-session")
+        for warning in payload["warnings"]
+    )
+    assert any(
+        "Seek explicit user confirmation" in warning
         for warning in payload["warnings"]
     )
     assert any("auto-opened" in warning for warning in payload["warnings"])
@@ -220,6 +233,36 @@ def test_program_selection_propagates_open_errors(monkeypatch) -> None:
     assert failure["errors"][0]["code"] == "UNAVAILABLE"
     assert "Automatic program open failed" in failure["errors"][0]["message"]
     assert validations.count("current_program.v1.json") == 0
+
+    state = PROGRAM_SELECTIONS.snapshot(("mcp", "default"))
+    assert state.domain_file_id is None
+    assert state.locked is False
+
+
+def test_program_selection_rejects_status_mismatch(monkeypatch) -> None:
+    PROGRAM_SELECTIONS.clear()
+
+    def fake_validate(name: str, payload):
+        return True, []
+
+    class _MismatchedStatusClient(_SelectionClient):
+        def get_current_program_status(self):
+            payload = super().get_current_program_status()
+            payload["domain_file_id"] = "prog-mismatch"
+            return payload
+
+    monkeypatch.setattr(tools, "validate_payload", fake_validate)
+
+    server = FastMCP("selection-status-mismatch")
+    register_tools(server, client_factory=_MismatchedStatusClient)
+
+    select_tool = server._tool_manager._tools["select_program"]
+    failure = select_tool.fn("prog-1")
+
+    assert failure["ok"] is False
+    error = failure["errors"][0]
+    assert error["code"] == "INVALID_REQUEST"
+    assert "does not match the requested domain_file_id" in error["message"]
 
     state = PROGRAM_SELECTIONS.snapshot(("mcp", "default"))
     assert state.domain_file_id is None
