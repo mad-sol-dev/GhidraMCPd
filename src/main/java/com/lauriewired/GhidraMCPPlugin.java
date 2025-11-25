@@ -30,6 +30,7 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.services.CodeViewerService;
 import ghidra.app.services.ProgramManager;
+import ghidra.app.services.ProgramManagerListener;
 import ghidra.app.util.PseudoDisassembler;
 import ghidra.app.cmd.function.SetVariableNameCmd;
 import ghidra.program.model.symbol.SourceType;
@@ -52,6 +53,7 @@ import ghidra.program.model.data.Undefined1DataType;
 import ghidra.program.model.listing.Variable;
 import ghidra.app.decompiler.component.DecompilerUtils;
 import ghidra.app.decompiler.ClangToken;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.framework.options.Options;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -86,6 +88,7 @@ import java.util.Base64;
 public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
     private HttpServer server;
+    private final ProgramStatusTracker statusTracker = new ProgramStatusTracker();
     private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
     private static final String PORT_OPTION_NAME = "Server Port";
     private static final int DEFAULT_PORT = 8080;
@@ -209,6 +212,156 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         }
     }
 
+    private enum ProgramState {
+        IDLE,
+        LOADING,
+        READY
+    }
+
+    private static final class ProgramStatusSnapshot {
+        final String domainFileId;
+        final boolean locked;
+        final ProgramState state;
+        final List<String> warnings;
+
+        ProgramStatusSnapshot(String domainFileId, boolean locked, ProgramState state,
+                List<String> warnings) {
+            this.domainFileId = domainFileId;
+            this.locked = locked;
+            this.state = state;
+            this.warnings = warnings;
+        }
+    }
+
+    private final class ProgramStatusTracker implements ProgramManagerListener {
+        private final Object lock = new Object();
+        private ProgramState state = ProgramState.IDLE;
+        private String domainFileId;
+        private boolean locked;
+        private List<String> warnings = new ArrayList<>();
+        private Thread watcher;
+
+        ProgramStatusSnapshot snapshot() {
+            synchronized (lock) {
+                return new ProgramStatusSnapshot(domainFileId, locked, state,
+                    new ArrayList<>(warnings));
+            }
+        }
+
+        void applyWarnings(List<String> newWarnings) {
+            if (newWarnings == null || newWarnings.isEmpty()) {
+                return;
+            }
+            synchronized (lock) {
+                warnings = new ArrayList<>(newWarnings);
+            }
+        }
+
+        void markLoading(DomainFile target, List<String> initialWarnings) {
+            synchronized (lock) {
+                state = ProgramState.LOADING;
+                domainFileId = target != null ? target.getFileID() : null;
+                locked = target != null && target.isCheckedOut();
+                warnings = initialWarnings == null ? new ArrayList<>()
+                    : new ArrayList<>(initialWarnings);
+            }
+        }
+
+        void initialise(ProgramManager manager) {
+            if (manager != null) {
+                trackProgram(manager.getCurrentProgram());
+            }
+        }
+
+        @Override
+        public void programActivated(Program program) {
+            trackProgram(program);
+        }
+
+        @Override
+        public void programClosed(Program program) {
+            trackProgram(null);
+        }
+
+        @Override
+        public void programOpened(Program program) {
+            trackProgram(program);
+        }
+
+        private void trackProgram(Program program) {
+            stopWatcher();
+            if (program == null) {
+                synchronized (lock) {
+                    state = ProgramState.IDLE;
+                    domainFileId = null;
+                    locked = false;
+                    warnings = new ArrayList<>();
+                }
+                return;
+            }
+
+            DomainFile file = program.getDomainFile();
+            synchronized (lock) {
+                domainFileId = file != null ? file.getFileID() : null;
+                locked = file != null && file.isCheckedOut();
+                warnings = new ArrayList<>();
+            }
+
+            AutoAnalysisManager manager = AutoAnalysisManager.getAnalysisManager(program);
+            if (manager == null || !manager.isAnalyzing()) {
+                markReady(program);
+                return;
+            }
+
+            synchronized (lock) {
+                state = ProgramState.LOADING;
+            }
+
+            watcher = new Thread(() -> awaitAnalysisCompletion(program, manager),
+                "GhidraMCP-AnalysisWatcher");
+            watcher.setDaemon(true);
+            watcher.start();
+        }
+
+        private void awaitAnalysisCompletion(Program program, AutoAnalysisManager manager) {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    if (!manager.isAnalyzing()) {
+                        markReady(program);
+                        return;
+                    }
+                    Thread.sleep(500);
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                catch (Exception ignored) {
+                    markReady(program);
+                    return;
+                }
+            }
+        }
+
+        private void markReady(Program program) {
+            DomainFile file = program != null ? program.getDomainFile() : null;
+            synchronized (lock) {
+                state = ProgramState.READY;
+                domainFileId = file != null ? file.getFileID() : null;
+                locked = file != null && file.isCheckedOut();
+            }
+        }
+
+        private void stopWatcher() {
+            synchronized (lock) {
+                if (watcher != null) {
+                    watcher.interrupt();
+                }
+                watcher = null;
+            }
+        }
+    }
+
     @FunctionalInterface
     interface ServerFactory {
         HttpServer create() throws IOException;
@@ -264,6 +417,12 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         if (hasProgramContext()) {
             CONTEXT_REGISTRY.promote(this);
+        }
+
+        ProgramManager programManager = tool.getService(ProgramManager.class);
+        if (programManager != null) {
+            programManager.addProgramManagerListener(statusTracker);
+            statusTracker.initialise(programManager);
         }
     }
 
@@ -580,6 +739,10 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
 
         registerProjectHandler(server, "/project_files", (plugin, exchange) -> {
             plugin.sendResponse(exchange, plugin.getProjectFiles());
+        });
+
+        registerProjectHandler(server, "/api/current_program.json", (plugin, exchange) -> {
+            plugin.sendJsonResponse(exchange, plugin.getCurrentProgramStatus());
         });
 
         registerProjectHandler(server, "/open_program", (plugin, exchange) -> {
@@ -2484,6 +2647,19 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
         return pm != null ? pm.getCurrentProgram() : null;
     }
 
+    private String getCurrentProgramStatus() {
+        ProgramStatusSnapshot snapshot = statusTracker.snapshot();
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "domain_file_id", snapshot.domainFileId);
+        sb.append("\"locked\":").append(snapshot.locked).append(',');
+        appendJsonField(sb, "state", snapshot.state.name());
+        appendWarnings(sb, snapshot.warnings == null ? List.of() : snapshot.warnings);
+        trimTrailingComma(sb);
+        sb.append('}');
+        return sb.toString();
+    }
+
     private void sendResponse(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
@@ -2524,6 +2700,7 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
             return errorResponse("File not found for provided path or ID");
         }
 
+        statusTracker.markLoading(file, warnings);
         ProgramManager pm = ensureProgramManager(file, warnings);
         if (pm == null) {
             return openProgramResponse("error",
@@ -2536,6 +2713,8 @@ public class GhidraMCPPlugin extends Plugin implements ProgramCapable {
                 "ProgramManager missing openProgram(DomainFile) support",
                 file, warnings);
         }
+
+        statusTracker.applyWarnings(warnings);
 
         return openProgramResponse("ok", null, file, warnings);
     }
