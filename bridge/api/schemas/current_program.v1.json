@@ -10,6 +10,10 @@
     "locked": {
       "type": "boolean"
     },
+    "state": {
+      "type": "string",
+      "enum": ["IDLE", "LOADING", "READY"]
+    },
     "warnings": {
       "type": "array",
       "items": {
@@ -19,6 +23,7 @@
   },
   "required": [
     "domain_file_id",
-    "locked"
+    "locked",
+    "state"
   ]
 }

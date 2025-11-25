@@ -14,7 +14,7 @@ def test_current_program_defaults(contract_client: TestClient) -> None:
     _assert_envelope(payload)
 
     data = payload["data"]
-    assert data == {"domain_file_id": "1", "locked": False}
+    assert data == {"domain_file_id": "1", "locked": False, "state": "READY"}
 
 
 def test_select_program_rejects_invalid_id(contract_client: TestClient) -> None:
@@ -89,7 +89,7 @@ def test_current_program_resets_stale_selection(contract_client: TestClient) -> 
     assert response.status_code == 200
     payload = response.json()
     _assert_envelope(payload)
-    assert payload["data"] == {"domain_file_id": "1", "locked": False}
+    assert payload["data"] == {"domain_file_id": "1", "locked": False, "state": "READY"}
 
 
 def test_current_program_rejects_stale_when_locked(contract_client: TestClient) -> None:

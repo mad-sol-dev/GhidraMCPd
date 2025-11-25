@@ -45,6 +45,7 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
         "decompileByAddr",
     ),
     "OPEN_PROGRAM": ("open_program",),
+    "CURRENT_PROGRAM_STATUS": ("api/current_program.json", "current_program"),
 }
 
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -590,6 +591,37 @@ class GhidraClient:
             return None
         if not isinstance(payload, list):
             logger.warning("Unexpected project_files payload type: %s", type(payload))
+            return None
+        return payload
+
+    def get_current_program_status(self) -> Optional[Dict[str, Any]]:
+        """Fetch status information for the active program."""
+
+        increment_counter("ghidra.current_program_status")
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="CURRENT_PROGRAM_STATUS",
+        )
+        lines = self._get_resolver.resolve("CURRENT_PROGRAM_STATUS", requester)
+        if _is_error(lines) or not lines:
+            logger.warning(
+                "current_program_status request failed: %s", _error_summary(lines)
+            )
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("current_program_status returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode current_program_status payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning(
+                "Unexpected current_program_status payload type: %s", type(payload)
+            )
             return None
         return payload
 

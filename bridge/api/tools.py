@@ -255,17 +255,57 @@ def register_tools(
     tool_client = inject_client(client_factory)
     logger = logging.getLogger("bridge.mcp.tools")
 
-    def _wrap_usage(fn: Callable[..., Any], *, lock_usage: bool = True):
+    def _ensure_program_ready(client) -> Dict[str, object] | None:
+        status_payload = client.get_current_program_status()
+        if status_payload is None:
+            upstream = client.last_error.as_dict() if client.last_error else None
+            return envelope_error(
+                ErrorCode.UNAVAILABLE,
+                "Active program status is unavailable from Ghidra.",
+                upstream_error=upstream,
+            )
+
+        state = str(status_payload.get("state", "")).upper()
+        if state and state != "READY":
+            warnings = status_payload.get("warnings")
+            extra_warning = None
+            if isinstance(warnings, list) and warnings:
+                extra_warning = warnings[0]
+            message = (
+                f"Program is not ready (state={state})."
+                if not extra_warning
+                else f"Program is not ready (state={state}): {extra_warning}"
+            )
+            return envelope_error(
+                ErrorCode.UNAVAILABLE,
+                message,
+                recovery=("Wait for auto-analysis to finish before retrying.",),
+                upstream_error=status_payload,
+            )
+        return None
+
+    def _wrap_usage(
+        fn: Callable[..., Any], *, lock_usage: bool = True, require_ready: bool | None = None
+    ):
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            client_arg = kwargs.get("client") if "client" in kwargs else (args[0] if args else None)
+            should_require_ready = require_ready if require_ready is not None else lock_usage
+            if should_require_ready and client_arg is not None:
+                readiness = _ensure_program_ready(client_arg)
+                if readiness is not None:
+                    return readiness
+
             mark_used_for_context(server, lock_usage=lock_usage)
             return fn(*args, **kwargs)
 
         return wrapper
 
-    def tracked_tool(*, lock_usage: bool = True):
+    def tracked_tool(*, lock_usage: bool = True, require_ready: bool | None = None):
         def decorator(fn: Callable[..., Any]):
-            return tool_client(_wrap_usage(fn, lock_usage=lock_usage))
+            return tool_client(
+                _wrap_usage(fn, lock_usage=lock_usage, require_ready=require_ready)
+            )
 
         return decorator
 
@@ -304,7 +344,7 @@ def register_tools(
         return envelope_ok(normalized)
 
     @server.tool()
-    @tracked_tool()
+    @tracked_tool(lock_usage=False, require_ready=False)
     def project_overview(client) -> Dict[str, object]:
         with request_scope(
             "project_overview",
@@ -344,6 +384,15 @@ def register_tools(
             logger=logger,
             extra={"tool": "get_current_program"},
         ):
+            status_payload = client.get_current_program_status()
+            if status_payload is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to query the current program status upstream.",
+                    upstream_error=upstream,
+                )
+
             files = client.get_project_files()
             if files is None:
                 upstream = client.last_error.as_dict() if client.last_error else None
@@ -374,7 +423,41 @@ def register_tools(
                     "No program files are available in the current project.",
                 )
 
-        payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+            upstream_warnings = (
+                status_payload.get("warnings")
+                if isinstance(status_payload, Mapping)
+                else None
+            )
+            state_value = str(status_payload.get("state", "IDLE")).upper()
+            upstream_domain_id = (
+                str(status_payload.get("domain_file_id"))
+                if isinstance(status_payload, Mapping)
+                else None
+            )
+            upstream_locked = bool(status_payload.get("locked"))
+
+        selected_domain = state.domain_file_id or upstream_domain_id
+        warnings: list[str] = []
+        if selection.warning:
+            warnings.append(selection.warning)
+        if upstream_warnings:
+            warnings.extend(str(item) for item in upstream_warnings)
+        if selected_domain and upstream_domain_id and selected_domain != upstream_domain_id:
+            warnings.append(
+                "Requested program selection does not match the active program upstream."
+            )
+
+        if selected_domain is None:
+            return envelope_error(
+                ErrorCode.UNAVAILABLE,
+                "No program files are available in the current project.",
+            )
+
+        payload = {
+            "domain_file_id": selected_domain,
+            "locked": state.locked or upstream_locked,
+            "state": state_value,
+        }
         if warnings:
             payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
@@ -432,7 +515,20 @@ def register_tools(
             warnings.extend(autoopen_warnings)
             lock_selection_for_requestor(requestor)
 
-        payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
+            status_payload = client.get_current_program_status()
+            if status_payload is None:
+                state_value = "IDLE"
+            else:
+                state_value = str(status_payload.get("state", "IDLE")).upper()
+                upstream_warnings = status_payload.get("warnings")
+                if isinstance(upstream_warnings, list):
+                    warnings.extend(str(item) for item in upstream_warnings)
+
+        payload = {
+            "domain_file_id": state.domain_file_id,
+            "locked": state.locked,
+            "state": state_value,
+        }
         if warnings:
             payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
