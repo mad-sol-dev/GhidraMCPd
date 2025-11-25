@@ -576,6 +576,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, plugin.getCurrentFunction());
         });
 
+        registerProgramHandler(server, "/goto", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            plugin.sendJsonResponse(exchange, plugin.goToAddress(qparams.get("address")));
+        });
+
         registerProgramHandler(server, "/list_functions", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);
@@ -1480,6 +1485,49 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             func.getName(),
             func.getEntryPoint(),
             func.getSignature());
+    }
+
+    /**
+     * Navigate CodeBrowser to a specific address
+     */
+    private String goToAddress(String addressStr) {
+        if (addressStr == null || addressStr.isEmpty()) {
+            return errorResponse("address parameter is required");
+        }
+
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return errorResponse("No program loaded");
+        }
+
+        CodeViewerService service = tool.getService(CodeViewerService.class);
+        if (service == null) {
+            return errorResponse("Code viewer service not available");
+        }
+
+        try {
+            Address address = program.getAddressFactory().getAddress(addressStr);
+            if (address == null) {
+                return errorResponse("Invalid address: " + addressStr);
+            }
+
+            ProgramLocation location = new ProgramLocation(program, address);
+            boolean success = service.goTo(location, true); // true = center on screen
+
+            if (success) {
+                StringBuilder sb = new StringBuilder();
+                sb.append('{');
+                appendJsonField(sb, "status", "ok");
+                appendJsonField(sb, "address", address.toString());
+                sb.append("\"message\":\"Navigated to address\"");
+                sb.append('}');
+                return sb.toString();
+            } else {
+                return errorResponse("Failed to navigate to address: " + addressStr);
+            }
+        } catch (Exception e) {
+            return errorResponse("Error navigating to address: " + e.getMessage());
+        }
     }
 
     /**

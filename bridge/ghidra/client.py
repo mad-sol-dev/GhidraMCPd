@@ -46,6 +46,7 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     ),
     "OPEN_PROGRAM": ("open_program",),
     "CURRENT_PROGRAM_STATUS": ("api/current_program.json", "current_program"),
+    "GOTO": ("goto",),
 }
 
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -622,6 +623,34 @@ class GhidraClient:
             logger.warning(
                 "Unexpected current_program_status payload type: %s", type(payload)
             )
+            return None
+        return payload
+
+    def goto_address(self, address: str) -> Optional[Dict[str, Any]]:
+        """Navigate CodeBrowser to a specific address."""
+
+        increment_counter("ghidra.goto_address")
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="GOTO",
+            params={"address": address},
+        )
+        lines = self._get_resolver.resolve("GOTO", requester)
+        if _is_error(lines) or not lines:
+            logger.warning("goto_address request failed: %s", _error_summary(lines))
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("goto_address returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode goto_address payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("Unexpected goto_address payload type: %s", type(payload))
             return None
         return payload
 

@@ -562,6 +562,52 @@ def register_tools(
 
     @server.tool()
     @tracked_tool()
+    def goto_address(client, address: str) -> Dict[str, object]:
+        """
+        Navigate CodeBrowser to a specific address.
+
+        Moves the cursor in the CodeBrowser listing window to the specified address,
+        centering it on screen for visibility.
+
+        Args:
+            address: Hex address string (e.g., "0x401000" or "0x200000")
+
+        Returns:
+            Success envelope with navigated address, or error if navigation fails.
+        """
+        with request_scope(
+            "goto_address",
+            logger=logger,
+            extra={"tool": "goto_address", "address": address},
+        ):
+            if not address or not isinstance(address, str):
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    "address parameter is required and must be a string",
+                )
+
+            response = client.goto_address(address)
+            if response is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to navigate to address.",
+                    upstream_error=upstream,
+                )
+
+            if response.get("status") == "error":
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    response.get("message", "Navigation failed"),
+                )
+
+            return envelope_ok({
+                "address": response.get("address"),
+                "message": response.get("message", "Navigated successfully")
+            })
+
+    @server.tool()
+    @tracked_tool()
     def project_rebase(
         client,
         new_base: str,
