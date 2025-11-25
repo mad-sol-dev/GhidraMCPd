@@ -407,6 +407,7 @@ def register_tools(
                     recovery=("Use a domain_file_id from project_overview.",),
                 )
 
+            previous_state = PROGRAM_SELECTIONS.snapshot(requestor)
             try:
                 selection = PROGRAM_SELECTIONS.select(requestor, domain_file_id)
             except ProgramSelectionError as exc:
@@ -418,7 +419,6 @@ def register_tools(
                     ),
                     recovery=("Start a new session to switch programs.",),
                 )
-            lock_selection_for_requestor(requestor)
             state = selection.state
             warnings: list[str] = []
             if selection.warning:
@@ -427,8 +427,10 @@ def register_tools(
                 client, files, state.domain_file_id
             )
             if autoopen_error:
+                PROGRAM_SELECTIONS.restore(requestor, previous_state)
                 return autoopen_error
             warnings.extend(autoopen_warnings)
+            lock_selection_for_requestor(requestor)
 
         payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
         if warnings:

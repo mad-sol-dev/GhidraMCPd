@@ -220,3 +220,7 @@ def test_program_selection_propagates_open_errors(monkeypatch) -> None:
     assert failure["errors"][0]["code"] == "UNAVAILABLE"
     assert "Automatic program open failed" in failure["errors"][0]["message"]
     assert validations.count("current_program.v1.json") == 0
+
+    state = PROGRAM_SELECTIONS.snapshot(("mcp", "default"))
+    assert state.domain_file_id is None
+    assert state.locked is False

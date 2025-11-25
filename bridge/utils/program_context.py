@@ -63,6 +63,13 @@ class ProgramSelectionStore:
             self._by_session.clear()
             self._by_key.clear()
 
+    def restore(self, key: Hashable | object, snapshot: ProgramState) -> None:
+        """Restore *key* to the values captured in *snapshot*."""
+
+        state = self._state_for(key)
+        state.domain_file_id = snapshot.domain_file_id
+        state.locked = snapshot.locked
+
     def ensure_default(
         self, key: Hashable | object, provider: Callable[[], str | None]
     ) -> ProgramState:
