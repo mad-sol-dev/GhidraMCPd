@@ -11,10 +11,12 @@ from ...utils.logging import request_scope
 from ...utils.program_context import (
     PROGRAM_SELECTIONS,
     ProgramSelectionError,
+    lock_selection_for_requestor,
     normalize_selection,
     requestor_from_request,
     validate_program_id,
 )
+from ..tools import _maybe_autoopen_program
 from .._shared import envelope_error, envelope_ok, envelope_response
 from ..validators import validate_payload
 from ._common import RouteDependencies
@@ -135,10 +137,12 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                         status=400,
                     )
                 )
+            lock_selection_for_requestor(requestor)
             state = selection.state
             warnings: list[str] = []
             if selection.warning:
                 warnings.append(selection.warning)
+            warnings.extend(_maybe_autoopen_program(client, files, state.domain_file_id))
 
             payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
             if warnings:

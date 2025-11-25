@@ -37,11 +37,7 @@ def test_program_switching_is_gated(contract_client: TestClient) -> None:
     )
     assert first.status_code == 200
     first_data = first.json()["data"]
-    assert first_data["locked"] is False
-
-    # Any non-selection call locks the selection for this requester
-    info = contract_client.get("/api/project_info.json", headers=headers)
-    assert info.status_code == 200
+    assert first_data["locked"] is True
 
     switch = contract_client.post(
         "/api/select_program.json", json={"domain_file_id": "4"}, headers=headers

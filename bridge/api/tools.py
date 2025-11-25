@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from functools import wraps
 from typing import Any, Callable, Dict, List, Mapping, Sequence
 
@@ -40,6 +41,7 @@ from ..utils.hex import int_to_hex, parse_hex
 from ..utils.program_context import (
     PROGRAM_SELECTIONS,
     ProgramSelectionError,
+    lock_selection_for_requestor,
     mark_used_for_context,
     normalize_selection,
     requestor_from_context,
@@ -62,6 +64,64 @@ if _SUPPORTED_COLLECT_OPS:
     )
 else:  # pragma: no cover - fallback when operations are unavailable
     _COLLECT_OP_HINT = f"See {COLLECT_DOCS_URL} for supported 'op' values."
+
+
+def _autoopen_enabled() -> bool:
+    value = os.getenv("GHIDRA_BRIDGE_PROGRAM_AUTOOPEN", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def _find_program_entry(files: object, domain_file_id: str) -> Mapping[str, object] | None:
+    if not isinstance(files, Sequence):
+        return None
+    for entry in files:
+        if not isinstance(entry, Mapping):
+            continue
+        entry_id = str(entry.get("domain_file_id", "")).strip()
+        if entry_id == domain_file_id:
+            return entry
+    return None
+
+
+def _maybe_autoopen_program(
+    client: GhidraClient, files: object, domain_file_id: str
+) -> List[str]:
+    if not _autoopen_enabled():
+        return []
+
+    entry = _find_program_entry(files, domain_file_id)
+    path = None
+    if entry:
+        path_val = entry.get("path")
+        if isinstance(path_val, str) and path_val:
+            path = path_val
+
+    payload = client.open_program(domain_file_id, path=path)
+    if payload is None:
+        return [
+            (
+                "Automatic program open failed; confirm the target program is active in "
+                "Ghidra before continuing."
+            )
+        ]
+
+    warnings: List[str] = []
+    status = str(payload.get("status", "")).lower()
+    if status != "ok":
+        message = payload.get("message")
+        detail = message if isinstance(message, str) and message.strip() else "unknown error"
+        warnings.append(
+            (
+                "Automatic program open failed upstream: "
+                f"{detail}. Confirm the correct program is active before proceeding."
+            )
+        )
+
+    plugin_warnings = payload.get("warnings")
+    if isinstance(plugin_warnings, Sequence):
+        warnings.extend(str(warning) for warning in plugin_warnings if str(warning).strip())
+
+    return warnings
 
 
 def _detect_collect_misspecifications(
@@ -297,6 +357,7 @@ def register_tools(
             logger=logger,
             extra={"tool": "select_program"},
         ):
+            requestor = _current_requestor()
             files = client.get_project_files()
             if files is None:
                 upstream = client.last_error.as_dict() if client.last_error else None
@@ -314,7 +375,7 @@ def register_tools(
                 )
 
             try:
-                selection = PROGRAM_SELECTIONS.select(_current_requestor(), domain_file_id)
+                selection = PROGRAM_SELECTIONS.select(requestor, domain_file_id)
             except ProgramSelectionError as exc:
                 return envelope_error(
                     ErrorCode.INVALID_REQUEST,
@@ -324,10 +385,12 @@ def register_tools(
                     ),
                     recovery=("Start a new session to switch programs.",),
                 )
+            lock_selection_for_requestor(requestor)
             state = selection.state
             warnings: list[str] = []
             if selection.warning:
                 warnings.append(selection.warning)
+            warnings.extend(_maybe_autoopen_program(client, files, state.domain_file_id))
 
         payload = {"domain_file_id": state.domain_file_id, "locked": state.locked}
         if warnings:
