@@ -636,14 +636,19 @@ class StubGhidraClient:
 
 
 @pytest.fixture()
-def contract_client() -> TestClient:
+def contract_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     def factory() -> StubGhidraClient:
         return StubGhidraClient()
 
     PROGRAM_SELECTIONS.clear()
+    monkeypatch.delenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", raising=False)
     app = Starlette(routes=make_routes(factory, enable_writes=False))
     install_error_handlers(app)
-    return TestClient(app)
+    client = TestClient(app)
+    try:
+        yield client
+    finally:
+        client.close()
 
 
 @pytest.fixture()
@@ -657,6 +662,24 @@ def contract_client_writable(
 
     PROGRAM_SELECTIONS.clear()
     app = Starlette(routes=make_routes(factory, enable_writes=True))
+    install_error_handlers(app)
+    client = TestClient(app)
+    try:
+        yield client
+    finally:
+        client.close()
+
+
+@pytest.fixture()
+def contract_client_unknown_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    def factory() -> StubGhidraClient:
+        return StubGhidraClient()
+
+    PROGRAM_SELECTIONS.clear()
+    monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "mystery")
+    app = Starlette(routes=make_routes(factory, enable_writes=False))
     install_error_handlers(app)
     client = TestClient(app)
     try:

@@ -84,16 +84,21 @@ class ProgramSelectionStore:
 
         state = self._state_for(key)
         warning = None
+        current = _normalize_domain_file_id(state.domain_file_id)
+        requested = _normalize_domain_file_id(domain_file_id)
+        if requested is None:
+            state.domain_file_id = None
+            return SelectionResult(state=state, warning=None)
         if (
             state.locked
-            and state.domain_file_id is not None
-            and state.domain_file_id != domain_file_id
+            and current is not None
+            and current != requested
         ):
             policy = program_switch_policy()
             if policy == "strict":
-                raise ProgramSelectionError(current=state.domain_file_id)
-            warning = _mid_session_warning(state.domain_file_id, domain_file_id)
-        state.domain_file_id = domain_file_id
+                raise ProgramSelectionError(current=current)
+            warning = _mid_session_warning(current, requested)
+        state.domain_file_id = requested
         return SelectionResult(state=state, warning=warning)
 
     def snapshot(self, key: Hashable | object) -> ProgramState:
@@ -252,7 +257,7 @@ def lock_selection_for_requestor(key: Hashable | object) -> None:
 def program_switch_policy() -> str:
     """Return the configured mid-session program switching policy."""
 
-    value = os.getenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "strict")
+    value = os.getenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY") or "strict"
     normalized = value.strip().lower()
     if normalized == "soft":
         return "soft"

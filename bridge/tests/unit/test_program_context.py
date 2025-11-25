@@ -1,8 +1,11 @@
+import pytest
+
 from bridge.utils.program_context import (
     PROGRAM_SELECTIONS,
     ProgramSelectionError,
     ProgramSelectionStore,
     normalize_selection,
+    program_switch_policy,
 )
 
 
@@ -84,4 +87,40 @@ def test_normalize_selection_soft_policy_warns(monkeypatch) -> None:
     assert result.state.domain_file_id == "1"
     assert result.warning
     assert result.warning.startswith("Program selection switched mid-session")
+
+
+def test_select_normalizes_and_blocks_switch_when_locked(monkeypatch) -> None:
+    monkeypatch.delenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", raising=False)
+    store = ProgramSelectionStore()
+
+    initial = store.select("req", " prog-1 ").state
+    assert initial.domain_file_id == "prog-1"
+
+    store.mark_used("req")
+
+    same = store.select("req", "prog-1").state
+    assert same.domain_file_id == "prog-1"
+
+    with pytest.raises(ProgramSelectionError) as exc:
+        store.select("req", "prog-2")
+    assert exc.value.current == "prog-1"
+
+
+def test_program_switch_policy_defaults_to_strict(monkeypatch) -> None:
+    monkeypatch.delenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", raising=False)
+
+    assert program_switch_policy() == "strict"
+
+    store = ProgramSelectionStore()
+    store.select("req", "1")
+    store.mark_used("req")
+
+    with pytest.raises(ProgramSelectionError):
+        store.select("req", "2")
+
+    monkeypatch.setenv("GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY", "unexpected")
+    assert program_switch_policy() == "strict"
+
+    with pytest.raises(ProgramSelectionError):
+        store.select("req", "3")
 
