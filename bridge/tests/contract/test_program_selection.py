@@ -56,6 +56,28 @@ def test_program_switching_is_gated(contract_client: TestClient) -> None:
     assert other.json()["data"]["domain_file_id"] == "4"
 
 
+def test_program_switching_is_strict_for_unknown_policy(
+    contract_client_unknown_policy: TestClient,
+) -> None:
+    headers = {"x-requestor-id": "sess-unknown-policy"}
+
+    first = contract_client_unknown_policy.post(
+        "/api/select_program.json", json={"domain_file_id": "1"}, headers=headers
+    )
+    assert first.status_code == 200
+    first_data = first.json()["data"]
+    assert first_data["locked"] is True
+
+    switch = contract_client_unknown_policy.post(
+        "/api/select_program.json", json={"domain_file_id": "4"}, headers=headers
+    )
+    assert switch.status_code == 400
+    payload = switch.json()
+    _assert_envelope(payload)
+    assert payload["ok"] is False
+    assert payload["errors"][0]["code"] == "INVALID_REQUEST"
+
+
 def test_current_program_resets_stale_selection(contract_client: TestClient) -> None:
     key = ("http", "sess-stale")
     PROGRAM_SELECTIONS.select(key, "missing")
