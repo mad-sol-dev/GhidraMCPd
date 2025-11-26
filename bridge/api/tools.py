@@ -78,7 +78,7 @@ def _find_program_entry(files: object, domain_file_id: str) -> Mapping[str, obje
 
 
 def _maybe_autoopen_program(
-    client: GhidraClient, files: object, domain_file_id: str
+    client: GhidraClient, files: object, domain_file_id: str, on_dirty: str | None = None
 ) -> tuple[list[str], Dict[str, object] | None]:
     entry = _find_program_entry(files, domain_file_id)
     path = None
@@ -87,7 +87,7 @@ def _maybe_autoopen_program(
         if isinstance(path_val, str) and path_val:
             path = path_val
 
-    payload = client.open_program(domain_file_id, path=path)
+    payload = client.open_program(domain_file_id, path=path, on_dirty=on_dirty)
     if payload is None:
         upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
         return (
@@ -491,7 +491,17 @@ def register_tools(
 
     @server.tool()
     @tracked_tool(lock_usage=False)
-    def select_program(client, domain_file_id: str) -> Dict[str, object]:
+    def select_program(client, domain_file_id: str, on_dirty: str | None = None) -> Dict[str, object]:
+        """
+        Select and open a program from the current project.
+
+        Args:
+            domain_file_id: The domain file ID from project_overview
+            on_dirty: Action if current program has unsaved changes:
+                     - "error" (default): Fail with error
+                     - "save": Auto-save before switching
+                     - "discard": Switch without saving (data loss warning)
+        """
         with request_scope(
             "select_program",
             logger=logger,
@@ -531,7 +541,7 @@ def register_tools(
             if selection.warning:
                 warnings.append(selection.warning)
             autoopen_warnings, autoopen_error = _maybe_autoopen_program(
-                client, files, state.domain_file_id
+                client, files, state.domain_file_id, on_dirty
             )
             if autoopen_error:
                 PROGRAM_SELECTIONS.restore(requestor, previous_state)
