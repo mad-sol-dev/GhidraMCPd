@@ -60,6 +60,8 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         ),
         WhitelistEntry("GET", "OPEN_PROGRAM", ("open_program",)),
         WhitelistEntry("GET", "GOTO", ("goto",)),
+        WhitelistEntry("GET", "CHECK_DIRTY_STATE", ("check_dirty_state",)),
+        WhitelistEntry("GET", "SAVE_PROGRAM", ("save_program",)),
     ),
     "POST": (
         WhitelistEntry(

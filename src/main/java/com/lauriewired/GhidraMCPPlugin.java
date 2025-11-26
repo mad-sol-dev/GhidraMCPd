@@ -774,7 +774,16 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         registerProjectHandler(server, "/open_program", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             plugin.sendJsonResponse(exchange,
-                plugin.openProgram(qparams.get("domain_file_id"), qparams.get("path")));
+                plugin.openProgram(qparams.get("domain_file_id"), qparams.get("path"), qparams.get("on_dirty")));
+        });
+
+        registerProgramHandler(server, "/check_dirty_state", (plugin, exchange) -> {
+            plugin.sendJsonResponse(exchange, plugin.checkProgramDirtyState());
+        });
+
+        registerProgramHandler(server, "/save_program", (plugin, exchange) -> {
+            Map<String, String> qparams = plugin.parseQueryParams(exchange);
+            plugin.sendJsonResponse(exchange, plugin.saveCurrentProgram(qparams.get("description")));
         });
 
         registerProgramHandler(server, "/readBytes", (plugin, exchange) -> {
@@ -2748,10 +2757,21 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     private String openProgram(String domainFileIdParam, String path) {
+        return openProgram(domainFileIdParam, path, null);
+    }
+
+    private String openProgram(String domainFileIdParam, String path, String onDirty) {
         List<String> warnings = new ArrayList<>();
 
         if ((path == null || path.isEmpty()) && (domainFileIdParam == null || domainFileIdParam.isEmpty())) {
             return errorResponse("path or domain_file_id parameter is required");
+        }
+
+        // Check dirty state before switching programs
+        if (!checkDirtyStateBeforeSwitch(onDirty, warnings)) {
+            return openProgramResponse("error",
+                "Cannot switch programs: current program has unsaved changes",
+                null, warnings);
         }
 
         Project project = tool.getProject();
@@ -2849,6 +2869,131 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         catch (Exception e) {
             warnings.add("Failed to open program: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Check if the current program has unsaved changes.
+     * @return JSON response with dirty state information
+     */
+    private String checkProgramDirtyState() {
+        Program program = getCurrentProgram();
+        if (program == null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            appendJsonField(sb, "status", "ok");
+            appendJsonField(sb, "changed", "false");
+            appendJsonField(sb, "can_save", "false");
+            sb.append("\"message\":\"No program currently loaded\"");
+            sb.append('}');
+            return sb.toString();
+        }
+
+        boolean isChanged = program.isChanged();
+        boolean canSave = program.canSave();
+        String programName = program.getName();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "status", "ok");
+        appendJsonField(sb, "program_name", programName);
+        appendJsonField(sb, "changed", String.valueOf(isChanged));
+        appendJsonField(sb, "can_save", String.valueOf(canSave));
+        if (isChanged) {
+            sb.append("\"message\":\"Program has unsaved changes\"");
+        } else {
+            sb.append("\"message\":\"Program has no unsaved changes\"");
+        }
+        sb.append('}');
+        return sb.toString();
+    }
+
+    /**
+     * Save the current program with a description.
+     * @param description Description of changes being saved
+     * @return JSON response with save result
+     */
+    private String saveCurrentProgram(String description) {
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return errorResponse("No program currently loaded");
+        }
+
+        if (!program.canSave()) {
+            return errorResponse("Program cannot be saved (not the owner or file is read-only)");
+        }
+
+        if (!program.isChanged()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            appendJsonField(sb, "status", "ok");
+            appendJsonField(sb, "saved", "false");
+            sb.append("\"message\":\"Program has no unsaved changes\"");
+            sb.append('}');
+            return sb.toString();
+        }
+
+        try {
+            String saveDescription = (description == null || description.isEmpty())
+                ? "Saved via GhidraMCP"
+                : description;
+            program.save(saveDescription, new ghidra.util.task.TaskMonitorAdapter());
+
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            appendJsonField(sb, "status", "ok");
+            appendJsonField(sb, "saved", "true");
+            appendJsonField(sb, "program_name", program.getName());
+            sb.append("\"message\":\"Program saved successfully\"");
+            sb.append('}');
+            return sb.toString();
+        } catch (Exception e) {
+            return errorResponse("Failed to save program: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Check dirty state before opening a new program.
+     * @param onDirty Action to take if current program is dirty: "error", "save", "discard"
+     * @param warnings List to accumulate warnings
+     * @return true if safe to proceed, false if should abort
+     */
+    private boolean checkDirtyStateBeforeSwitch(String onDirty, List<String> warnings) {
+        Program currentProgram = getCurrentProgram();
+        if (currentProgram == null) {
+            return true; // No current program, safe to proceed
+        }
+
+        if (!currentProgram.isChanged()) {
+            return true; // No unsaved changes, safe to proceed
+        }
+
+        // Program has unsaved changes - handle based on onDirty flag
+        String action = (onDirty == null || onDirty.isEmpty()) ? "error" : onDirty.toLowerCase();
+
+        switch (action) {
+            case "save":
+                if (!currentProgram.canSave()) {
+                    warnings.add("Current program has unsaved changes but cannot be saved (not owner or read-only)");
+                    return false;
+                }
+                try {
+                    currentProgram.save("Auto-save before program switch", new ghidra.util.task.TaskMonitorAdapter());
+                    warnings.add("Saved current program before switching");
+                    return true;
+                } catch (Exception e) {
+                    warnings.add("Failed to save current program: " + e.getMessage());
+                    return false;
+                }
+
+            case "discard":
+                warnings.add("Discarding unsaved changes in current program");
+                return true;
+
+            case "error":
+            default:
+                warnings.add("Current program has unsaved changes - use on_dirty=save or on_dirty=discard to proceed");
+                return false;
         }
     }
 

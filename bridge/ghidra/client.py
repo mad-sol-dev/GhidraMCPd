@@ -47,6 +47,8 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "OPEN_PROGRAM": ("open_program",),
     "CURRENT_PROGRAM_STATUS": ("api/current_program.json", "current_program"),
     "GOTO": ("goto",),
+    "CHECK_DIRTY_STATE": ("check_dirty_state",),
+    "SAVE_PROGRAM": ("save_program",),
 }
 
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
@@ -654,13 +656,83 @@ class GhidraClient:
             return None
         return payload
 
-    def open_program(self, domain_file_id: str, *, path: str | None = None) -> Optional[Dict[str, Any]]:
-        """Request the plugin to open the specified program."""
+    def check_dirty_state(self) -> Optional[Dict[str, Any]]:
+        """Check if the current program has unsaved changes."""
+
+        increment_counter("ghidra.check_dirty_state")
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="CHECK_DIRTY_STATE",
+            params={},
+        )
+        lines = self._get_resolver.resolve("CHECK_DIRTY_STATE", requester)
+        if _is_error(lines) or not lines:
+            logger.warning("check_dirty_state request failed: %s", _error_summary(lines))
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("check_dirty_state returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode check_dirty_state payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("Unexpected check_dirty_state payload type: %s", type(payload))
+            return None
+        return payload
+
+    def save_program(self, description: str | None = None) -> Optional[Dict[str, Any]]:
+        """Save the current program with an optional description."""
+
+        increment_counter("ghidra.save_program")
+        params: Dict[str, Any] = {}
+        if description:
+            params["description"] = description
+        requester = EndpointRequester(
+            self,
+            "GET",
+            key="SAVE_PROGRAM",
+            params=params,
+        )
+        lines = self._get_resolver.resolve("SAVE_PROGRAM", requester)
+        if _is_error(lines) or not lines:
+            logger.warning("save_program request failed: %s", _error_summary(lines))
+            return None
+        text = "\n".join(line.strip() for line in lines if line.strip())
+        if not text:
+            logger.warning("save_program returned empty payload")
+            return None
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode save_program payload: %s", text)
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("Unexpected save_program payload type: %s", type(payload))
+            return None
+        return payload
+
+    def open_program(self, domain_file_id: str, *, path: str | None = None, on_dirty: str | None = None) -> Optional[Dict[str, Any]]:
+        """Request the plugin to open the specified program.
+
+        Args:
+            domain_file_id: The domain file ID of the program to open
+            path: Optional path to the program file
+            on_dirty: Action to take if current program has unsaved changes:
+                     "error" (default) - Fail with error
+                     "save" - Save current program before switching
+                     "discard" - Discard unsaved changes
+        """
 
         increment_counter("ghidra.open_program")
         params: Dict[str, Any] = {"domain_file_id": domain_file_id}
         if path:
             params["path"] = path
+        if on_dirty:
+            params["on_dirty"] = on_dirty
         requester = EndpointRequester(
             self,
             "GET",

@@ -608,6 +608,92 @@ def register_tools(
 
     @server.tool()
     @tracked_tool()
+    def check_dirty_state(client) -> Dict[str, object]:
+        """
+        Check if the current program has unsaved changes.
+
+        Returns dirty state information including whether the program can be saved.
+
+        Returns:
+            Envelope with dirty state information:
+            - changed: bool - Whether program has unsaved changes
+            - can_save: bool - Whether program can be saved
+            - program_name: str - Name of current program (if any)
+            - message: str - Human-readable status message
+        """
+        with request_scope(
+            "check_dirty_state",
+            logger=logger,
+            extra={"tool": "check_dirty_state"},
+        ):
+            response = client.check_dirty_state()
+            if response is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to check dirty state.",
+                    upstream_error=upstream,
+                )
+
+            if response.get("status") == "error":
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    response.get("message", "Failed to check dirty state"),
+                )
+
+            return envelope_ok({
+                "changed": response.get("changed") == "true",
+                "can_save": response.get("can_save") == "true",
+                "program_name": response.get("program_name"),
+                "message": response.get("message", "Dirty state checked")
+            })
+
+    @server.tool()
+    @tracked_tool()
+    def save_program(client, description: str | None = None) -> Dict[str, object]:
+        """
+        Save the current program with optional description.
+
+        Persists any unsaved changes to the current program. Requires that the user
+        is the owner of the program and it is not read-only.
+
+        Args:
+            description: Optional description of changes being saved (e.g., "Fixed string references")
+
+        Returns:
+            Envelope with save result:
+            - saved: bool - Whether save was performed
+            - program_name: str - Name of saved program (if saved)
+            - message: str - Human-readable result message
+        """
+        with request_scope(
+            "save_program",
+            logger=logger,
+            extra={"tool": "save_program", "description": description},
+        ):
+            response = client.save_program(description)
+            if response is None:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    "Failed to save program.",
+                    upstream_error=upstream,
+                )
+
+            if response.get("status") == "error":
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    response.get("error", "Failed to save program"),
+                )
+
+            return envelope_ok({
+                "saved": response.get("saved") == "true",
+                "program_name": response.get("program_name"),
+                "message": response.get("message", "Save operation completed")
+            })
+
+    @server.tool()
+    @tracked_tool()
     def project_rebase(
         client,
         new_base: str,
