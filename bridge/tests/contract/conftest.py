@@ -633,8 +633,10 @@ class StubGhidraClient:
 
     def get_current_program_status(self) -> Dict[str, object]:
         self._clear_error()
+        # Return the currently active program (defaults to "1" if not set)
+        active_id = getattr(self, "_active_program_id", "1")
         return {
-            "domain_file_id": "1",
+            "domain_file_id": active_id,
             "locked": False,
             "state": "READY",
             "warnings": [],
@@ -642,6 +644,8 @@ class StubGhidraClient:
 
     def open_program(self, domain_file_id: str, *, path: str | None = None) -> Dict[str, object]:
         self._clear_error()
+        # Track which program was opened
+        self._active_program_id = str(domain_file_id)
         return {
             "status": "ok",
             "domain_file_id": str(domain_file_id),

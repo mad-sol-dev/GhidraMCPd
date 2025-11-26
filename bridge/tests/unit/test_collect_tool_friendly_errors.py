@@ -9,6 +9,14 @@ from mcp.server.fastmcp import FastMCP
 
 
 class DummyClient:
+    def get_current_program_status(self):
+        return {
+            "program_name": "dummy",
+            "domain_file_id": "1",
+            "state": "READY",
+            "locked": False,
+        }
+
     def close(self) -> None:  # pragma: no cover - interface compliance
         pass
 

@@ -13,6 +13,14 @@ class MockProjectClient:
     def __init__(self) -> None:
         self.base_url = "http://base/"
 
+    def get_current_program_status(self) -> Dict[str, Any]:
+        return {
+            "program_name": "demo",
+            "domain_file_id": "1",
+            "state": "READY",
+            "locked": False,
+        }
+
     def get_project_info(self) -> Dict[str, Any]:
         return {
             "program_name": "demo",
@@ -160,6 +168,14 @@ class MockClient:
         self.base_url = "http://base/"
         self.closed = False
         MockClient.created.append(self)
+
+    def get_current_program_status(self) -> Dict[str, Any]:
+        return {
+            "program_name": "test_program",
+            "domain_file_id": "1",
+            "state": "READY",
+            "locked": False,
+        }
 
     def close(self) -> None:  # pragma: no cover - nothing to close in tests
         self.closed = True
