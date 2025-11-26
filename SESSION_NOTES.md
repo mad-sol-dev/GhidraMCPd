@@ -261,6 +261,12 @@ From TESTING_REPORT.md:
    - This SESSION_NOTES.md provides quick resume point
    - TESTING_REPORT.md has detailed test results
 
+4. **Docker build version caching**
+   - `./scripts/build_docker.sh` may produce old version ZIPs due to Docker layer caching
+   - Use `mvn -DskipTests package` for local builds to ensure current pom.xml version
+   - Or force rebuild: `docker build --no-cache -f scripts/Dockerfile.build -t ghidra-mcp-builder .`
+   - Note: Docker build approach was recommended by Gemini 2.5 Pro for reproducible builds
+
 ## Quick Reference - New MCP Tools
 
 ```python
