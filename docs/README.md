@@ -21,3 +21,22 @@ curl -sS -X POST http://localhost:8000/api/write_bytes.json \
 The response keeps `ok=true`, reports `written=false`, and includes the note
 `"dry-run enabled: no bytes written"`. Set `dry_run:false` and enable writes via
 `GHIDRA_MCP_ENABLE_WRITES=1` to apply the bytes when the safety limit allows it.
+
+## Navigate to address
+
+Navigate the CodeBrowser cursor to a specific address, centering it on screen:
+
+```bash
+curl -sS "http://localhost:8080/goto?address=0x00000080"
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "address": "00000080",
+  "message": "Navigated to address"
+}
+```
+
+This endpoint is useful for programmatically inspecting code locations found through search operations. The address is centered in the listing window for immediate visibility.

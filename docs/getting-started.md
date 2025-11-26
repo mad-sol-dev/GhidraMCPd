@@ -105,3 +105,98 @@ Watch for repeated `SafetyLimitExceeded` responses to confirm the new cap is suf
 ## Token efficiency notes
 
 Ghidra MCPd keeps responses compact by enforcing deterministic schema envelopes (`{"ok":bool,"data":object|null,"errors":[]}`) and predictable limits. In typical analysis sessions, combining `disassemble_batch` with contextual search reduces total request tokens by roughly 70% (example: ~80k tokens before batching → ~25k after). Actual savings depend on program size and client prompting, but the enforced caps above protect against unbounded payloads.
+
+## Basic usage workflows
+
+### Working with programs
+
+Before performing analysis operations, ensure you have a program loaded and ready:
+
+```python
+# Check current program status
+project_info()  # Returns program metadata, entry points, memory blocks
+
+# List available programs in the project
+project_overview()  # Shows all domain files
+
+# Switch to a specific program (auto-launches CodeBrowser if needed)
+select_program(domain_file_id="ZK-INKJET-NANO-APP.bin_1")
+
+# Verify program is ready
+get_current_program()  # Should show status: READY
+```
+
+### Navigation and code inspection
+
+Use `goto_address` to move the CodeBrowser cursor to specific locations during analysis:
+
+```python
+# Search for a function
+results = search_functions(query="init", limit=10)
+
+# Navigate to the first result
+if results["data"]["items"]:
+    address = results["data"]["items"][0]["address"]
+    goto_address(address)  # CodeBrowser jumps to this address
+
+# Follow cross-references
+xrefs = search_xrefs_to(address="0x00000080", query="")
+for xref in xrefs["data"]["items"]:
+    goto_address(xref["from_address"])  # Inspect each caller
+
+# Navigate to specific addresses found in analysis
+goto_address("0x00000100")  # Entry point
+goto_address("0x00002000")  # String reference
+goto_address("0x0000ABCD")  # MMIO register access
+```
+
+The CodeBrowser window automatically centers on the specified address, making it easy to visually inspect code while programmatically exploring the binary.
+
+### Common analysis patterns
+
+**String analysis workflow:**
+```python
+# Find strings containing "error"
+strings = search_strings(query="error", limit=20)
+
+# For each string, find where it's used
+for item in strings["data"]["items"]:
+    xrefs = string_xrefs(string_addr=item["addr"])
+    for caller in xrefs["data"]["callers"]:
+        # Navigate to each usage
+        goto_address(caller["addr"])
+        # Disassemble surrounding context
+        disasm = disassemble_at(address=caller["addr"], count=8)
+```
+
+**Scalar constant analysis:**
+```python
+# Find references to a specific address or constant
+results = search_scalars_with_context(
+    value="0xB0000084",  # MMIO register address
+    context_lines=4
+)
+
+# Navigate to first usage
+if results["data"]["matches"]:
+    goto_address(results["data"]["matches"][0]["address"])
+```
+
+**Function exploration:**
+```python
+# List functions in a memory region
+funcs = list_functions_in_range(
+    address_min="0x00000000",
+    address_max="0x00001000",
+    limit=50
+)
+
+# Navigate through each function
+for func in funcs["data"]["items"]:
+    goto_address(func["address"])
+    # Get detailed analysis
+    analysis = analyze_function_complete(
+        address=func["address"],
+        fields=["function", "disasm", "xrefs"]
+    )
+```
