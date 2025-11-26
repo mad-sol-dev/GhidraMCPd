@@ -704,6 +704,183 @@ def register_tools(
 
     @server.tool()
     @tracked_tool()
+    def rename_function(
+        client,
+        address: str,
+        new_name: str,
+        *,
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        """
+        Rename a function at the specified address.
+
+        Renames a function in the current program. Requires GHIDRA_MCP_ENABLE_WRITES=true
+        unless running in dry_run mode.
+
+        Args:
+            address: Hex address string (e.g., "0x401000") where the function is located
+            new_name: New name for the function
+            dry_run: If True, validates the request but doesn't execute (default: True)
+
+        Returns:
+            Envelope with rename result:
+            - success: bool - Whether the rename was performed (False in dry_run mode)
+            - address: str - The target address
+            - new_name: str - The requested new name
+            - message: str - Human-readable result message
+        """
+        with request_scope(
+            "rename_function",
+            logger=logger,
+            extra={"tool": "rename_function", "address": address, "new_name": new_name, "dry_run": dry_run},
+            max_writes=1,
+        ):
+            # Validate address format
+            try:
+                parsed_address = parse_hex(address)
+            except ValueError as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+            # Validate new_name
+            if not new_name or not isinstance(new_name, str):
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    "new_name parameter is required and must be a non-empty string",
+                )
+
+            # Dry run mode - return success without executing
+            if dry_run:
+                return envelope_ok({
+                    "success": False,
+                    "address": address,
+                    "new_name": new_name,
+                    "message": f"DRY RUN: Would rename function at {address} to '{new_name}' (set dry_run=false to execute)"
+                })
+
+            # Check if writes are enabled
+            if not enable_writes:
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
+                    recovery=("Enable writes in environment configuration.",),
+                )
+
+            # Execute the rename
+            success = client.rename_function(parsed_address, new_name)
+
+            if not success:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    f"Failed to rename function at {address}",
+                    upstream_error=upstream,
+                )
+
+            return envelope_ok({
+                "success": True,
+                "address": address,
+                "new_name": new_name,
+                "message": f"Function at {address} renamed to '{new_name}'"
+            })
+
+    @server.tool()
+    @tracked_tool()
+    def set_comment(
+        client,
+        address: str,
+        comment: str,
+        *,
+        comment_type: str = "decompiler",
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        """
+        Add or update a comment at the specified address.
+
+        Sets a comment in the current program. Supports both decompiler and disassembly comments.
+        Requires GHIDRA_MCP_ENABLE_WRITES=true unless running in dry_run mode.
+
+        Args:
+            address: Hex address string (e.g., "0x401000") where to place the comment
+            comment: The comment text to add
+            comment_type: Type of comment - "decompiler" or "disassembly" (default: "decompiler")
+            dry_run: If True, validates the request but doesn't execute (default: True)
+
+        Returns:
+            Envelope with comment result:
+            - success: bool - Whether the comment was set (False in dry_run mode)
+            - address: str - The target address
+            - comment: str - The comment text
+            - comment_type: str - The type of comment set
+            - message: str - Human-readable result message
+        """
+        with request_scope(
+            "set_comment",
+            logger=logger,
+            extra={"tool": "set_comment", "address": address, "comment_type": comment_type, "dry_run": dry_run},
+            max_writes=1,
+        ):
+            # Validate address format
+            try:
+                parsed_address = parse_hex(address)
+            except ValueError as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+            # Validate comment
+            if not comment or not isinstance(comment, str):
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    "comment parameter is required and must be a non-empty string",
+                )
+
+            # Validate comment_type
+            if comment_type not in ("decompiler", "disassembly"):
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    f"comment_type must be 'decompiler' or 'disassembly', got '{comment_type}'",
+                )
+
+            # Dry run mode - return success without executing
+            if dry_run:
+                return envelope_ok({
+                    "success": False,
+                    "address": address,
+                    "comment": comment,
+                    "comment_type": comment_type,
+                    "message": f"DRY RUN: Would set {comment_type} comment at {address} (set dry_run=false to execute)"
+                })
+
+            # Check if writes are enabled
+            if not enable_writes:
+                return envelope_error(
+                    ErrorCode.INVALID_REQUEST,
+                    "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
+                    recovery=("Enable writes in environment configuration.",),
+                )
+
+            # Execute the comment set operation
+            if comment_type == "decompiler":
+                success = client.set_decompiler_comment(parsed_address, comment)
+            else:  # disassembly
+                success = client.set_disassembly_comment(parsed_address, comment)
+
+            if not success:
+                upstream = client.last_error.as_dict() if client.last_error else None
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    f"Failed to set {comment_type} comment at {address}",
+                    upstream_error=upstream,
+                )
+
+            return envelope_ok({
+                "success": True,
+                "address": address,
+                "comment": comment,
+                "comment_type": comment_type,
+                "message": f"{comment_type.capitalize()} comment set at {address}"
+            })
+
+    @server.tool()
+    @tracked_tool()
     def project_rebase(
         client,
         new_base: str,
