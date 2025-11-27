@@ -20,7 +20,18 @@ _REQUEST_CONTEXT: contextvars.ContextVar["RequestContext | None"] = contextvars.
 
 
 def configure_root(level: int = logging.INFO) -> None:
-    logging.basicConfig(level=level, format="%(levelname)s:%(name)s:%(message)s")
+    # ISO 8601 format with milliseconds for easier debugging
+    log_format = "%(asctime)s.%(msecs)03d %(levelname)s:%(name)s:%(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+
+    logging.basicConfig(level=level, format=log_format, datefmt=date_format)
+
+    # Also configure uvicorn's access logger to use timestamps
+    uvicorn_access = logging.getLogger("uvicorn.access")
+    if uvicorn_access.handlers:
+        formatter = logging.Formatter(log_format, datefmt=date_format)
+        for handler in uvicorn_access.handlers:
+            handler.setFormatter(formatter)
 
 
 @contextmanager

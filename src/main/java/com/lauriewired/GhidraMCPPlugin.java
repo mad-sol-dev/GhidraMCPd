@@ -224,19 +224,22 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         final boolean locked;
         final ProgramState state;
         final List<String> warnings;
+        final long stateDurationSeconds;
 
         ProgramStatusSnapshot(String domainFileId, boolean locked, ProgramState state,
-                List<String> warnings) {
+                List<String> warnings, long stateDurationSeconds) {
             this.domainFileId = domainFileId;
             this.locked = locked;
             this.state = state;
             this.warnings = warnings;
+            this.stateDurationSeconds = stateDurationSeconds;
         }
     }
 
     private final class ProgramStatusTracker {
         private final Object lock = new Object();
         private ProgramState state = ProgramState.IDLE;
+        private long stateTransitionTime = System.currentTimeMillis();
         private String domainFileId;
         private boolean locked;
         private List<String> warnings = new ArrayList<>();
@@ -244,8 +247,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         ProgramStatusSnapshot snapshot() {
             synchronized (lock) {
+                long durationSeconds = (System.currentTimeMillis() - stateTransitionTime) / 1000;
                 return new ProgramStatusSnapshot(domainFileId, locked, state,
-                    new ArrayList<>(warnings));
+                    new ArrayList<>(warnings), durationSeconds);
             }
         }
 
@@ -261,6 +265,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         void markLoading(DomainFile target, List<String> initialWarnings) {
             synchronized (lock) {
                 state = ProgramState.LOADING;
+                stateTransitionTime = System.currentTimeMillis();
                 domainFileId = target != null ? target.getFileID() : null;
                 locked = target != null && target.isCheckedOut();
                 warnings = initialWarnings == null ? new ArrayList<>()
@@ -291,6 +296,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             if (program == null) {
                 synchronized (lock) {
                     state = ProgramState.IDLE;
+                    stateTransitionTime = System.currentTimeMillis();
                     domainFileId = null;
                     locked = false;
                     warnings = new ArrayList<>();
@@ -313,6 +319,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
             synchronized (lock) {
                 state = ProgramState.LOADING;
+                stateTransitionTime = System.currentTimeMillis();
             }
 
             watcher = new Thread(() -> awaitAnalysisCompletion(program, manager),
@@ -322,19 +329,35 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
 
         private void awaitAnalysisCompletion(Program program, AutoAnalysisManager manager) {
+            final long startTime = System.currentTimeMillis();
+            final long TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     if (!manager.isAnalyzing()) {
                         markReady(program);
                         return;
                     }
+
+                    // Detect stale state - if stuck in LOADING for > 5 minutes, force READY
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    if (elapsed > TIMEOUT_MS) {
+                        Msg.warn(this,
+                            String.format("Analysis watcher timeout after %d seconds, forcing READY state",
+                                elapsed / 1000));
+                        markReady(program);
+                        return;
+                    }
+
                     Thread.sleep(500);
                 }
                 catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
                 }
-                catch (Exception ignored) {
+                catch (Exception e) {
+                    // Log the exception instead of silently ignoring it
+                    Msg.error(this, "Analysis watcher exception, forcing READY state", e);
                     markReady(program);
                     return;
                 }
@@ -345,6 +368,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             DomainFile file = program != null ? program.getDomainFile() : null;
             synchronized (lock) {
                 state = ProgramState.READY;
+                stateTransitionTime = System.currentTimeMillis();
                 domainFileId = file != null ? file.getFileID() : null;
                 locked = file != null && file.isCheckedOut();
             }
@@ -2732,6 +2756,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         appendJsonField(sb, "domain_file_id", snapshot.domainFileId);
         sb.append("\"locked\":").append(snapshot.locked).append(',');
         appendJsonField(sb, "state", snapshot.state.name());
+        sb.append("\"state_duration_seconds\":").append(snapshot.stateDurationSeconds).append(',');
         appendWarnings(sb, snapshot.warnings == null ? List.of() : snapshot.warnings);
         trimTrailingComma(sb);
         sb.append('}');

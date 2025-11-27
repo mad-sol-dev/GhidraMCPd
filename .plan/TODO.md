@@ -21,6 +21,9 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.18} Cookbook snippets for USB/update/boot/MMIO workflows using MCP tools only
 - {R.27} LLM-visible comment tagging/prefixing for write calls (toolname/LLM annotations and format guidance)
 - {R.28} Audit logging for write operations (inputs, program context, and response outcomes with redaction rules)
+- {DIAG.3} Force-refresh endpoint for manual state re-checking (allow users to trigger trackProgram() when state appears stale)
+- {DIAG.4} Analysis completion metadata in search results (add analysis_complete flag based on AutoAnalysisManager state)
+- {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints

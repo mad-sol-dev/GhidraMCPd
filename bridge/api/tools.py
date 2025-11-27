@@ -295,15 +295,42 @@ def register_tools(
             extra_warning = None
             if isinstance(warnings, list) and warnings:
                 extra_warning = warnings[0]
+
+            # Extract state duration for better diagnostics
+            duration_seconds = status_payload.get("state_duration_seconds", 0)
+
+            # Build message with duration context
             message = (
                 f"Program is not ready (state={state})."
                 if not extra_warning
                 else f"Program is not ready (state={state}): {extra_warning}"
             )
+
+            # Provide better recovery suggestions based on duration
+            recovery = []
+            if state == "LOADING":
+                if duration_seconds > 300:  # > 5 minutes
+                    recovery.append(
+                        f"Program has been in LOADING state for {duration_seconds} seconds. "
+                        "This may indicate a stale state."
+                    )
+                    recovery.append("Try selecting a different program, then re-selecting the original.")
+                    recovery.append("If the issue persists, restart GhidraMCPd server.")
+                elif duration_seconds > 60:  # > 1 minute
+                    recovery.append(
+                        f"Program has been analyzing for {duration_seconds} seconds. "
+                        "Analysis may take several minutes for large binaries."
+                    )
+                    recovery.append("Wait for auto-analysis to complete, or check Ghidra UI.")
+                else:
+                    recovery.append("Wait for auto-analysis to finish before retrying.")
+            else:
+                recovery.append("Ensure a program is open and ready in Ghidra.")
+
             return envelope_error(
                 ErrorCode.UNAVAILABLE,
                 message,
-                recovery=("Wait for auto-analysis to finish before retrying.",),
+                recovery=tuple(recovery),
                 upstream_error=status_payload,
             )
         return None

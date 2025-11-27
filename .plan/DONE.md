@@ -1,6 +1,8 @@
 # DONE (archive)
 
 ## 2025-11
+- 2025-11-27 **DIAG.1** — State duration tracking and staleness detection (Java plugin tracks state transition timestamps, 5-min timeout for LOADING, detailed error messages with recovery suggestions based on duration) _commit:pending_
+- 2025-11-27 **DIAG.2** — Logging timestamps for bridge and uvicorn (ISO 8601 format with milliseconds for debugging timing issues) _commit:pending_
 - 2025-11-25 **R.16** — Unit-test expansion for new project/analysis tools and invalid-parameter paths _commit:pending_
 - 2025-11-25 **R.15** — MCP tool smoke-test script against reference firmware (project_info/overview, strings, scalars, MMIO, bytes/words) _commit:pending_
 - 2025-11-24 **R.21** — Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program) _commit:pending_

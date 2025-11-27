@@ -68,3 +68,4 @@ __pycache__/
 docs/api.tmp.md
 ghidra_*.zip
 images/ghidraMCPd_video_logo.png
+.mcp.json
