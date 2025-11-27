@@ -4,8 +4,8 @@
     "number": null,
     "updated_at": null
   },
-    "tasks": {
-      "R.21": {
+  "tasks": {
+    "R.21": {
       "commit": "pending",
       "status": "done",
       "updated_at": "2025-11-24T00:00:00+00:00"
@@ -21,9 +21,9 @@
       "updated_at": "2025-11-02T13:46:46.047218+00:00"
     },
     "API-MOUNT": {
-      "commit": "5c50273",
+      "commit": "484f1d0",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "API-SCHEMA-UNIFY": {
       "commit": "7ba7f46",
@@ -41,9 +41,9 @@
       "updated_at": "2025-11-01T20:55:43.620272+00:00"
     },
     "BRIDGE_GUARD_03_SERIALIZE_PLUGIN": {
-      "commit": "f557919",
+      "commit": "6f50269",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "BRIDGE_GUARD_04_DIAGNOSTICS": {
       "commit": "1ee499b",
@@ -61,14 +61,14 @@
       "updated_at": "2025-11-02T00:00:00+00:00"
     },
     "CI-TESTS": {
-      "commit": "53e651e",
+      "commit": "c3b15a0",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "CLIENT-UNIFY": {
       "commit": "e3a4aff",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "CONTROL-FILES": {
       "commit": "a74a426",
@@ -96,19 +96,19 @@
       "updated_at": "2025-11-02T11:16:21+00:00"
     },
     "JT-SCAN": {
-      "commit": "f557919",
+      "commit": "484f1d0",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "JT-SCAN-CONSISTENCY": {
-      "commit": "f557919",
+      "commit": "261c45c",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "JT-VERIFY": {
       "commit": "844252e",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "LEGACY-DEPRECATE-DOC": {
       "commit": "85b75af",
@@ -131,9 +131,9 @@
       "updated_at": "2025-10-28T01:17:13+00:00"
     },
     "OPENAPI-FREEZE": {
-      "commit": "f557919",
+      "commit": "261c45c",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "OPTIONAL-ADAPTERS": {
       "commit": "deadbee",
@@ -148,7 +148,7 @@
     "RANGE-CONTRACT": {
       "commit": "dc8c39c",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "README-LEGACY-MAP": {
       "commit": "6ebf303",
@@ -198,7 +198,7 @@
     "SSE-HANDSHAKE": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "STATE-FLAGS-CLARIFY": {
       "commit": "ed073fd",
@@ -208,7 +208,7 @@
     "STRINGS-ASSERTS": {
       "commit": "af974cb",
       "status": "done",
-      "updated_at": "2025-11-11T23:04:43+00:00"
+      "updated_at": "2025-11-27T11:54:30+01:00"
     },
     "STRINGS-COMPACT": {
       "commit": "af974cb",
