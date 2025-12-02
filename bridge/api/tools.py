@@ -22,6 +22,7 @@ from ..features import (
     mmio,
     project,
     scalars,
+    search_function,
     strings,
     xrefs,
 )
@@ -1841,6 +1842,74 @@ def register_tools(
         valid, errors = validate_payload("search_functions.v1.json", data)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(data)
+
+    @server.tool()
+    @tracked_tool()
+    def find_in_function(
+        client,
+        address: str,
+        query: str,
+        mode: str = "both",
+        regex: bool = False,
+        case_sensitive: bool = False,
+        context_lines: int = 3,
+        limit: int = 50,
+    ) -> Dict[str, object]:
+        """
+        Search for text patterns within a function's disassembly or decompilation.
+
+        Useful for finding specific instructions, register usage, constants, or
+        code patterns within a single function. Performs server-side search and
+        returns only matches with surrounding context lines.
+
+        Args:
+            address: Function address (hex string like "0x401000")
+            query: Search string or regex pattern
+            mode: Search in "disasm", "decompile", or "both" (default: "both")
+            regex: Treat query as regex pattern (default: False)
+            case_sensitive: Perform case-sensitive search (default: False)
+            context_lines: Lines of context before/after match (default: 3, max: 16)
+            limit: Maximum matches to return per mode (default: 50, max: 200)
+
+        Returns:
+            Dictionary with matches from disassembly and/or decompilation, including
+            line numbers, matched text, and surrounding context for each match.
+
+        Examples:
+            # Find all references to offset 0x251 in function
+            find_in_function("0x401000", "0x251")
+
+            # Find register usage in disassembly only
+            find_in_function("0x401000", "R7", mode="disasm")
+
+            # Regex search for function calls
+            find_in_function("0x401000", r"BL\\s+0x[0-9A-Fa-f]+", regex=True)
+
+            # Find variable in decompiled code
+            find_in_function("0x401000", "g_configTable", mode="decompile")
+        """
+        try:
+            with request_scope(
+                "find_in_function",
+                logger=logger,
+                extra={"tool": "find_in_function", "address": address, "query": query},
+            ):
+                data = search_function.find_in_function(
+                    client,
+                    address=parse_hex(address),
+                    query=query,
+                    mode=mode,
+                    regex=regex,
+                    case_sensitive=case_sensitive,
+                    context_lines=context_lines,
+                    limit=limit,
+                )
+        except ValueError as exc:
+            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+        except SafetyLimitExceeded as exc:
+            return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+
         return envelope_ok(data)
 
     @server.tool()
