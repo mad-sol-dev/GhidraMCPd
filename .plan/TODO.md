@@ -13,6 +13,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 
 ## NEXT
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
+- {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
 - {R.12} Write-path utilities (rename_function/set_comment/apply_label) with dry-run + env gate + error codes

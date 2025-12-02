@@ -527,6 +527,28 @@
       "status": "done"
     },
     {
+      "id": "R.29",
+      "title": "Character/token-based result limits for analyze_function_complete",
+      "area": "bridge",
+      "depends_on": [
+        "D.2"
+      ],
+      "dod": [
+        "Add max_chars or max_tokens option to decompile/disasm output controls",
+        "Existing max_lines remains for backward compatibility",
+        "Truncation respects both limits (whichever is reached first)",
+        "Documentation clarifies line vs char/token tradeoffs for token budgeting",
+        "Consider unlimited option (max_lines: null or max_lines: -1) for complete output",
+        "Tests cover char-based truncation and combined line+char limits"
+      ],
+      "status": "todo",
+      "notes": [
+        "Lines-based truncation can cut mid-block, leaving important logic invisible",
+        "Character/token limits align better with LLM context budgets",
+        "find_in_function already searches complete output; this is for analyze_function_complete UX"
+      ]
+    },
+    {
       "id": "T-202511-019",
       "title": "Refresh roadmap and plan backlog",
       "area": "planning",

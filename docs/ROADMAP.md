@@ -24,8 +24,12 @@
 ## B. ghidra-bridge tooling
 - ✅ Round out tool landscape
   - `strings_compact` now falls back to `search_strings("")` with documented limitations, and `search_xrefs_to` errors clearly when queries are non-empty.
+- ✅ Text search within functions (`find_in_function`)
+  - Server-side pattern matching in disassembly/decompilation with regex support, case sensitivity options, and configurable context windows around matches.
+- ◻ Token/character-based result limits
+  - Current `analyze_function_complete` truncates by line count (max 500), which can cut mid-block. Consider adding `max_chars` or `max_tokens` options to avoid abrupt truncation and better align with LLM token budgets.
 - ◻ High-level analysis recipes on existing tools
-  - Formalize LLM-side “String → Xrefs → Disasm,” “Scalar → MMIO → mmio_annotate_compact,” and “Region → list_functions_in_range → analyze_function_complete” workflows. Future: optional MCP meta-tools that package these.
+  - Formalize LLM-side "String → Xrefs → Disasm," "Scalar → MMIO → mmio_annotate_compact," and "Region → list_functions_in_range → analyze_function_complete" workflows. Future: optional MCP meta-tools that package these.
 - ◻ Write-path hygiene (rename/comments/labels)
   - Build small gated write tools such as `rename_function`, `set_comment`, or `apply_label`, each with dry-run options, explicit error codes, and clear docs about `GHIDRA_MCP_ENABLE_WRITES` requirements.
 
