@@ -200,8 +200,9 @@ def _resolve_register_indirect_address(
     return register_bases[base] + offset
 
 
-def _collect_operations(disassembly: Iterable[str]) -> List[_Operation]:
+def _collect_operations(disassembly: Iterable[str]) -> tuple[List[_Operation], int]:
     operations: List[_Operation] = []
+    skipped = 0
     lines = list(disassembly)
     memory_literals: Dict[int, int] = {}
     for line in lines:
@@ -260,15 +261,20 @@ def _collect_operations(disassembly: Iterable[str]) -> List[_Operation]:
             if target is None:
                 # Skip load/store instructions that do not reference an immediate
                 # address or a known base register.
+                skipped += 1
+                increment_counter("mmio.operations.skipped_no_target")
                 continue
         else:
             target = _extract_target(operands)
         operations.append(_Operation(addr=addr, op=op, target=target))
-    return operations
+    return operations, skipped
 
 
 _NOTE_WRITES_DISABLED = "writes disabled: annotations were not applied"
 _NOTE_DRY_RUN = "dry-run requested: annotations were not applied"
+_NOTE_SKIPPED_INDIRECT = (
+    "skipped register-indirect MMIO accesses; no immediate targets found."
+)
 
 
 class WritesDisabledError(RuntimeError):
@@ -287,7 +293,7 @@ def annotate(
 
     enforce_batch_limit(max_samples, counter="mmio.max_samples")
     disassembly = client.disassemble_function(function_addr)
-    operations = _collect_operations(disassembly)
+    operations, skipped = _collect_operations(disassembly)
 
     reads = sum(1 for op in operations if op.op == "READ")
     writes = sum(1 for op in operations if op.op == "WRITE")
@@ -305,6 +311,8 @@ def annotate(
         notes.append(_NOTE_DRY_RUN)
     if not writes_enabled:
         notes.append(_NOTE_WRITES_DISABLED)
+    if reads + writes == 0 and skipped > 0:
+        notes.append(_NOTE_SKIPPED_INDIRECT)
     if not dry_run and writes_enabled and samples:
         for op in operations[:max_samples]:
             comment = _format_comment(op)
