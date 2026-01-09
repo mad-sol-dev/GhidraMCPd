@@ -69,3 +69,6 @@ docs/api.tmp.md
 ghidra_*.zip
 images/ghidraMCPd_video_logo.png
 .mcp.json
+
+# Session notes (contains private paths)
+SESSION_NOTES.md
