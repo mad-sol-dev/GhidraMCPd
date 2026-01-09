@@ -128,3 +128,19 @@ def test_mmio_annotate_extracts_literal_and_offset_targets():
     assert "0x00430008" not in samples
     assert samples["0x0043000c"]["target"] == "0x00000008"
     assert "dry-run" in " ".join(payload["notes"])
+
+
+def test_mmio_annotate_notes_skipped_indirect_accesses():
+    disassembly = [
+        "00435000: LDR R0, [R1]",
+        "00435004: STR R0, [R2]",
+        "00435008: NOP",
+    ]
+    client = DummyClient(disassembly)
+
+    payload = mmio.annotate(client, function_addr=0x435000)
+
+    assert payload["reads"] == 0
+    assert payload["writes"] == 0
+    assert payload["samples"] == []
+    assert "skipped register-indirect mmio accesses" in " ".join(payload["notes"]).lower()
