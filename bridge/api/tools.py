@@ -88,7 +88,12 @@ def _maybe_autoopen_program(
         if isinstance(path_val, str) and path_val:
             path = path_val
 
-    payload = client.open_program(domain_file_id, path=path, on_dirty=on_dirty)
+    open_kwargs: Dict[str, object] = {}
+    if path is not None:
+        open_kwargs["path"] = path
+    if on_dirty is not None:
+        open_kwargs["on_dirty"] = on_dirty
+    payload = client.open_program(domain_file_id, **open_kwargs)
     if payload is None:
         upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
         return (
