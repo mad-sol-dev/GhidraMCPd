@@ -13,7 +13,6 @@ All endpoints use the envelope `{ok, data|null, errors[]}` with error entries sh
 - `POST /api/search_xrefs_to.json`
 - `POST /api/search_scalars.json`
 - `POST /api/list_functions_in_range.json`
-- `POST /api/find_in_function.json`
 - `POST /api/disassemble_at.json`
 - `POST /api/read_bytes.json`
 - `POST /api/write_bytes.json`
@@ -121,88 +120,6 @@ List all functions within an address range.
 - `address_min`, `address_max`: hex strings (inclusive range)
 - `size`: optional, number of addresses in function body
 - `limit`: max 500
-
-### Find in function
-
-`POST /api/find_in_function.json` (MCP tool: `find_in_function`)
-
-Search for text patterns within a function's disassembly or decompilation.
-
-**Request:**
-```json
-{
-  "address": "0x00401000",
-  "query": "0x251",
-  "mode": "both",
-  "regex": false,
-  "case_sensitive": false,
-  "context_lines": 3,
-  "limit": 50
-}
-```
-
-**Response:**
-```json
-{
-  "ok": true,
-  "data": {
-    "address": "0x00401000",
-    "query": "0x251",
-    "mode": "both",
-    "regex": false,
-    "case_sensitive": false,
-    "matches": {
-      "disassembly": [
-        {
-          "line_number": 42,
-          "address": "0x00401028",
-          "matched_text": "MOV R0, #0x251",
-          "context": {
-            "before": ["...", "..."],
-            "match": "MOV R0, #0x251",
-            "after": ["...", "..."]
-          }
-        }
-      ],
-      "decompile": [
-        {
-          "line_number": 15,
-          "matched_text": "offset = 0x251;",
-          "context": {
-            "before": ["void init() {", "  int offset;"],
-            "match": "  offset = 0x251;",
-            "after": ["  configure(offset);", "}"]
-          }
-        }
-      ]
-    },
-    "summary": {
-      "total_matches": 2,
-      "disassembly_matches": 1,
-      "decompile_matches": 1,
-      "truncated": false
-    }
-  },
-  "errors": []
-}
-```
-
-Parameters:
-- `address`: Function address (hex string, required)
-- `query`: Search string or regex pattern (required)
-- `mode`: Search in `"disasm"`, `"decompile"`, or `"both"` (default: `"both"`)
-- `regex`: Treat query as regex pattern (default: `false`)
-- `case_sensitive`: Perform case-sensitive search (default: `false`)
-- `context_lines`: Lines before/after match to include (0-16, default: 3)
-- `limit`: Max matches per mode (1-200, default: 50)
-
-**Use cases:**
-- Find all references to a specific offset/constant within a function
-- Search for register usage in disassembly (e.g., `"R7"`, `"SP"`)
-- Find variable names in decompiled code
-- Regex search for instruction patterns (e.g., `r"BL\s+0x[0-9A-Fa-f]+"`)
-
-**Token efficiency:** Server-side search returns only matches with context windows, avoiding the need to transfer entire function listings.
 
 ### Disassemble at
 
@@ -995,12 +912,14 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
   ```json
   {
     "domain_file_id": "string",
     "locked": false,
+    "state": "IDLE",
     "warnings": [
       "string"
     ]
@@ -1019,12 +938,14 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
   ```json
   {
     "domain_file_id": "string",
     "locked": false,
+    "state": "IDLE",
     "warnings": [
       "string"
     ]
@@ -2314,12 +2235,14 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
   ```json
   {
     "domain_file_id": "string",
     "locked": false,
+    "state": "IDLE",
     "warnings": [
       "string"
     ]
