@@ -15,6 +15,16 @@ _ADDRESS_RE = re.compile(r"^\s*([0-9A-Fa-f]+):\s*(.+?)\s*$")
 _LITERAL_IMMEDIATE_RE = re.compile(r"=\s*(-?0x[0-9a-fA-F]+)")
 _BRACKET_IMMEDIATE_RE = re.compile(r"\[[^\]]*#\s*(-?0x[0-9a-fA-F]+)")
 _HASH_IMMEDIATE_RE = re.compile(r"#\s*(-?0x[0-9a-fA-F]+)")
+_DATA_VALUE_RE = re.compile(r"^(?:\.word|DCD|DCW|DCB)?\s*(-?0x[0-9A-Fa-f]+)\s*$", re.IGNORECASE)
+_REGISTER_RE = re.compile(r"^(R\d+|SP|LR|PC)$", re.IGNORECASE)
+_BRACKET_BASE_RE = re.compile(
+    r"\[\s*(R\d+|SP|LR|PC)\s*(?:,\s*#\s*(-?0x[0-9A-Fa-f]+))?\s*\]",
+    re.IGNORECASE,
+)
+_ADD_IMMEDIATE_RE = re.compile(
+    r"^\s*(R\d+|SP|LR|PC)\s*,\s*(R\d+|SP|LR|PC)\s*,\s*#\s*(-?0x[0-9A-Fa-f]+)\s*$",
+    re.IGNORECASE,
+)
 _ARM_CONDITION_CODES = {
     "EQ",
     "NE",
@@ -72,6 +82,27 @@ def _parse_line(line: str) -> Optional[tuple[int, str, str]]:
     return addr, mnemonic, operands
 
 
+def _parse_data_line(line: str) -> Optional[tuple[int, int]]:
+    match = _ADDRESS_RE.match(line)
+    if not match:
+        return None
+    try:
+        addr = int(match.group(1), 16)
+    except ValueError:
+        return None
+    body = match.group(2).strip()
+    if not body:
+        return None
+    data_match = _DATA_VALUE_RE.match(body)
+    if not data_match:
+        return None
+    try:
+        value = int(data_match.group(1), 16)
+    except ValueError:
+        return None
+    return addr, value
+
+
 def _is_base_load_store(mnemonic: str, base: str) -> bool:
     if not mnemonic.startswith(base):
         return False
@@ -117,22 +148,121 @@ def _extract_target(operands: str) -> Optional[int]:
     return None
 
 
+def _normalize_register(register: str) -> Optional[str]:
+    match = _REGISTER_RE.match(register.strip())
+    if not match:
+        return None
+    return match.group(1).upper()
+
+
+def _extract_dest_register(operands: str) -> Optional[str]:
+    if not operands:
+        return None
+    dest = operands.split(",", 1)[0]
+    return _normalize_register(dest)
+
+
+def _extract_literal_load_value(
+    operands: str, *, addr: int, memory_literals: Dict[int, int]
+) -> Optional[int]:
+    literal = _LITERAL_IMMEDIATE_RE.search(operands)
+    if literal:
+        try:
+            return int(literal.group(1), 16)
+        except ValueError:
+            return None
+    bracket = _BRACKET_BASE_RE.search(operands)
+    if bracket:
+        base = _normalize_register(bracket.group(1))
+        if base == "PC":
+            try:
+                offset = int(bracket.group(2), 16) if bracket.group(2) else 0
+            except ValueError:
+                return None
+            literal_addr = addr + 8 + offset
+            return memory_literals.get(literal_addr)
+    return None
+
+
+def _resolve_register_indirect_address(
+    operands: str, register_bases: Dict[str, int]
+) -> Optional[int]:
+    bracket = _BRACKET_BASE_RE.search(operands)
+    if not bracket:
+        return None
+    base = _normalize_register(bracket.group(1))
+    if base is None or base not in register_bases:
+        return None
+    try:
+        offset = int(bracket.group(2), 16) if bracket.group(2) else 0
+    except ValueError:
+        return None
+    return register_bases[base] + offset
+
+
 def _collect_operations(disassembly: Iterable[str]) -> List[_Operation]:
     operations: List[_Operation] = []
-    for line in disassembly:
+    lines = list(disassembly)
+    memory_literals: Dict[int, int] = {}
+    for line in lines:
+        data_line = _parse_data_line(line)
+        if data_line:
+            addr, value = data_line
+            memory_literals[addr] = value
+    register_bases: Dict[str, int] = {}
+    for line in lines:
+        if _parse_data_line(line):
+            continue
         parsed = _parse_line(line)
         if not parsed:
             continue
         addr, mnemonic, operands = parsed
+        literal_load_value = None
+        if _is_base_load_store(mnemonic, "LDR"):
+            dest_register = _extract_dest_register(operands)
+            literal_load_value = _extract_literal_load_value(
+                operands, addr=addr, memory_literals=memory_literals
+            )
+            if dest_register and literal_load_value is not None:
+                register_bases[dest_register] = literal_load_value
+            elif dest_register:
+                indirect_address = _resolve_register_indirect_address(operands, register_bases)
+                if indirect_address is not None and indirect_address in memory_literals:
+                    register_bases[dest_register] = memory_literals[indirect_address]
+        if mnemonic.startswith("ADD"):
+            add_match = _ADD_IMMEDIATE_RE.match(operands)
+            if add_match:
+                dest_register = _normalize_register(add_match.group(1))
+                src_register = _normalize_register(add_match.group(2))
+                if dest_register and src_register and src_register in register_bases:
+                    try:
+                        offset = int(add_match.group(3), 16)
+                    except ValueError:
+                        offset = None
+                    if offset is not None:
+                        register_bases[dest_register] = register_bases[src_register] + offset
         op = _classify(mnemonic)
         if not op:
             continue
-        target = _extract_target(operands)
-        if op in {"READ", "WRITE"} and target is None:
-            # Skip load/store instructions that do not reference an immediate
-            # address. This filters out register-indirect accesses that are not
-            # indicative of MMIO heuristics.
-            continue
+        target = None
+        if op in {"READ", "WRITE"}:
+            if op == "READ" and literal_load_value is not None:
+                target = literal_load_value
+            else:
+                resolved_address = _resolve_register_indirect_address(operands, register_bases)
+                if resolved_address is not None:
+                    if op == "READ" and resolved_address in memory_literals:
+                        target = memory_literals[resolved_address]
+                    else:
+                        target = resolved_address
+            if target is None:
+                target = _extract_target(operands)
+            if target is None:
+                # Skip load/store instructions that do not reference an immediate
+                # address or a known base register.
+                continue
+        else:
+            target = _extract_target(operands)
         operations.append(_Operation(addr=addr, op=op, target=target))
     return operations
 
