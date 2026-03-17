@@ -48,9 +48,16 @@ import ghidra.util.task.TaskMonitor;
 import ghidra.program.model.pcode.HighVariable;
 import ghidra.program.model.pcode.Varnode;
 import ghidra.program.model.data.DataType;
+import ghidra.program.model.data.DataTypeConflictHandler;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.CategoryPath;
 import ghidra.program.model.data.PointerDataType;
+import ghidra.program.model.data.StructureDataType;
+import ghidra.program.model.data.UnionDataType;
+import ghidra.program.model.data.Structure;
+import ghidra.program.model.data.Union;
 import ghidra.program.model.data.Undefined1DataType;
+import ghidra.program.model.data.DataTypePath;
 import ghidra.program.model.listing.Variable;
 import ghidra.app.decompiler.component.DecompilerUtils;
 import ghidra.app.decompiler.ClangToken;
@@ -824,6 +831,36 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 return;
             }
             plugin.sendResponse(exchange, plugin.readBytesBase64(address, length));
+        });
+
+        registerProgramHandler(server, "/createStructure", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.sendJsonResponse(exchange,
+                plugin.createDataType("structure", params.get("name"), params.get("category"), params.get("fields")));
+        });
+
+        registerProgramHandler(server, "/createUnion", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.sendJsonResponse(exchange,
+                plugin.createDataType("union", params.get("name"), params.get("category"), params.get("fields")));
+        });
+
+        registerProgramHandler(server, "/updateStructure", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.sendJsonResponse(exchange,
+                plugin.updateDataType("structure", params.get("path"), params.get("fields")));
+        });
+
+        registerProgramHandler(server, "/updateUnion", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.sendJsonResponse(exchange,
+                plugin.updateDataType("union", params.get("path"), params.get("fields")));
+        });
+
+        registerProgramHandler(server, "/deleteDataType", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            plugin.sendJsonResponse(exchange,
+                plugin.deleteDataType(params.get("kind"), params.get("path")));
         });
     }
 
@@ -2237,6 +2274,435 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
         }
         return sb.toString();
+    }
+
+    // ----------------------------------------------------------------------------------
+    // Datatype CRUD operations (createStructure, createUnion, updateStructure, etc.)
+    // ----------------------------------------------------------------------------------
+
+    private String createDataType(String kind, String name, String category, String fieldsJson) {
+        if (name == null || name.isEmpty()) {
+            return dtOpError("name parameter is required");
+        }
+        if (category == null || category.isEmpty()) {
+            category = "/";
+        }
+
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return dtOpError("No program loaded");
+        }
+
+        List<Map<String, String>> fields = parseFieldsJson(fieldsJson);
+        if (fields == null) {
+            return dtOpError("Invalid or missing fields JSON");
+        }
+
+        DataTypeManager dtm = program.getDataTypeManager();
+        CategoryPath catPath = new CategoryPath(category);
+
+        // Check if datatype already exists
+        DataType existing = dtm.getDataType(catPath, name);
+        if (existing != null) {
+            return dtOpError("DataType already exists at path " + existing.getPathName());
+        }
+
+        final String finalCategory = category;
+        StringBuilder result = new StringBuilder();
+        AtomicBoolean success = new AtomicBoolean(false);
+
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                int tx = program.startTransaction("Create " + kind + " " + name);
+                try {
+                    DataType created;
+                    if ("union".equals(kind)) {
+                        created = createUnionType(dtm, catPath, name, fields);
+                    } else {
+                        created = createStructureType(dtm, catPath, name, fields);
+                    }
+                    result.append(serializeDataType(created, kind));
+                    success.set(true);
+                } catch (Exception e) {
+                    Msg.error(this, "Error creating " + kind + " " + name, e);
+                    result.append(dtOpError("Failed to create " + kind + ": " + e.getMessage()));
+                } finally {
+                    program.endTransaction(tx, success.get());
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException e) {
+            Msg.error(this, "Failed to create datatype on Swing thread", e);
+            return dtOpError("Swing thread error: " + e.getMessage());
+        }
+
+        return result.toString();
+    }
+
+    private DataType createStructureType(DataTypeManager dtm, CategoryPath catPath, String name,
+                                          List<Map<String, String>> fields) {
+        StructureDataType struct = new StructureDataType(catPath, name, 0, dtm);
+        for (Map<String, String> field : fields) {
+            String fieldName = field.get("name");
+            String fieldType = field.get("type");
+            String offsetStr = field.get("offset");
+            String lengthStr = field.get("length");
+
+            DataType fieldDt = resolveDataType(dtm, fieldType);
+            int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
+            if (fieldLen <= 0) fieldLen = 1;
+
+            if (offsetStr != null) {
+                int offset = Integer.parseInt(offsetStr);
+                // Grow structure if needed
+                while (struct.getLength() < offset + fieldLen) {
+                    struct.add(Undefined1DataType.dataType, 1, null, null);
+                }
+                struct.replaceAtOffset(offset, fieldDt, fieldLen, fieldName, null);
+            } else {
+                struct.add(fieldDt, fieldLen, fieldName, null);
+            }
+        }
+        return dtm.addDataType(struct, DataTypeConflictHandler.REPLACE_HANDLER);
+    }
+
+    private DataType createUnionType(DataTypeManager dtm, CategoryPath catPath, String name,
+                                      List<Map<String, String>> fields) {
+        UnionDataType union = new UnionDataType(catPath, name, dtm);
+        for (Map<String, String> field : fields) {
+            String fieldName = field.get("name");
+            String fieldType = field.get("type");
+            String lengthStr = field.get("length");
+
+            DataType fieldDt = resolveDataType(dtm, fieldType);
+            int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
+            if (fieldLen <= 0) fieldLen = 1;
+
+            union.add(fieldDt, fieldLen, fieldName, null);
+        }
+        return dtm.addDataType(union, DataTypeConflictHandler.REPLACE_HANDLER);
+    }
+
+    private String updateDataType(String kind, String path, String fieldsJson) {
+        if (path == null || path.isEmpty()) {
+            return dtOpError("path parameter is required");
+        }
+
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return dtOpError("No program loaded");
+        }
+
+        List<Map<String, String>> fields = parseFieldsJson(fieldsJson);
+        if (fields == null) {
+            return dtOpError("Invalid or missing fields JSON");
+        }
+
+        DataTypeManager dtm = program.getDataTypeManager();
+
+        // Resolve path: ensure leading slash
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        DataType existing = dtm.getDataType(path);
+        if (existing == null) {
+            return dtOpError("DataType not found at path: " + path);
+        }
+
+        final String resolvedKind;
+        if (existing instanceof Structure) {
+            resolvedKind = "structure";
+        } else if (existing instanceof Union) {
+            resolvedKind = "union";
+        } else {
+            return dtOpError("DataType at " + path + " is not a structure or union");
+        }
+
+        StringBuilder result = new StringBuilder();
+        AtomicBoolean success = new AtomicBoolean(false);
+
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                int tx = program.startTransaction("Update " + resolvedKind + " " + existing.getName());
+                try {
+                    if (existing instanceof Structure) {
+                        updateStructureFields((Structure) existing, dtm, fields);
+                    } else {
+                        updateUnionFields((Union) existing, dtm, fields);
+                    }
+                    result.append(serializeDataType(existing, resolvedKind));
+                    success.set(true);
+                } catch (Exception e) {
+                    Msg.error(this, "Error updating " + resolvedKind, e);
+                    result.append(dtOpError("Failed to update: " + e.getMessage()));
+                } finally {
+                    program.endTransaction(tx, success.get());
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException e) {
+            Msg.error(this, "Failed to update datatype on Swing thread", e);
+            return dtOpError("Swing thread error: " + e.getMessage());
+        }
+
+        return result.toString();
+    }
+
+    private void updateStructureFields(Structure struct, DataTypeManager dtm,
+                                        List<Map<String, String>> fields) {
+        // Clear existing fields
+        struct.deleteAll();
+
+        for (Map<String, String> field : fields) {
+            String fieldName = field.get("name");
+            String fieldType = field.get("type");
+            String offsetStr = field.get("offset");
+            String lengthStr = field.get("length");
+
+            DataType fieldDt = resolveDataType(dtm, fieldType);
+            int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
+            if (fieldLen <= 0) fieldLen = 1;
+
+            if (offsetStr != null) {
+                int offset = Integer.parseInt(offsetStr);
+                while (struct.getLength() < offset + fieldLen) {
+                    struct.add(Undefined1DataType.dataType, 1, null, null);
+                }
+                struct.replaceAtOffset(offset, fieldDt, fieldLen, fieldName, null);
+            } else {
+                struct.add(fieldDt, fieldLen, fieldName, null);
+            }
+        }
+    }
+
+    private void updateUnionFields(Union union, DataTypeManager dtm,
+                                    List<Map<String, String>> fields) {
+        // Remove all existing components
+        while (union.getNumComponents() > 0) {
+            union.delete(0);
+        }
+
+        for (Map<String, String> field : fields) {
+            String fieldName = field.get("name");
+            String fieldType = field.get("type");
+            String lengthStr = field.get("length");
+
+            DataType fieldDt = resolveDataType(dtm, fieldType);
+            int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
+            if (fieldLen <= 0) fieldLen = 1;
+
+            union.add(fieldDt, fieldLen, fieldName, null);
+        }
+    }
+
+    private String deleteDataType(String kind, String path) {
+        if (path == null || path.isEmpty()) {
+            return dtOpError("path parameter is required");
+        }
+
+        Program program = getCurrentProgram();
+        if (program == null) {
+            return dtOpError("No program loaded");
+        }
+
+        DataTypeManager dtm = program.getDataTypeManager();
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        DataType existing = dtm.getDataType(path);
+        if (existing == null) {
+            return dtOpError("DataType not found at path: " + path);
+        }
+
+        final String dtPath = existing.getPathName();
+        final String dtKind = (existing instanceof Union) ? "union" : "structure";
+        AtomicBoolean success = new AtomicBoolean(false);
+
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                int tx = program.startTransaction("Delete " + dtKind + " " + existing.getName());
+                try {
+                    dtm.remove(existing, TaskMonitor.DUMMY);
+                    success.set(true);
+                } catch (Exception e) {
+                    Msg.error(this, "Error deleting datatype", e);
+                } finally {
+                    program.endTransaction(tx, success.get());
+                }
+            });
+        } catch (InterruptedException | InvocationTargetException e) {
+            Msg.error(this, "Failed to delete datatype on Swing thread", e);
+            return dtOpError("Swing thread error: " + e.getMessage());
+        }
+
+        if (!success.get()) {
+            return dtOpError("Failed to delete datatype at " + dtPath);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"ok\":true,\"datatype\":{");
+        appendJsonField(sb, "kind", dtKind);
+        appendJsonField(sb, "path", dtPath);
+        trimTrailingComma(sb);
+        sb.append("}}");
+        return sb.toString();
+    }
+
+    private String serializeDataType(DataType dt, String kind) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"ok\":true,\"datatype\":{");
+        appendJsonField(sb, "kind", kind);
+        appendJsonField(sb, "name", dt.getName());
+        String catPath = dt.getCategoryPath().getPath();
+        appendJsonField(sb, "category", catPath);
+        appendJsonField(sb, "path", dt.getPathName());
+        sb.append("\"size\":").append(dt.getLength()).append(',');
+
+        sb.append("\"fields\":[");
+        if (dt instanceof Structure) {
+            Structure struct = (Structure) dt;
+            boolean first = true;
+            for (var comp : struct.getDefinedComponents()) {
+                if (!first) sb.append(',');
+                first = false;
+                sb.append('{');
+                appendJsonField(sb, "name", comp.getFieldName());
+                appendJsonField(sb, "type", comp.getDataType().getName());
+                sb.append("\"offset\":").append(comp.getOffset()).append(',');
+                sb.append("\"length\":").append(comp.getLength());
+                sb.append('}');
+            }
+        } else if (dt instanceof Union) {
+            Union union = (Union) dt;
+            boolean first = true;
+            for (var comp : union.getDefinedComponents()) {
+                if (!first) sb.append(',');
+                first = false;
+                sb.append('{');
+                appendJsonField(sb, "name", comp.getFieldName());
+                appendJsonField(sb, "type", comp.getDataType().getName());
+                sb.append("\"length\":").append(comp.getLength());
+                sb.append('}');
+            }
+        }
+        sb.append(']');
+
+        sb.append("}}");
+        return sb.toString();
+    }
+
+    private String dtOpError(String message) {
+        return "{\"ok\":false,\"error\":\"" + jsonEscape(message) + "\"}";
+    }
+
+    private List<Map<String, String>> parseFieldsJson(String fieldsJson) {
+        if (fieldsJson == null || fieldsJson.isEmpty()) {
+            return null;
+        }
+        try {
+            // Minimal JSON array parser for field objects
+            // Expected format: [{"name":"x","type":"int","offset":0},...]
+            List<Map<String, String>> result = new ArrayList<>();
+            fieldsJson = fieldsJson.trim();
+            if (!fieldsJson.startsWith("[") || !fieldsJson.endsWith("]")) {
+                return null;
+            }
+            // Strip outer brackets
+            String inner = fieldsJson.substring(1, fieldsJson.length() - 1).trim();
+            if (inner.isEmpty()) {
+                return result;
+            }
+
+            // Split on top-level commas between objects
+            List<String> objects = splitJsonObjects(inner);
+            for (String obj : objects) {
+                obj = obj.trim();
+                if (!obj.startsWith("{") || !obj.endsWith("}")) {
+                    continue;
+                }
+                Map<String, String> fieldMap = parseJsonObject(obj);
+                if (fieldMap != null && fieldMap.containsKey("name") && fieldMap.containsKey("type")) {
+                    result.add(fieldMap);
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            Msg.error(this, "Error parsing fields JSON", e);
+            return null;
+        }
+    }
+
+    private List<String> splitJsonObjects(String inner) {
+        List<String> objects = new ArrayList<>();
+        int depth = 0;
+        int start = 0;
+        for (int i = 0; i < inner.length(); i++) {
+            char c = inner.charAt(i);
+            if (c == '{') depth++;
+            else if (c == '}') depth--;
+            else if (c == ',' && depth == 0) {
+                objects.add(inner.substring(start, i));
+                start = i + 1;
+            }
+        }
+        if (start < inner.length()) {
+            objects.add(inner.substring(start));
+        }
+        return objects;
+    }
+
+    private Map<String, String> parseJsonObject(String obj) {
+        // Strip braces
+        String content = obj.substring(1, obj.length() - 1).trim();
+        Map<String, String> map = new HashMap<>();
+
+        // Parse key-value pairs, handling quoted strings and numbers
+        int i = 0;
+        while (i < content.length()) {
+            // Skip whitespace and commas
+            while (i < content.length() && (content.charAt(i) == ' ' || content.charAt(i) == ','
+                    || content.charAt(i) == '\n' || content.charAt(i) == '\r' || content.charAt(i) == '\t')) {
+                i++;
+            }
+            if (i >= content.length()) break;
+
+            // Parse key (expect quoted string)
+            if (content.charAt(i) != '"') break;
+            i++; // skip opening quote
+            int keyStart = i;
+            while (i < content.length() && content.charAt(i) != '"') i++;
+            String key = content.substring(keyStart, i);
+            i++; // skip closing quote
+
+            // Skip colon and whitespace
+            while (i < content.length() && (content.charAt(i) == ':' || content.charAt(i) == ' ')) i++;
+            if (i >= content.length()) break;
+
+            // Parse value
+            String value;
+            if (content.charAt(i) == '"') {
+                // String value
+                i++; // skip opening quote
+                StringBuilder valBuf = new StringBuilder();
+                while (i < content.length() && content.charAt(i) != '"') {
+                    if (content.charAt(i) == '\\' && i + 1 < content.length()) {
+                        i++; // skip escape char
+                    }
+                    valBuf.append(content.charAt(i));
+                    i++;
+                }
+                value = valBuf.toString();
+                i++; // skip closing quote
+            } else {
+                // Number or literal value
+                int valStart = i;
+                while (i < content.length() && content.charAt(i) != ',' && content.charAt(i) != '}'
+                        && content.charAt(i) != ' ') {
+                    i++;
+                }
+                value = content.substring(valStart, i).trim();
+            }
+            map.put(key, value);
+        }
+        return map;
     }
 
     /**
