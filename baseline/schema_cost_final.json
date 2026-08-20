@@ -1,0 +1,668 @@
+{
+  "introspect": {
+    "source": "introspect",
+    "tool_count": 36,
+    "tools": [
+      {
+        "description_chars": 2361,
+        "estimate_tokens": 783,
+        "has_description": true,
+        "schema_chars": 593,
+        "tool": "collect",
+        "total_chars": 2961,
+        "total_tokens": 740
+      },
+      {
+        "description_chars": 1708,
+        "estimate_tokens": 600,
+        "has_description": true,
+        "schema_chars": 540,
+        "tool": "analyze_function_complete",
+        "total_chars": 2273,
+        "total_tokens": 568
+      },
+      {
+        "description_chars": 1521,
+        "estimate_tokens": 552,
+        "has_description": true,
+        "schema_chars": 542,
+        "tool": "disassemble_batch",
+        "total_chars": 2080,
+        "total_tokens": 520
+      },
+      {
+        "description_chars": 887,
+        "estimate_tokens": 397,
+        "has_description": true,
+        "schema_chars": 572,
+        "tool": "jt_slot_process",
+        "total_chars": 1474,
+        "total_tokens": 368
+      },
+      {
+        "description_chars": 831,
+        "estimate_tokens": 337,
+        "has_description": true,
+        "schema_chars": 402,
+        "tool": "datatypes_create",
+        "total_chars": 1249,
+        "total_tokens": 312
+      },
+      {
+        "description_chars": 717,
+        "estimate_tokens": 328,
+        "has_description": true,
+        "schema_chars": 472,
+        "tool": "search_functions",
+        "total_chars": 1205,
+        "total_tokens": 301
+      },
+      {
+        "description_chars": 665,
+        "estimate_tokens": 324,
+        "has_description": true,
+        "schema_chars": 507,
+        "tool": "find_in_function",
+        "total_chars": 1188,
+        "total_tokens": 297
+      },
+      {
+        "description_chars": 798,
+        "estimate_tokens": 320,
+        "has_description": true,
+        "schema_chars": 375,
+        "tool": "jt_slot_check",
+        "total_chars": 1186,
+        "total_tokens": 296
+      },
+      {
+        "description_chars": 787,
+        "estimate_tokens": 315,
+        "has_description": true,
+        "schema_chars": 355,
+        "tool": "search_scalars_with_context",
+        "total_chars": 1169,
+        "total_tokens": 292
+      },
+      {
+        "description_chars": 964,
+        "estimate_tokens": 294,
+        "has_description": true,
+        "schema_chars": 121,
+        "tool": "list_mutations",
+        "total_chars": 1099,
+        "total_tokens": 274
+      },
+      {
+        "description_chars": 706,
+        "estimate_tokens": 275,
+        "has_description": true,
+        "schema_chars": 289,
+        "tool": "mmio_annotate_compact",
+        "total_chars": 1016,
+        "total_tokens": 254
+      },
+      {
+        "description_chars": 590,
+        "estimate_tokens": 275,
+        "has_description": true,
+        "schema_chars": 405,
+        "tool": "jt_scan",
+        "total_chars": 1002,
+        "total_tokens": 250
+      },
+      {
+        "description_chars": 634,
+        "estimate_tokens": 263,
+        "has_description": true,
+        "schema_chars": 319,
+        "tool": "search_strings",
+        "total_chars": 967,
+        "total_tokens": 241
+      },
+      {
+        "description_chars": 596,
+        "estimate_tokens": 261,
+        "has_description": true,
+        "schema_chars": 343,
+        "tool": "datatypes_update",
+        "total_chars": 955,
+        "total_tokens": 238
+      },
+      {
+        "description_chars": 677,
+        "estimate_tokens": 259,
+        "has_description": true,
+        "schema_chars": 267,
+        "tool": "read_words",
+        "total_chars": 954,
+        "total_tokens": 238
+      },
+      {
+        "description_chars": 519,
+        "estimate_tokens": 236,
+        "has_description": true,
+        "schema_chars": 329,
+        "tool": "set_comment",
+        "total_chars": 859,
+        "total_tokens": 214
+      },
+      {
+        "description_chars": 541,
+        "estimate_tokens": 224,
+        "has_description": true,
+        "schema_chars": 263,
+        "tool": "project_rebase",
+        "total_chars": 818,
+        "total_tokens": 204
+      },
+      {
+        "description_chars": 546,
+        "estimate_tokens": 221,
+        "has_description": true,
+        "schema_chars": 246,
+        "tool": "disassemble_at",
+        "total_chars": 806,
+        "total_tokens": 201
+      },
+      {
+        "description_chars": 523,
+        "estimate_tokens": 220,
+        "has_description": true,
+        "schema_chars": 261,
+        "tool": "strings_compact",
+        "total_chars": 799,
+        "total_tokens": 199
+      },
+      {
+        "description_chars": 480,
+        "estimate_tokens": 218,
+        "has_description": true,
+        "schema_chars": 295,
+        "tool": "search_xrefs_to",
+        "total_chars": 790,
+        "total_tokens": 197
+      },
+      {
+        "description_chars": 433,
+        "estimate_tokens": 218,
+        "has_description": true,
+        "schema_chars": 333,
+        "tool": "list_functions_in_range",
+        "total_chars": 789,
+        "total_tokens": 197
+      },
+      {
+        "description_chars": 403,
+        "estimate_tokens": 201,
+        "has_description": true,
+        "schema_chars": 308,
+        "tool": "write_bytes",
+        "total_chars": 722,
+        "total_tokens": 180
+      },
+      {
+        "description_chars": 442,
+        "estimate_tokens": 194,
+        "has_description": true,
+        "schema_chars": 247,
+        "tool": "select_program",
+        "total_chars": 703,
+        "total_tokens": 175
+      },
+      {
+        "description_chars": 438,
+        "estimate_tokens": 192,
+        "has_description": true,
+        "schema_chars": 238,
+        "tool": "search_exports",
+        "total_chars": 690,
+        "total_tokens": 172
+      },
+      {
+        "description_chars": 395,
+        "estimate_tokens": 181,
+        "has_description": true,
+        "schema_chars": 237,
+        "tool": "datatypes_delete",
+        "total_chars": 648,
+        "total_tokens": 162
+      },
+      {
+        "description_chars": 384,
+        "estimate_tokens": 178,
+        "has_description": true,
+        "schema_chars": 238,
+        "tool": "search_imports",
+        "total_chars": 636,
+        "total_tokens": 159
+      },
+      {
+        "description_chars": 356,
+        "estimate_tokens": 179,
+        "has_description": true,
+        "schema_chars": 269,
+        "tool": "search_scalars",
+        "total_chars": 639,
+        "total_tokens": 159
+      },
+      {
+        "description_chars": 396,
+        "estimate_tokens": 174,
+        "has_description": true,
+        "schema_chars": 209,
+        "tool": "string_xrefs_compact",
+        "total_chars": 625,
+        "total_tokens": 156
+      },
+      {
+        "description_chars": 328,
+        "estimate_tokens": 169,
+        "has_description": true,
+        "schema_chars": 266,
+        "tool": "read_bytes",
+        "total_chars": 604,
+        "total_tokens": 151
+      },
+      {
+        "description_chars": 411,
+        "estimate_tokens": 163,
+        "has_description": true,
+        "schema_chars": 161,
+        "tool": "save_program",
+        "total_chars": 584,
+        "total_tokens": 146
+      },
+      {
+        "description_chars": 308,
+        "estimate_tokens": 164,
+        "has_description": true,
+        "schema_chars": 257,
+        "tool": "rename_function",
+        "total_chars": 580,
+        "total_tokens": 145
+      },
+      {
+        "description_chars": 374,
+        "estimate_tokens": 130,
+        "has_description": true,
+        "schema_chars": 72,
+        "tool": "get_current_program",
+        "total_chars": 465,
+        "total_tokens": 116
+      },
+      {
+        "description_chars": 282,
+        "estimate_tokens": 122,
+        "has_description": true,
+        "schema_chars": 133,
+        "tool": "goto_address",
+        "total_chars": 427,
+        "total_tokens": 106
+      },
+      {
+        "description_chars": 326,
+        "estimate_tokens": 114,
+        "has_description": true,
+        "schema_chars": 65,
+        "tool": "project_info",
+        "total_chars": 403,
+        "total_tokens": 100
+      },
+      {
+        "description_chars": 245,
+        "estimate_tokens": 95,
+        "has_description": true,
+        "schema_chars": 69,
+        "tool": "project_overview",
+        "total_chars": 330,
+        "total_tokens": 82
+      },
+      {
+        "description_chars": 231,
+        "estimate_tokens": 92,
+        "has_description": true,
+        "schema_chars": 70,
+        "tool": "check_dirty_state",
+        "total_chars": 318,
+        "total_tokens": 79
+      }
+    ],
+    "total_chars": 34013,
+    "total_tokens": 8489,
+    "undocumented_tools": []
+  },
+  "wire": {
+    "source": "tools/list",
+    "tool_count": 36,
+    "tools": [
+      {
+        "description_chars": 2361,
+        "estimate_tokens": 783,
+        "has_description": true,
+        "schema_chars": 593,
+        "tool": "collect",
+        "total_chars": 2961,
+        "total_tokens": 740
+      },
+      {
+        "description_chars": 1708,
+        "estimate_tokens": 600,
+        "has_description": true,
+        "schema_chars": 540,
+        "tool": "analyze_function_complete",
+        "total_chars": 2273,
+        "total_tokens": 568
+      },
+      {
+        "description_chars": 1521,
+        "estimate_tokens": 552,
+        "has_description": true,
+        "schema_chars": 542,
+        "tool": "disassemble_batch",
+        "total_chars": 2080,
+        "total_tokens": 520
+      },
+      {
+        "description_chars": 887,
+        "estimate_tokens": 397,
+        "has_description": true,
+        "schema_chars": 572,
+        "tool": "jt_slot_process",
+        "total_chars": 1474,
+        "total_tokens": 368
+      },
+      {
+        "description_chars": 831,
+        "estimate_tokens": 337,
+        "has_description": true,
+        "schema_chars": 402,
+        "tool": "datatypes_create",
+        "total_chars": 1249,
+        "total_tokens": 312
+      },
+      {
+        "description_chars": 717,
+        "estimate_tokens": 328,
+        "has_description": true,
+        "schema_chars": 472,
+        "tool": "search_functions",
+        "total_chars": 1205,
+        "total_tokens": 301
+      },
+      {
+        "description_chars": 665,
+        "estimate_tokens": 324,
+        "has_description": true,
+        "schema_chars": 507,
+        "tool": "find_in_function",
+        "total_chars": 1188,
+        "total_tokens": 297
+      },
+      {
+        "description_chars": 798,
+        "estimate_tokens": 320,
+        "has_description": true,
+        "schema_chars": 375,
+        "tool": "jt_slot_check",
+        "total_chars": 1186,
+        "total_tokens": 296
+      },
+      {
+        "description_chars": 787,
+        "estimate_tokens": 315,
+        "has_description": true,
+        "schema_chars": 355,
+        "tool": "search_scalars_with_context",
+        "total_chars": 1169,
+        "total_tokens": 292
+      },
+      {
+        "description_chars": 964,
+        "estimate_tokens": 294,
+        "has_description": true,
+        "schema_chars": 121,
+        "tool": "list_mutations",
+        "total_chars": 1099,
+        "total_tokens": 274
+      },
+      {
+        "description_chars": 706,
+        "estimate_tokens": 275,
+        "has_description": true,
+        "schema_chars": 289,
+        "tool": "mmio_annotate_compact",
+        "total_chars": 1016,
+        "total_tokens": 254
+      },
+      {
+        "description_chars": 590,
+        "estimate_tokens": 275,
+        "has_description": true,
+        "schema_chars": 405,
+        "tool": "jt_scan",
+        "total_chars": 1002,
+        "total_tokens": 250
+      },
+      {
+        "description_chars": 634,
+        "estimate_tokens": 263,
+        "has_description": true,
+        "schema_chars": 319,
+        "tool": "search_strings",
+        "total_chars": 967,
+        "total_tokens": 241
+      },
+      {
+        "description_chars": 596,
+        "estimate_tokens": 261,
+        "has_description": true,
+        "schema_chars": 343,
+        "tool": "datatypes_update",
+        "total_chars": 955,
+        "total_tokens": 238
+      },
+      {
+        "description_chars": 677,
+        "estimate_tokens": 259,
+        "has_description": true,
+        "schema_chars": 267,
+        "tool": "read_words",
+        "total_chars": 954,
+        "total_tokens": 238
+      },
+      {
+        "description_chars": 519,
+        "estimate_tokens": 236,
+        "has_description": true,
+        "schema_chars": 329,
+        "tool": "set_comment",
+        "total_chars": 859,
+        "total_tokens": 214
+      },
+      {
+        "description_chars": 541,
+        "estimate_tokens": 224,
+        "has_description": true,
+        "schema_chars": 263,
+        "tool": "project_rebase",
+        "total_chars": 818,
+        "total_tokens": 204
+      },
+      {
+        "description_chars": 546,
+        "estimate_tokens": 221,
+        "has_description": true,
+        "schema_chars": 246,
+        "tool": "disassemble_at",
+        "total_chars": 806,
+        "total_tokens": 201
+      },
+      {
+        "description_chars": 523,
+        "estimate_tokens": 220,
+        "has_description": true,
+        "schema_chars": 261,
+        "tool": "strings_compact",
+        "total_chars": 799,
+        "total_tokens": 199
+      },
+      {
+        "description_chars": 480,
+        "estimate_tokens": 218,
+        "has_description": true,
+        "schema_chars": 295,
+        "tool": "search_xrefs_to",
+        "total_chars": 790,
+        "total_tokens": 197
+      },
+      {
+        "description_chars": 433,
+        "estimate_tokens": 218,
+        "has_description": true,
+        "schema_chars": 333,
+        "tool": "list_functions_in_range",
+        "total_chars": 789,
+        "total_tokens": 197
+      },
+      {
+        "description_chars": 403,
+        "estimate_tokens": 201,
+        "has_description": true,
+        "schema_chars": 308,
+        "tool": "write_bytes",
+        "total_chars": 722,
+        "total_tokens": 180
+      },
+      {
+        "description_chars": 442,
+        "estimate_tokens": 194,
+        "has_description": true,
+        "schema_chars": 247,
+        "tool": "select_program",
+        "total_chars": 703,
+        "total_tokens": 175
+      },
+      {
+        "description_chars": 438,
+        "estimate_tokens": 192,
+        "has_description": true,
+        "schema_chars": 238,
+        "tool": "search_exports",
+        "total_chars": 690,
+        "total_tokens": 172
+      },
+      {
+        "description_chars": 395,
+        "estimate_tokens": 181,
+        "has_description": true,
+        "schema_chars": 237,
+        "tool": "datatypes_delete",
+        "total_chars": 648,
+        "total_tokens": 162
+      },
+      {
+        "description_chars": 384,
+        "estimate_tokens": 178,
+        "has_description": true,
+        "schema_chars": 238,
+        "tool": "search_imports",
+        "total_chars": 636,
+        "total_tokens": 159
+      },
+      {
+        "description_chars": 356,
+        "estimate_tokens": 179,
+        "has_description": true,
+        "schema_chars": 269,
+        "tool": "search_scalars",
+        "total_chars": 639,
+        "total_tokens": 159
+      },
+      {
+        "description_chars": 396,
+        "estimate_tokens": 174,
+        "has_description": true,
+        "schema_chars": 209,
+        "tool": "string_xrefs_compact",
+        "total_chars": 625,
+        "total_tokens": 156
+      },
+      {
+        "description_chars": 328,
+        "estimate_tokens": 169,
+        "has_description": true,
+        "schema_chars": 266,
+        "tool": "read_bytes",
+        "total_chars": 604,
+        "total_tokens": 151
+      },
+      {
+        "description_chars": 411,
+        "estimate_tokens": 163,
+        "has_description": true,
+        "schema_chars": 161,
+        "tool": "save_program",
+        "total_chars": 584,
+        "total_tokens": 146
+      },
+      {
+        "description_chars": 308,
+        "estimate_tokens": 164,
+        "has_description": true,
+        "schema_chars": 257,
+        "tool": "rename_function",
+        "total_chars": 580,
+        "total_tokens": 145
+      },
+      {
+        "description_chars": 374,
+        "estimate_tokens": 130,
+        "has_description": true,
+        "schema_chars": 72,
+        "tool": "get_current_program",
+        "total_chars": 465,
+        "total_tokens": 116
+      },
+      {
+        "description_chars": 282,
+        "estimate_tokens": 122,
+        "has_description": true,
+        "schema_chars": 133,
+        "tool": "goto_address",
+        "total_chars": 427,
+        "total_tokens": 106
+      },
+      {
+        "description_chars": 326,
+        "estimate_tokens": 114,
+        "has_description": true,
+        "schema_chars": 65,
+        "tool": "project_info",
+        "total_chars": 403,
+        "total_tokens": 100
+      },
+      {
+        "description_chars": 245,
+        "estimate_tokens": 95,
+        "has_description": true,
+        "schema_chars": 69,
+        "tool": "project_overview",
+        "total_chars": 330,
+        "total_tokens": 82
+      },
+      {
+        "description_chars": 231,
+        "estimate_tokens": 92,
+        "has_description": true,
+        "schema_chars": 70,
+        "tool": "check_dirty_state",
+        "total_chars": 318,
+        "total_tokens": 79
+      }
+    ],
+    "total_chars": 34013,
+    "total_tokens": 8489,
+    "undocumented_tools": []
+  }
+}

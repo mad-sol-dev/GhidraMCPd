@@ -1,0 +1,261 @@
+{
+  "calls": 40,
+  "fingerprint": {
+    "executable_md5": "e74866f944ba54267033afade367cbf1",
+    "executable_sha256": "3be9028b01c0007aab9192877341918a0bc155beef55ac17e7e8f3bcc95151ea",
+    "function_count": 1266,
+    "image_base": "0x00000000",
+    "kind": "fingerprint",
+    "language_id": "ARM:LE:32:v5t",
+    "program_name": "ZK-INKJET-NANO-APP.bin.orig",
+    "user_named_functions": 24
+  },
+  "rows": [
+    {
+      "bytes_tokens": 4675,
+      "calls": 2,
+      "duration_ms": 2123.292,
+      "errors": 0,
+      "est_tokens": 4675,
+      "hits": 40,
+      "hits_known": 2,
+      "result_bytes": 18702,
+      "tool": "search_scalars_with_context"
+    },
+    {
+      "bytes_tokens": 3478,
+      "calls": 2,
+      "duration_ms": 645.961,
+      "errors": 0,
+      "est_tokens": 3478,
+      "hits": 38,
+      "hits_known": 2,
+      "result_bytes": 13912,
+      "tool": "find_in_function"
+    },
+    {
+      "bytes_tokens": 1339,
+      "calls": 3,
+      "duration_ms": 1393.24,
+      "errors": 0,
+      "est_tokens": 1338,
+      "hits": 40,
+      "hits_known": 3,
+      "result_bytes": 5358,
+      "tool": "search_scalars"
+    },
+    {
+      "bytes_tokens": 993,
+      "calls": 2,
+      "duration_ms": 579.298,
+      "errors": 0,
+      "est_tokens": 993,
+      "hits": 4,
+      "hits_known": 2,
+      "result_bytes": 3974,
+      "tool": "collect"
+    },
+    {
+      "bytes_tokens": 951,
+      "calls": 2,
+      "duration_ms": 1303.358,
+      "errors": 0,
+      "est_tokens": 950,
+      "hits": 29,
+      "hits_known": 2,
+      "result_bytes": 3804,
+      "tool": "analyze_function_complete"
+    },
+    {
+      "bytes_tokens": 865,
+      "calls": 3,
+      "duration_ms": 499.678,
+      "errors": 0,
+      "est_tokens": 864,
+      "hits": 47,
+      "hits_known": 3,
+      "result_bytes": 3461,
+      "tool": "search_strings"
+    },
+    {
+      "bytes_tokens": 666,
+      "calls": 1,
+      "duration_ms": 191.474,
+      "errors": 0,
+      "est_tokens": 666,
+      "hits": 16,
+      "hits_known": 1,
+      "result_bytes": 2667,
+      "tool": "disassemble_batch"
+    },
+    {
+      "bytes_tokens": 664,
+      "calls": 4,
+      "duration_ms": 209.779,
+      "errors": 0,
+      "est_tokens": 663,
+      "hits": 64,
+      "hits_known": 4,
+      "result_bytes": 2658,
+      "tool": "disassemble_at"
+    },
+    {
+      "bytes_tokens": 603,
+      "calls": 5,
+      "duration_ms": 697.559,
+      "errors": 0,
+      "est_tokens": 601,
+      "hits": 11,
+      "hits_known": 5,
+      "result_bytes": 2414,
+      "tool": "search_functions"
+    },
+    {
+      "bytes_tokens": 458,
+      "calls": 1,
+      "duration_ms": 903.494,
+      "errors": 0,
+      "est_tokens": 458,
+      "hits": 20,
+      "hits_known": 1,
+      "result_bytes": 1833,
+      "tool": "string_xrefs_compact"
+    },
+    {
+      "bytes_tokens": 367,
+      "calls": 2,
+      "duration_ms": 108.882,
+      "errors": 0,
+      "est_tokens": 366,
+      "hits": 18,
+      "hits_known": 2,
+      "result_bytes": 1469,
+      "tool": "list_functions_in_range"
+    },
+    {
+      "bytes_tokens": 249,
+      "calls": 1,
+      "duration_ms": 54.557,
+      "errors": 0,
+      "est_tokens": 249,
+      "hits": 10,
+      "hits_known": 1,
+      "result_bytes": 999,
+      "tool": "mmio_annotate_compact"
+    },
+    {
+      "bytes_tokens": 224,
+      "calls": 1,
+      "duration_ms": 101.393,
+      "errors": 0,
+      "est_tokens": 224,
+      "hits": 17,
+      "hits_known": 1,
+      "result_bytes": 897,
+      "tool": "project_info"
+    },
+    {
+      "bytes_tokens": 163,
+      "calls": 1,
+      "duration_ms": 173.45,
+      "errors": 0,
+      "est_tokens": 163,
+      "hits": 10,
+      "hits_known": 1,
+      "result_bytes": 655,
+      "tool": "search_exports"
+    },
+    {
+      "bytes_tokens": 129,
+      "calls": 2,
+      "duration_ms": 195.63,
+      "errors": 0,
+      "est_tokens": 128,
+      "hits": 2,
+      "hits_known": 2,
+      "result_bytes": 518,
+      "tool": "search_xrefs_to"
+    },
+    {
+      "bytes_tokens": 110,
+      "calls": 1,
+      "duration_ms": 6.628,
+      "errors": 0,
+      "est_tokens": 110,
+      "hits": 3,
+      "hits_known": 1,
+      "result_bytes": 441,
+      "tool": "project_overview"
+    },
+    {
+      "bytes_tokens": 73,
+      "calls": 2,
+      "duration_ms": 546.621,
+      "errors": 0,
+      "est_tokens": 73,
+      "hits": 12,
+      "hits_known": 2,
+      "result_bytes": 292,
+      "tool": "read_words"
+    },
+    {
+      "bytes_tokens": 49,
+      "calls": 1,
+      "duration_ms": 149.667,
+      "errors": 0,
+      "est_tokens": 49,
+      "hits": 1,
+      "hits_known": 1,
+      "result_bytes": 198,
+      "tool": "search_imports"
+    },
+    {
+      "bytes_tokens": 49,
+      "calls": 1,
+      "duration_ms": 49.345,
+      "errors": 0,
+      "est_tokens": 49,
+      "hits": 0,
+      "hits_known": 0,
+      "result_bytes": 197,
+      "tool": "read_bytes"
+    },
+    {
+      "bytes_tokens": 41,
+      "calls": 1,
+      "duration_ms": 49.432,
+      "errors": 0,
+      "est_tokens": 41,
+      "hits": 0,
+      "hits_known": 0,
+      "result_bytes": 164,
+      "tool": "check_dirty_state"
+    },
+    {
+      "bytes_tokens": 28,
+      "calls": 1,
+      "duration_ms": 51.747,
+      "errors": 0,
+      "est_tokens": 28,
+      "hits": 0,
+      "hits_known": 0,
+      "result_bytes": 115,
+      "tool": "get_current_program"
+    },
+    {
+      "bytes_tokens": 15,
+      "calls": 1,
+      "duration_ms": 8.439,
+      "errors": 0,
+      "est_tokens": 15,
+      "hits": 0,
+      "hits_known": 1,
+      "result_bytes": 61,
+      "tool": "strings_compact"
+    }
+  ],
+  "tools": 22,
+  "total_bytes": 64789,
+  "total_bytes_tokens": 16189,
+  "total_est_tokens": 16181
+}
