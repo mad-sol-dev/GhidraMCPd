@@ -70,6 +70,16 @@ OLD_RANGE_LIMIT = 200
 OLD_FIND_LIMIT = 50
 OLD_COMPACT_LIMIT = 50
 
+#: analyze_function_complete's per-section bounds, at their documented defaults.
+#: Named so a later change to any of them cannot masquerade as efficiency here.
+ANALYZE_OPTIONS = {
+    "disasm": {"before": 8, "after": 8, "max_instructions": 48},
+    "xrefs": {"inbound_limit": 40, "outbound_limit": 40},
+    "callgraph": {"limit": 24},
+    "strings": {"limit": 6, "max_cstring_len": 256},
+    "decompile": {"enabled": True, "max_lines": 120},
+}
+
 #: analyze_function_complete returned every field before Stage 3.
 ALL_FIELDS = [
     "function",
@@ -81,21 +91,42 @@ ALL_FIELDS = [
     "features",
 ]
 
-#: Fixed-parameter session.  Same shape as the baseline run, but nothing is
-#: left to a default and the listings are requested as text.
+#: Fixed-parameter session.  Same shape as the baseline run, but **no quantity
+#: parameter is left implicit** -- not one.  Every count, limit, page, offset,
+#: context_lines, fields, options and include_literals is named, at the value
+#: that was the default before Stage 3.
+#:
+#: This is completeness, not judgement.  A parameter left to its default turns
+#: any later change of that default into an apparent structural saving, in the
+#: one script whose entire job is to hold the requested amount constant.  It
+#: already happened once: analyze_function_complete was called without `fields`,
+#: and Stage 3's narrower default showed up here as efficiency it had not
+#: earned.
 CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
     ("project_info", {}),
     ("project_overview", {}),
     ("get_current_program", {}),
-    ("search_functions", {"query": "usb", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_functions", {"query": "init", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_functions", {"query": "boot", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_functions", {"query": "dma", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_functions", {"query": "print", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_strings", {"query": "USB", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_strings", {"query": "error", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("search_strings", {"query": "init", "limit": OLD_SEARCH_LIMIT, "page": 1}),
-    ("strings_compact", {"limit": OLD_COMPACT_LIMIT}),
+    ("search_functions", {"query": "usb", "limit": OLD_SEARCH_LIMIT, "page": 1, "context_lines": 0}),
+    ("search_functions", {"query": "init", "limit": OLD_SEARCH_LIMIT, "page": 1, "context_lines": 0}),
+    ("search_functions", {"query": "boot", "limit": OLD_SEARCH_LIMIT, "page": 1, "context_lines": 0}),
+    ("search_functions", {"query": "dma", "limit": OLD_SEARCH_LIMIT, "page": 1, "context_lines": 0}),
+    ("search_functions", {"query": "print", "limit": OLD_SEARCH_LIMIT, "page": 1, "context_lines": 0}),
+    (
+        "search_strings",
+        {"query": "USB", "limit": OLD_SEARCH_LIMIT, "page": 1, "include_literals": False},
+    ),
+    (
+        "search_strings",
+        {"query": "error", "limit": OLD_SEARCH_LIMIT, "page": 1, "include_literals": False},
+    ),
+    (
+        "search_strings",
+        {"query": "init", "limit": OLD_SEARCH_LIMIT, "page": 1, "include_literals": False},
+    ),
+    (
+        "strings_compact",
+        {"limit": OLD_COMPACT_LIMIT, "offset": 0, "include_literals": False},
+    ),
     ("string_xrefs_compact", {"string_addr": "0x00400000", "limit": OLD_COMPACT_LIMIT}),
     ("search_imports", {"query": "e", "limit": OLD_SEARCH_LIMIT, "page": 1}),
     ("search_exports", {"query": "e", "limit": OLD_SEARCH_LIMIT, "page": 1}),
@@ -104,15 +135,27 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
     ("search_scalars", {"value": "0x1000", "limit": OLD_SEARCH_LIMIT, "page": 1}),
     (
         "search_scalars_with_context",
-        {"value": "0x1000", "context_lines": 4, "limit": OLD_SEARCH_LIMIT, "fmt": "text"},
+        {
+            "value": "0x1000",
+            "context_lines": 4,
+            "limit": OLD_SEARCH_LIMIT,
+            "page": 1,
+            "fmt": "text",
+        },
     ),
     (
         "search_scalars_with_context",
-        {"value": "0x40000000", "context_lines": 4, "limit": OLD_SEARCH_LIMIT, "fmt": "text"},
+        {
+            "value": "0x40000000",
+            "context_lines": 4,
+            "limit": OLD_SEARCH_LIMIT,
+            "page": 1,
+            "fmt": "text",
+        },
     ),
-    ("read_words", {"address": LITERAL_POOL, "count": 8}),
-    ("read_words", {"address": USBD_BA_SLOT, "count": 4}),
-    ("read_bytes", {"address": LITERAL_POOL, "length": 64}),
+    ("read_words", {"address": LITERAL_POOL, "count": 8, "include_literals": False}),
+    ("read_words", {"address": USBD_BA_SLOT, "count": 4, "include_literals": False}),
+    ("read_bytes", {"address": LITERAL_POOL, "length": 64, "include_literals": False}),
     ("disassemble_at", {"address": FN_USBD_INIT_PHY_CEP, "count": 16, "fmt": "text"}),
     ("disassemble_at", {"address": FN_USBD_IRQ_SETUP, "count": 16, "fmt": "text"}),
     ("disassemble_at", {"address": FN_UI_MAIN_LOOP, "count": 16, "fmt": "text"}),
@@ -128,18 +171,51 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
             ],
             "count": 16,
             "fmt": "text",
+            # No filter: this call measures the unfiltered listing, which is
+            # what it measured before Stage 4.  Stated rather than defaulted.
+            "query": "",
+            "regex": False,
+            "case_sensitive": False,
+            "context_lines": 0,
         },
     ),
     (
         "find_in_function",
-        {"address": FN_USBD_INIT_PHY_CEP, "query": "ldr", "limit": OLD_FIND_LIMIT},
+        {
+            "address": FN_USBD_INIT_PHY_CEP,
+            "query": "ldr",
+            "mode": "both",
+            "regex": False,
+            "case_sensitive": False,
+            "context_lines": 3,
+            "limit": OLD_FIND_LIMIT,
+        },
     ),
     (
         "find_in_function",
-        {"address": FN_USBD_IRQ_SETUP, "query": "str", "limit": OLD_FIND_LIMIT},
+        {
+            "address": FN_USBD_IRQ_SETUP,
+            "query": "str",
+            "mode": "both",
+            "regex": False,
+            "case_sensitive": False,
+            "context_lines": 3,
+            "limit": OLD_FIND_LIMIT,
+        },
     ),
-    ("search_xrefs_to", {"address": FN_USBD_INIT_PHY_CEP, "query": "", "limit": OLD_SEARCH_LIMIT}),
-    ("search_xrefs_to", {"address": FN_USBD_IRQ_SETUP, "query": "", "limit": OLD_SEARCH_LIMIT}),
+    (
+        "search_xrefs_to",
+        {
+            "address": FN_USBD_INIT_PHY_CEP,
+            "query": "",
+            "limit": OLD_SEARCH_LIMIT,
+            "page": 1,
+        },
+    ),
+    (
+        "search_xrefs_to",
+        {"address": FN_USBD_IRQ_SETUP, "query": "", "limit": OLD_SEARCH_LIMIT, "page": 1},
+    ),
     (
         "list_functions_in_range",
         {
@@ -158,12 +234,30 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
             "page": 1,
         },
     ),
-    ("mmio_annotate_compact", {"function_addr": FN_USBD_INIT_PHY_CEP, "dry_run": True}),
-    # The pre-Stage-3 default was all seven fields; named explicitly so this
-    # run keeps measuring the same requested amount rather than the default
-    # change.
-    ("analyze_function_complete", {"address": FN_USBD_INIT_PHY_CEP, "fields": ALL_FIELDS}),
-    ("analyze_function_complete", {"address": FN_USBD_IRQ_SETUP, "fields": ALL_FIELDS}),
+    (
+        "mmio_annotate_compact",
+        {"function_addr": FN_USBD_INIT_PHY_CEP, "dry_run": True, "max_samples": 8},
+    ),
+    (
+        "analyze_function_complete",
+        {
+            "address": FN_USBD_INIT_PHY_CEP,
+            "fields": ALL_FIELDS,
+            "fmt": "json",
+            "max_result_tokens": None,
+            "options": ANALYZE_OPTIONS,
+        },
+    ),
+    (
+        "analyze_function_complete",
+        {
+            "address": FN_USBD_IRQ_SETUP,
+            "fields": ALL_FIELDS,
+            "fmt": "json",
+            "max_result_tokens": None,
+            "options": ANALYZE_OPTIONS,
+        },
+    ),
     (
         "collect",
         {
@@ -171,12 +265,22 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
                 {
                     "id": "fns",
                     "op": "search_functions",
-                    "params": {"query": "usbd", "limit": OLD_SEARCH_LIMIT},
+                    "params": {
+                        "query": "usbd",
+                        "limit": OLD_SEARCH_LIMIT,
+                        "page": 1,
+                        "context_lines": 0,
+                    },
                 },
                 {
                     "id": "strs",
                     "op": "search_strings",
-                    "params": {"query": "USB", "limit": OLD_SEARCH_LIMIT},
+                    "params": {
+                        "query": "USB",
+                        "limit": OLD_SEARCH_LIMIT,
+                        "page": 1,
+                        "include_literals": False,
+                    },
                 },
             ]
         },
@@ -197,7 +301,11 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
                 {
                     "id": "words",
                     "op": "read_words",
-                    "params": {"address": LITERAL_POOL, "count": 8},
+                    "params": {
+                        "address": LITERAL_POOL,
+                        "count": 8,
+                        "include_literals": False,
+                    },
                 },
             ]
         },

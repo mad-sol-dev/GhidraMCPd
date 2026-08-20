@@ -16,9 +16,18 @@ anything that parses fields.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping
+import re
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Pattern, Sequence
 
-__all__ = ["FORMATS", "instruction_line", "render_lines", "normalize_fmt", "to_text"]
+__all__ = [
+    "FORMATS",
+    "compile_query",
+    "filter_instructions",
+    "instruction_line",
+    "normalize_fmt",
+    "render_lines",
+    "to_text",
+]
 
 #: Accepted values for the ``fmt`` parameter.
 FORMATS = ("json", "text")
@@ -84,3 +93,48 @@ def batch_to_text(results: Mapping[str, Any]) -> Dict[str, List[str]]:
         address: render_lines(entries if isinstance(entries, list) else [])
         for address, entries in results.items()
     }
+
+
+def compile_query(query: str, *, regex: bool, case_sensitive: bool) -> Pattern[str]:
+    """Compile a listing filter, with the same semantics as find_in_function.
+
+    A literal query is escaped rather than interpreted, so searching for
+    ``[0x2afb34]`` finds that operand instead of raising on an unbalanced
+    bracket.
+    """
+
+    flags = 0 if case_sensitive else re.IGNORECASE
+    pattern = query if regex else re.escape(query)
+    try:
+        return re.compile(pattern, flags)
+    except re.error as exc:
+        raise ValueError(f"invalid regex: {exc}") from exc
+
+
+def filter_instructions(
+    entries: Sequence[Mapping[str, Any]],
+    pattern: Pattern[str],
+    *,
+    context_lines: int = 0,
+) -> tuple[List[Mapping[str, Any]], int]:
+    """Keep the instructions matching ``pattern``, plus their context.
+
+    Matching runs against the rendered line -- ``address: bytes mnemonic`` --
+    so the address and the encoded bytes are searchable, exactly as in
+    ``find_in_function``.  Returns the kept entries in original order and the
+    number of matches, which are different numbers as soon as context is
+    requested and overlapping windows merge.
+    """
+
+    keep: set[int] = set()
+    matched = 0
+
+    for index, entry in enumerate(entries):
+        if not pattern.search(instruction_line(entry)):
+            continue
+        matched += 1
+        low = max(0, index - context_lines)
+        high = min(len(entries), index + context_lines + 1)
+        keep.update(range(low, high))
+
+    return [entries[index] for index in sorted(keep)], matched

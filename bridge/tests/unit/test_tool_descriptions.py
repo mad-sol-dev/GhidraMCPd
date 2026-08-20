@@ -109,8 +109,17 @@ def test_the_detail_lives_in_the_note_not_the_description(tools):
 
 
 #: Stage 1 acceptance: the schema base is part of the deal, not a side effect.
-#: Baseline before the stage was 5406 tokens; the agreed ceiling is 8000.
-SCHEMA_BASE_CEILING = 8000
+#: Baseline before that stage was 5406 tokens, and the ceiling was 8000.
+#:
+#: Raised to 8400 in Stage 4, deliberately and with the reason recorded.  The
+#: disassemble_batch filter (query, regex, case_sensitive, context_lines) costs
+#: 442 tokens of schema, taking the base from 7756 to 8198.  It buys the call
+#: that used to cost 4999 bytes for 64 instructions and now costs 792 for the 12
+#: that were wanted.  The base is paid once per session; that response is paid
+#: per call.  Framework condition 6 governs: response volume is what gets
+#: optimised, the ceiling is a guard rail rather than a target, and whoever
+#: breaks it says why and sets a new one.
+SCHEMA_BASE_CEILING = 8400
 
 
 def test_schema_base_stays_within_budget(tools):

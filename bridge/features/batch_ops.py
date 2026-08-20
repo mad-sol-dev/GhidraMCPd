@@ -15,7 +15,13 @@ from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import enforce_batch_limit, increment_counter
 from . import scalars
 from . import method_notes
-from .listing import batch_to_text, normalize_fmt, render_lines
+from .listing import (
+    batch_to_text,
+    compile_query,
+    filter_instructions,
+    normalize_fmt,
+    render_lines,
+)
 from .pagination import finalize_page
 
 
@@ -24,6 +30,10 @@ def disassemble_batch(
     addresses: List[str],
     count: int = 16,
     fmt: str = "json",
+    query: str = "",
+    regex: bool = False,
+    case_sensitive: bool = False,
+    context_lines: int = 0,
 ) -> Dict[str, object]:
     """Disassemble instructions at multiple addresses in one call.
     
@@ -32,6 +42,11 @@ def disassemble_batch(
         addresses: List of address strings (hex format) to disassemble
         count: Number of instructions to disassemble at each address
         fmt: "json" for instruction objects, "text" for rendered lines
+        query: Keep only instructions matching this. Empty (default) returns
+            everything, exactly as before.
+        regex: Treat query as a regular expression rather than a literal
+        case_sensitive: Match case
+        context_lines: Instructions to keep either side of a match (0-16)
 
     Returns:
         Dictionary with keys:
@@ -39,24 +54,63 @@ def disassemble_batch(
         - count: Number of instructions per address
         - results: Dict mapping address strings to instruction lists (json) or
           to lists of rendered lines (text)
+        - filter, summary: only when a query was given -- what was asked for,
+          and how many instructions were scanned, matched and returned
     """
     enforce_batch_limit(len(addresses), counter="disassemble_batch.addresses")
     increment_counter("batch_ops.disassemble_batch")
-    
-    results = {}
+
+    context_lines = max(0, min(int(context_lines), 16))
+    pattern = (
+        compile_query(query, regex=regex, case_sensitive=case_sensitive)
+        if query
+        else None
+    )
+
+    results: Dict[str, object] = {}
+    scanned = matched = returned = 0
+
     for addr_str in addresses:
         addr = parse_hex(addr_str)
         instructions = client.disassemble_at(addr, count)
-        results[addr_str] = instructions if instructions is not None else []
-    
+        entries = instructions if instructions is not None else []
+        scanned += len(entries)
+
+        if pattern is not None:
+            entries, hits = filter_instructions(
+                entries, pattern, context_lines=context_lines
+            )
+            matched += hits
+
+        returned += len(entries)
+        results[addr_str] = entries
+
     if normalize_fmt(fmt) == "text":
         results = batch_to_text(results)
 
-    return {
+    payload: Dict[str, object] = {
         "addresses": addresses,
         "count": count,
         "results": results,
     }
+
+    # Without a query the response is byte-for-byte what it always was.
+    if pattern is not None:
+        payload["filter"] = {
+            "query": query,
+            "regex": regex,
+            "case_sensitive": case_sensitive,
+            "context_lines": context_lines,
+        }
+        # What was dropped has to be visible, or a filtered listing reads like a
+        # complete one.
+        payload["summary"] = {
+            "scanned": scanned,
+            "matched": matched,
+            "returned": returned,
+        }
+
+    return payload
 
 
 def read_words(

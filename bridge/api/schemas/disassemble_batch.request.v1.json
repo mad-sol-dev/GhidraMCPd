@@ -28,6 +28,20 @@
         "json",
         "text"
       ]
+    },
+    "query": {
+      "type": "string"
+    },
+    "regex": {
+      "type": "boolean"
+    },
+    "case_sensitive": {
+      "type": "boolean"
+    },
+    "context_lines": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16
     }
   }
 }

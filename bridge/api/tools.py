@@ -1126,7 +1126,9 @@ def register_tools(
 
         Supported ``op`` values and their params:
             disassemble_at              address, count (16), fmt ("json"/"text")
-            disassemble_batch           addresses[], count (16), fmt
+            disassemble_batch           addresses[], count (16), fmt,
+                                        query, regex, case_sensitive,
+                                        context_lines (0-16)
             read_bytes                  address, length (64)
             read_words                  address, count (1)
             search_strings              query, limit (20), page (1)
@@ -2376,21 +2378,51 @@ def register_tools(
         addresses: list[str],
         count: int = 16,
         fmt: str = "text",
+        query: str = "",
+        regex: bool = False,
+        case_sensitive: bool = False,
+        context_lines: int = 0,
     ) -> Dict[str, object]:
-        """Disassemble several addresses in one call.
+        """Disassemble several addresses in one call, optionally filtered.
 
-        Not for: narrowing down what you need -- it returns every instruction
-        for every address, so 20 addresses at the default count is 320 lines.
-        find_in_function filters server-side when you know what you are after.
+        With a query it answers "every constant-pool load in these four
+        functions" in one call and returns only those lines: 4 addresses x 16
+        instructions is 64 lines, of which 12 match.
+
+        Not for: locating the addresses -- you bring those. Without a query it
+        returns every instruction for every address, so 20 addresses at the
+        default count is 320 lines.
 
         Args:
             addresses: list of hex strings, e.g. ['0x1000', '0x2000']. Bounded
                 by GHIDRA_MCP_MAX_ITEMS_PER_BATCH (256).
             count: instructions per address, >= 1, default 16.
             fmt: 'text' (default) or 'json'; see disassemble_at.
+            query: keep only instructions matching this. Empty (default)
+                returns everything, unchanged. Matched against the rendered
+                line, so the address and the encoded bytes are searchable --
+                the same rule as find_in_function.
+            regex: treat query as a regular expression, default false. A
+                literal query is escaped, so '[0x2afb34]' searches for that
+                operand instead of a character class.
+            case_sensitive: default false.
+            context_lines: instructions kept either side of a match, 0-16,
+                default 0. find_in_function defaults to 3 because it scans a
+                whole function; here you already chose the addresses.
 
-        Returns results keyed by address string."""
-        request_payload = {"addresses": addresses, "count": count}
+        Returns results keyed by address string. With a query it also returns
+        `filter` (what was asked for) and `summary` with scanned, matched and
+        returned counts, so a filtered listing cannot be read as a complete
+        one."""
+        request_payload = {
+            "addresses": addresses,
+            "count": count,
+            "fmt": fmt,
+            "query": query,
+            "regex": regex,
+            "case_sensitive": case_sensitive,
+            "context_lines": context_lines,
+        }
         valid, errors = validate_payload("disassemble_batch.request.v1.json", request_payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -2406,6 +2438,10 @@ def register_tools(
                     addresses=addresses,
                     count=count,
                     fmt=fmt,
+                    query=query,
+                    regex=regex,
+                    case_sensitive=case_sensitive,
+                    context_lines=context_lines,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))

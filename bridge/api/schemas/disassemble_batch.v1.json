@@ -55,6 +55,57 @@
         ],
         "description": "Instruction objects when fmt is \"json\", rendered lines when \"text\"."
       }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "regex",
+        "case_sensitive",
+        "context_lines"
+      ],
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "regex": {
+          "type": "boolean"
+        },
+        "case_sensitive": {
+          "type": "boolean"
+        },
+        "context_lines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        }
+      },
+      "description": "Present only when a query was given; echoes what was asked for."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scanned",
+        "matched",
+        "returned"
+      ],
+      "properties": {
+        "scanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "returned": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Present only when a query was given. returned exceeds matched when context_lines is set; the gap between scanned and returned is what the filter removed."
     }
   }
 }

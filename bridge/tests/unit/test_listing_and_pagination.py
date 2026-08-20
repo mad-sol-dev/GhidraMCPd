@@ -163,3 +163,94 @@ def test_http_routes_do_not_forward_a_listing_fmt():
             if "fmt" in call.group(0):
                 forwarding.append(f"{path.name}: {call.group(0)[:60]}")
     assert forwarding == [], forwarding
+
+
+# ------------------------------------------------- Stage 4: the batch filter
+
+from bridge.features.listing import compile_query, filter_instructions  # noqa: E402
+
+WINDOW = [
+    {"address": "0x002af9dc", "bytes": "140290E5", "text": "ldr r0,[r0,#0x214]"},
+    {"address": "0x002af9e0", "bytes": "4C119FE5", "text": "ldr r1,[0x2afb34]"},
+    {"address": "0x002af9e4", "bytes": "000000EA", "text": "b 0x002af9f0"},
+    {"address": "0x002af9e8", "bytes": "0000A0E1", "text": "nop"},
+    {"address": "0x002af9f0", "bytes": "40019FE5", "text": "ldr r0,[0x2afb38]"},
+]
+
+
+def _filter(query, **kwargs):
+    pattern = compile_query(
+        query,
+        regex=kwargs.pop("regex", False),
+        case_sensitive=kwargs.pop("case_sensitive", False),
+    )
+    return filter_instructions(WINDOW, pattern, **kwargs)
+
+
+def test_a_literal_query_keeps_only_matching_instructions():
+    kept, matched = _filter("ldr")
+    assert matched == 3
+    assert [entry["address"] for entry in kept] == [
+        "0x002af9dc",
+        "0x002af9e0",
+        "0x002af9f0",
+    ]
+
+
+def test_matching_runs_against_the_rendered_line():
+    """Address and encoded bytes are searchable, as in find_in_function."""
+
+    _, by_address = _filter("002af9e0")
+    assert by_address == 1
+    _, by_bytes = _filter("4C119FE5")
+    assert by_bytes == 1
+
+
+def test_a_literal_query_is_escaped_not_interpreted():
+    """'[0x2afb34]' is an operand, not a character class."""
+
+    kept, matched = _filter("[0x2afb34]")
+    assert matched == 1
+    assert kept[0]["address"] == "0x002af9e0"
+
+
+def test_regex_mode_interprets_the_pattern():
+    _, matched = _filter(r"ldr \w+,\[0x", regex=True)
+    assert matched == 2
+
+
+def test_an_invalid_regex_is_an_error_not_a_silent_literal():
+    with pytest.raises(ValueError):
+        compile_query("ldr [", regex=True, case_sensitive=False)
+
+
+def test_case_sensitivity_is_off_by_default_and_can_be_turned_on():
+    _, insensitive = _filter("LDR")
+    assert insensitive == 3
+    _, sensitive = _filter("LDR", case_sensitive=True)
+    assert sensitive == 0
+
+
+def test_context_widens_the_result_without_inflating_the_match_count():
+    """returned and matched are different numbers, and both are reported."""
+
+    kept, matched = _filter("nop", context_lines=1)
+    assert matched == 1
+    assert len(kept) == 3
+
+
+def test_overlapping_context_windows_merge_instead_of_duplicating():
+    kept, matched = _filter("ldr", context_lines=2)
+    assert matched == 3
+    assert len(kept) == len(WINDOW)
+    assert [entry["address"] for entry in kept] == [e["address"] for e in WINDOW]
+
+
+def test_a_query_that_matches_nothing_returns_nothing():
+    kept, matched = _filter("zzz")
+    assert (kept, matched) == ([], 0)
+
+
+def test_context_cannot_reach_past_the_window():
+    kept, _ = _filter("ldr r0,[r0", context_lines=10)
+    assert len(kept) == len(WINDOW)

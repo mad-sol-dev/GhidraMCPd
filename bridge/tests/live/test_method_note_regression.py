@@ -223,3 +223,72 @@ def test_a_complete_result_reports_its_total_and_is_not_truncated(client):
     assert complete["total"] == 1
     assert complete["truncated"] is False
     assert complete["has_more"] is False
+
+
+# --------------------------------------------- Stage 4: the batch filter, live
+
+#: The four functions the reference session walks through.
+BATCH_FUNCTIONS = ["0x002af9c0", "0x002af80c", "0x0026a7f8", "0x0025b0c4"]
+
+
+def test_the_batch_filter_answers_the_real_question(client):
+    """"Every constant-pool load in these four functions", in one call.
+
+    Without a filter that is 64 instructions to read 11 of them.
+    """
+
+    from bridge.features import batch_ops
+
+    unfiltered = batch_ops.disassemble_batch(
+        client, addresses=BATCH_FUNCTIONS, count=16, fmt="text"
+    )
+    scanned = sum(len(lines) for lines in unfiltered["results"].values())
+    assert scanned == 64
+
+    filtered = batch_ops.disassemble_batch(
+        client,
+        addresses=BATCH_FUNCTIONS,
+        count=16,
+        fmt="text",
+        query=r"ldr \w+,\[0x",
+        regex=True,
+    )
+    assert filtered["summary"] == {"scanned": 64, "matched": 11, "returned": 11}
+
+    lines = [line for lines in filtered["results"].values() for line in lines]
+    assert len(lines) == 11
+    assert all("ldr" in line for line in lines)
+    # The pool the Stage 2 regression walks to, found here in one call.
+    assert any("0x2afb34" in line for line in lines)
+
+
+def test_without_a_query_the_response_is_unchanged(client):
+    """The filter must be additive, not a behaviour change."""
+
+    from bridge.features import batch_ops
+
+    plain = batch_ops.disassemble_batch(
+        client, addresses=BATCH_FUNCTIONS, count=16, fmt="json"
+    )
+    assert set(plain) == {"addresses", "count", "results"}
+    assert "filter" not in plain
+    assert "summary" not in plain
+    assert sum(len(items) for items in plain["results"].values()) == 64
+
+
+def test_the_filtered_response_still_validates(client):
+    from bridge.api.validators import validate_payload
+    from bridge.features import batch_ops
+
+    for fmt in ("json", "text"):
+        payload = batch_ops.disassemble_batch(
+            client,
+            addresses=BATCH_FUNCTIONS,
+            count=16,
+            fmt=fmt,
+            query="ldr r",
+            context_lines=2,
+        )
+        valid, errors = validate_payload("disassemble_batch.v1.json", payload)
+        assert valid, (fmt, errors)
+        assert payload["summary"]["returned"] > payload["summary"]["matched"]

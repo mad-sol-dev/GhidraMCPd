@@ -133,7 +133,16 @@ def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) ->
     addresses = [str(value) for value in addresses_param]
     count = int(params.get("count", 16))
     fmt = str(params.get("fmt", "json"))
-    return batch_ops.disassemble_batch(client, addresses=addresses, count=count, fmt=fmt)
+    return batch_ops.disassemble_batch(
+        client,
+        addresses=addresses,
+        count=count,
+        fmt=fmt,
+        query=str(params.get("query", "")),
+        regex=bool(params.get("regex", False)),
+        case_sensitive=bool(params.get("case_sensitive", False)),
+        context_lines=int(params.get("context_lines", 0)),
+    )
 
 
 def _op_read_bytes(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
