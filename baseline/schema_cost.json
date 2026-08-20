@@ -1,0 +1,340 @@
+{
+  "tool_count": 35,
+  "tools": [
+    {
+      "description_chars": 4356,
+      "estimate_tokens": 1117,
+      "has_description": true,
+      "schema_chars": 593,
+      "tool": "collect",
+      "total_chars": 4956,
+      "total_tokens": 1239
+    },
+    {
+      "description_chars": 1307,
+      "estimate_tokens": 367,
+      "has_description": true,
+      "schema_chars": 507,
+      "tool": "find_in_function",
+      "total_chars": 1830,
+      "total_tokens": 457
+    },
+    {
+      "description_chars": 706,
+      "estimate_tokens": 209,
+      "has_description": true,
+      "schema_chars": 473,
+      "tool": "search_functions",
+      "total_chars": 1195,
+      "total_tokens": 298
+    },
+    {
+      "description_chars": 802,
+      "estimate_tokens": 230,
+      "has_description": true,
+      "schema_chars": 329,
+      "tool": "set_comment",
+      "total_chars": 1142,
+      "total_tokens": 285
+    },
+    {
+      "description_chars": 626,
+      "estimate_tokens": 181,
+      "has_description": true,
+      "schema_chars": 257,
+      "tool": "rename_function",
+      "total_chars": 898,
+      "total_tokens": 224
+    },
+    {
+      "description_chars": 475,
+      "estimate_tokens": 149,
+      "has_description": true,
+      "schema_chars": 301,
+      "tool": "search_scalars_with_context",
+      "total_chars": 803,
+      "total_tokens": 200
+    },
+    {
+      "description_chars": 393,
+      "estimate_tokens": 120,
+      "has_description": true,
+      "schema_chars": 267,
+      "tool": "read_words",
+      "total_chars": 670,
+      "total_tokens": 167
+    },
+    {
+      "description_chars": 483,
+      "estimate_tokens": 135,
+      "has_description": true,
+      "schema_chars": 161,
+      "tool": "save_program",
+      "total_chars": 656,
+      "total_tokens": 164
+    },
+    {
+      "description_chars": 396,
+      "estimate_tokens": 121,
+      "has_description": true,
+      "schema_chars": 225,
+      "tool": "disassemble_batch",
+      "total_chars": 638,
+      "total_tokens": 159
+    },
+    {
+      "description_chars": 350,
+      "estimate_tokens": 111,
+      "has_description": true,
+      "schema_chars": 247,
+      "tool": "select_program",
+      "total_chars": 611,
+      "total_tokens": 152
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 54,
+      "has_description": false,
+      "schema_chars": 572,
+      "tool": "jt_slot_process",
+      "total_chars": 587,
+      "total_tokens": 146
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 41,
+      "has_description": false,
+      "schema_chars": 540,
+      "tool": "analyze_function_complete",
+      "total_chars": 565,
+      "total_tokens": 141
+    },
+    {
+      "description_chars": 401,
+      "estimate_tokens": 112,
+      "has_description": true,
+      "schema_chars": 70,
+      "tool": "check_dirty_state",
+      "total_chars": 488,
+      "total_tokens": 122
+    },
+    {
+      "description_chars": 319,
+      "estimate_tokens": 94,
+      "has_description": true,
+      "schema_chars": 133,
+      "tool": "goto_address",
+      "total_chars": 464,
+      "total_tokens": 116
+    },
+    {
+      "description_chars": 63,
+      "estimate_tokens": 50,
+      "has_description": true,
+      "schema_chars": 334,
+      "tool": "list_functions_in_range",
+      "total_chars": 420,
+      "total_tokens": 105
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 33,
+      "has_description": false,
+      "schema_chars": 402,
+      "tool": "datatypes_create",
+      "total_chars": 418,
+      "total_tokens": 104
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 35,
+      "has_description": false,
+      "schema_chars": 405,
+      "tool": "jt_scan",
+      "total_chars": 412,
+      "total_tokens": 103
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 36,
+      "has_description": false,
+      "schema_chars": 375,
+      "tool": "jt_slot_check",
+      "total_chars": 388,
+      "total_tokens": 97
+    },
+    {
+      "description_chars": 62,
+      "estimate_tokens": 41,
+      "has_description": true,
+      "schema_chars": 296,
+      "tool": "search_xrefs_to",
+      "total_chars": 373,
+      "total_tokens": 93
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 28,
+      "has_description": false,
+      "schema_chars": 343,
+      "tool": "datatypes_update",
+      "total_chars": 359,
+      "total_tokens": 89
+    },
+    {
+      "description_chars": 63,
+      "estimate_tokens": 38,
+      "has_description": true,
+      "schema_chars": 270,
+      "tool": "search_scalars",
+      "total_chars": 347,
+      "total_tokens": 86
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 26,
+      "has_description": false,
+      "schema_chars": 320,
+      "tool": "search_strings",
+      "total_chars": 334,
+      "total_tokens": 83
+    },
+    {
+      "description_chars": 46,
+      "estimate_tokens": 35,
+      "has_description": true,
+      "schema_chars": 266,
+      "tool": "read_bytes",
+      "total_chars": 322,
+      "total_tokens": 80
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 26,
+      "has_description": false,
+      "schema_chars": 308,
+      "tool": "write_bytes",
+      "total_chars": 319,
+      "total_tokens": 79
+    },
+    {
+      "description_chars": 65,
+      "estimate_tokens": 36,
+      "has_description": true,
+      "schema_chars": 239,
+      "tool": "search_imports",
+      "total_chars": 318,
+      "total_tokens": 79
+    },
+    {
+      "description_chars": 65,
+      "estimate_tokens": 36,
+      "has_description": true,
+      "schema_chars": 239,
+      "tool": "search_exports",
+      "total_chars": 318,
+      "total_tokens": 79
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 30,
+      "has_description": false,
+      "schema_chars": 289,
+      "tool": "mmio_annotate_compact",
+      "total_chars": 310,
+      "total_tokens": 77
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 23,
+      "has_description": false,
+      "schema_chars": 263,
+      "tool": "project_rebase",
+      "total_chars": 277,
+      "total_tokens": 69
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 23,
+      "has_description": false,
+      "schema_chars": 261,
+      "tool": "strings_compact",
+      "total_chars": 276,
+      "total_tokens": 69
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 22,
+      "has_description": false,
+      "schema_chars": 237,
+      "tool": "datatypes_delete",
+      "total_chars": 253,
+      "total_tokens": 63
+    },
+    {
+      "description_chars": 44,
+      "estimate_tokens": 29,
+      "has_description": true,
+      "schema_chars": 191,
+      "tool": "disassemble_at",
+      "total_chars": 249,
+      "total_tokens": 62
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 23,
+      "has_description": false,
+      "schema_chars": 209,
+      "tool": "string_xrefs_compact",
+      "total_chars": 229,
+      "total_tokens": 57
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 13,
+      "has_description": false,
+      "schema_chars": 72,
+      "tool": "get_current_program",
+      "total_chars": 91,
+      "total_tokens": 22
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 11,
+      "has_description": false,
+      "schema_chars": 69,
+      "tool": "project_overview",
+      "total_chars": 85,
+      "total_tokens": 21
+    },
+    {
+      "description_chars": 0,
+      "estimate_tokens": 9,
+      "has_description": false,
+      "schema_chars": 65,
+      "tool": "project_info",
+      "total_chars": 77,
+      "total_tokens": 19
+    }
+  ],
+  "total_chars": 21678,
+  "total_tokens": 5406,
+  "undocumented_tools": [
+    "jt_slot_process",
+    "analyze_function_complete",
+    "datatypes_create",
+    "jt_scan",
+    "jt_slot_check",
+    "datatypes_update",
+    "search_strings",
+    "write_bytes",
+    "mmio_annotate_compact",
+    "project_rebase",
+    "strings_compact",
+    "datatypes_delete",
+    "string_xrefs_compact",
+    "get_current_program",
+    "project_overview",
+    "project_info"
+  ]
+}

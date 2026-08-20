@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequ
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex
 from ..utils.logging import enforce_batch_limit, increment_counter
+from ..utils.tokens import estimate_tokens
 
 
 _ALLOWED_FIELDS: Tuple[str, ...] = (
@@ -714,21 +715,9 @@ def _summarize_features(
 
 
 def _estimate_tokens(data: Mapping[str, object]) -> int:
-    total_chars = 0
+    """Delegate to the shared estimator (also used by the usage log)."""
 
-    def _walk(value: object) -> None:
-        nonlocal total_chars
-        if isinstance(value, str):
-            total_chars += len(value)
-        elif isinstance(value, Mapping):
-            for item in value.values():
-                _walk(item)
-        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-            for item in value:
-                _walk(item)
-
-    _walk(data)
-    return total_chars // 4 if total_chars else 0
+    return estimate_tokens(data)
 
 
 __all__ = ["analyze_function_complete"]

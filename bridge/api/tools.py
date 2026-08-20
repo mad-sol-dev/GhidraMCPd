@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from functools import wraps
+from time import monotonic
 from typing import Any, Callable, Dict, List, Mapping, Sequence
 
 from mcp.server.fastmcp import FastMCP
@@ -38,6 +39,7 @@ from ..utils.logging import (
     request_scope,
 )
 from ..utils.hex import int_to_hex, parse_hex
+from ..utils.usage_log import record_tool_call, usage_log_enabled
 from ..utils.program_context import (
     PROGRAM_SELECTIONS,
     ProgramSelectionError,
@@ -358,11 +360,44 @@ def register_tools(
 
         return wrapper
 
+    def _log_usage(fn: Callable[..., Any], *, tool_name: str):
+        """Append one usage-log record per call (no-op while logging is off)."""
+
+        signature = getattr(fn, "__signature__", None)
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not usage_log_enabled():
+                return fn(*args, **kwargs)
+
+            started = monotonic()
+            result: Any = None
+            try:
+                result = fn(*args, **kwargs)
+                return result
+            finally:
+                params: Dict[str, Any] = dict(kwargs)
+                if args and signature is not None:
+                    names = list(signature.parameters)
+                    for name, value in zip(names, args):
+                        params[name] = value
+                record_tool_call(
+                    tool=tool_name,
+                    params=params,
+                    result=result,
+                    duration_s=monotonic() - started,
+                )
+
+        if signature is not None:
+            wrapper.__signature__ = signature
+        return wrapper
+
     def tracked_tool(*, lock_usage: bool = True, require_ready: bool | None = None):
         def decorator(fn: Callable[..., Any]):
-            return tool_client(
+            injected = tool_client(
                 _wrap_usage(fn, lock_usage=lock_usage, require_ready=require_ready)
             )
+            return _log_usage(injected, tool_name=fn.__name__)
 
         return decorator
 
