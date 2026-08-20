@@ -20,7 +20,11 @@ import json
 __all__ = ["estimate_tokens", "serialized_length"]
 
 #: Characters per token.  A rough industry rule, and deliberately rough: the
-#: point is a bound that tracks payload size, not a tokenizer.
+#: point is a bound that tracks payload size, not a tokenizer.  Estimates are
+#: the serialized length over four and therefore run systematically a little low
+#: on dense JSON full of hex addresses and punctuation.  Not worth refining: it
+#: decides only how accurately a budget threshold sits, and thresholds are
+#: rarely drawn this finely.
 _CHARS_PER_TOKEN = 4
 
 
