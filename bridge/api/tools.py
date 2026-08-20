@@ -2275,7 +2275,7 @@ def register_tools(
         client,
         address: str,
         count: int = 16,
-        fmt: str = "json",
+        fmt: str = "text",
     ) -> Dict[str, object]:
         """Disassemble a run of instructions at an address.
 
@@ -2286,9 +2286,9 @@ def register_tools(
         Args:
             address: start, hex, inside a mapped block.
             count: instructions, >= 1, default 16, clamped to 128.
-            fmt: 'json' (default) returns items as objects; 'text' returns
-                lines as "address: bytes mnemonic" strings, about half the
-                bytes. Use text unless you need to parse the fields."""
+            fmt: 'text' (default) returns lines as "address: bytes mnemonic"
+                strings; 'json' returns items as objects, at roughly twice the
+                bytes. Pass 'json' when you need the fields separately."""
 
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
@@ -2368,7 +2368,7 @@ def register_tools(
         client,
         addresses: list[str],
         count: int = 16,
-        fmt: str = "json",
+        fmt: str = "text",
     ) -> Dict[str, object]:
         """Disassemble several addresses in one call.
 
@@ -2380,7 +2380,7 @@ def register_tools(
             addresses: list of hex strings, e.g. ['0x1000', '0x2000']. Bounded
                 by GHIDRA_MCP_MAX_ITEMS_PER_BATCH (256).
             count: instructions per address, >= 1, default 16.
-            fmt: 'json' (default) or 'text'; see disassemble_at.
+            fmt: 'text' (default) or 'json'; see disassemble_at.
 
         Returns results keyed by address string."""
         request_payload = {"addresses": addresses, "count": count}
@@ -2469,7 +2469,7 @@ def register_tools(
         value: str | int,
         context_lines: int = 4,
         limit: int = 20,
-        fmt: str = "json",
+        fmt: str = "text",
     ) -> Dict[str, object]:
         """search_scalars plus a disassembly window per hit.
 
@@ -2484,8 +2484,9 @@ def register_tools(
             context_lines: instructions each side of a hit, >= 0, default 4.
             limit: results per page, >= 1, default 20.
             page: 1-based, >= 1, default 1.
-            fmt: 'json' (default) puts instruction objects under disassembly;
-                'text' puts rendered lines under lines, about half the bytes."""
+            fmt: 'text' (default) puts rendered lines under lines; 'json' puts
+                instruction objects under disassembly, at roughly twice the
+                bytes."""
         request_payload = {
             "value": value,
             "context_lines": context_lines,

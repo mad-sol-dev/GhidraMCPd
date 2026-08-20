@@ -107,3 +107,59 @@ def test_finalize_is_idempotent():
     once = dict(finalize_page(payload))
     twice = dict(finalize_page(payload))
     assert once == twice
+
+
+# ------------------------------------------------- the two surfaces disagree
+
+def test_mcp_defaults_to_text_and_http_defaults_to_json():
+    """A deliberate split, so it should be asserted rather than assumed.
+
+    The MCP surface answers a model that reads listings; text costs about half
+    and reads the same.  The HTTP surface answers programs that parse fields,
+    where changing the shape under them would be a silent breaking change.
+    """
+
+    import asyncio
+    import inspect
+
+    from bridge.app import MCP_SERVER, configure
+    from bridge.features import batch_ops, disasm
+
+    configure()
+    tools = {tool.name: tool for tool in asyncio.run(MCP_SERVER.list_tools())}
+
+    for name in ("disassemble_at", "disassemble_batch", "search_scalars_with_context"):
+        schema = tools[name].inputSchema or {}
+        assert schema["properties"]["fmt"]["default"] == "text", name
+
+    # The feature functions keep json, and the HTTP routes never pass fmt, so
+    # that surface is unchanged.
+    for func in (
+        disasm.disassemble_at,
+        batch_ops.disassemble_batch,
+        batch_ops.search_scalars_with_context,
+    ):
+        assert inspect.signature(func).parameters["fmt"].default == "json", func.__name__
+
+
+def test_http_routes_do_not_forward_a_listing_fmt():
+    """Guards the half of the split that is an absence rather than a value.
+
+    analyze_function_complete has its own unrelated `fmt` (which accepts only
+    "json"), so the check is scoped to the calls that produce listings.
+    """
+
+    import pathlib
+    import re
+
+    listing_calls = re.compile(
+        r"(disasm\.disassemble_at|batch_ops\.disassemble_batch|"
+        r"batch_ops\.search_scalars_with_context)\s*\((?:[^()]|\([^()]*\))*\)"
+    )
+
+    forwarding = []
+    for path in pathlib.Path("bridge/api/routes").glob("*.py"):
+        for call in listing_calls.finditer(path.read_text()):
+            if "fmt" in call.group(0):
+                forwarding.append(f"{path.name}: {call.group(0)[:60]}")
+    assert forwarding == [], forwarding

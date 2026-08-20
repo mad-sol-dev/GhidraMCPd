@@ -6,23 +6,14 @@ import re
 import pytest
 import requests
 
-from bridge.tests._env import env_flag
-
-pytestmark = pytest.mark.skipif(
-    not env_flag("RUN_LIVE_TESTS"),
-    reason="Live tests disabled. Set RUN_LIVE_TESTS=1 to enable.",
+from bridge.tests.contract._live_bridge import (
+    BASE,
+    assert_pagination_contract,
+    post,
+    requires_live_bridge,
 )
 
-BASE = os.environ.get("GHIDRA_MCP_URL", "http://127.0.0.1:8000")
-
-def post(path, body):
-    r = requests.post(f"{BASE}{path}", json=body, timeout=30)
-    assert r.status_code == 200, (path, r.status_code, r.text)
-    data = r.json()
-    assert isinstance(data, dict) and "ok" in data, (path, data)
-    assert "data" in data and "errors" in data, (path, data)
-    assert isinstance(data["errors"], list), (path, data)
-    return data
+pytestmark = requires_live_bridge
 
 
 def _string_from_item(item):
@@ -105,12 +96,36 @@ def test_strings_pagination_is_deterministic():
     a2 = {(it.get("addr"), _string_from_item(it)) for it in second["items"]}
     assert not (a1 & a2)
 
+    # A page past the end is empty.  The page number has to stay inside the
+    # batch ceiling: the server bounds page*limit by GHIDRA_MCP_MAX_ITEMS_PER_BATCH
+    # (256) and answers 413 above it, so the original page+100 could never have
+    # reached this assertion.
+    far_page = 256 // 20
     empty = post(
         "/api/search_strings.json",
-        {"query": "http", "limit": 20, "page": max(first["page"], 1) + 100},
+        {"query": "http", "limit": 20, "page": far_page},
     )["data"]
     assert empty["items"] == []
     assert empty["has_more"] is False
+    assert empty["truncated"] is False
+
+
+def test_a_page_beyond_the_batch_ceiling_is_refused_not_silently_emptied():
+    """The guard that made the old page+100 unreachable, asserted on purpose.
+
+    An over-wide window must fail loudly.  Returning an empty page instead would
+    be indistinguishable from "no more results".
+    """
+
+    response = requests.post(
+        f"{BASE}/api/search_strings.json",
+        json={"query": "http", "limit": 20, "page": 101},
+        timeout=30,
+    )
+    assert response.status_code == 413
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["errors"][0]["code"] == "RESULT_TOO_LARGE"
 
 def test_functions_basic_contract_and_section_bounds():
     data = post(
@@ -155,10 +170,12 @@ def test_xrefs_roundtrip_symmetry_sample():
         assert it.get("target_address") == faddr
 
 def test_search_strings_has_more_contract():
-    """
-    Contract: /api/search_strings.json returns boolean `has_more`.
-    Value must equal (page * limit) < total. `page` is 1-based.
-    Schema requires a non-empty `query`.
+    """Contract: /api/search_strings.json reports its pagination honestly.
+
+    Since Stage 3 `total` is present only when it is actually known -- a
+    cursor-paged search does not know it, and null would let a caller read a
+    placeholder as a count.  Where present it must agree with `has_more`.
+    `truncated` is the field that always answers "is this everything?".
     """
     body = {
         "query": "http",  # non-empty per schema; any non-empty token works
@@ -173,15 +190,5 @@ def test_search_strings_has_more_contract():
     assert "data" in envelope, "envelope must include data"
     data = envelope["data"]
 
-    # shape
-    for k in ("total", "page", "limit", "items", "has_more"):
-        assert k in data, f"missing `{k}` in data: {data}"
-    assert isinstance(data["has_more"], bool), "`has_more` must be a boolean"
-
-    # rule
-    expected = (data["page"] * data["limit"]) < data["total"]
-    assert data["has_more"] == expected, (
-        f"has_more mismatch: got {data['has_more']} but expected {expected} "
-        f"for page={data['page']} limit={data['limit']} total={data['total']}"
-    )
+    assert_pagination_contract(data, path="/api/search_strings.json")
 
