@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:list-mutations.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary"
+  ],
+  "properties": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "applied",
+        "proposed",
+        "by_kind"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "proposed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recorded but not written: a dry run, or writes disabled."
+        },
+        "by_kind": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Ready to paste into a commit message. Proposals carry a \"[proposed]\" prefix so an intention cannot read as an accomplishment. Present when fmt is \"text\"."
+    },
+    "mutations": {
+      "type": "array",
+      "description": "Structured records. Present when fmt is \"json\".",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "target",
+          "old",
+          "new",
+          "applied",
+          "ts"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rename",
+              "comment",
+              "datatype",
+              "bytes"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "description": "Hex address, or the data type path."
+          },
+          "old": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null means it could not be determined -- not that it was empty."
+          },
+          "new": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null for a deletion."
+          },
+          "applied": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ts": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

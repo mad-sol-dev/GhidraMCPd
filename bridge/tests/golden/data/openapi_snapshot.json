@@ -895,6 +895,13 @@
                     "meta": {
                       "additionalProperties": false,
                       "properties": {
+                        "dropped_by_budget": {
+                          "description": "Ids of the queries whose result was dropped to stay inside the request budget. Present only when something was dropped. Named rather than counted: a partial batch must not read like a complete one.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
                         "estimate_tokens": {
                           "minimum": 0,
                           "type": "integer"

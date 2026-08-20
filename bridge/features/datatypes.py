@@ -1,11 +1,21 @@
 """Helpers for managing user-defined data types in Ghidra."""
 from __future__ import annotations
 
-from typing import Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+)
 
 from ..ghidra.client import DataTypeOperationResult, GhidraClient
 from ..utils import audit
 from ..utils.config import ENABLE_WRITES
+from . import mutations
 from ..utils.logging import increment_counter, record_write_attempt
 
 
@@ -341,6 +351,7 @@ def create_datatype(
             "notes": list(envelope["notes"]),
         },
     )
+    _record_mutation(envelope, kind=normalized_kind)
 
     return envelope
 
@@ -401,6 +412,7 @@ def update_datatype(
             "notes": list(envelope["notes"]),
         },
     )
+    _record_mutation(envelope, kind=normalized_kind)
 
     return envelope
 
@@ -445,8 +457,42 @@ def delete_datatype(
             "notes": list(envelope["notes"]),
         },
     )
+    _record_mutation(envelope, kind=normalized_kind, deleted=True)
 
     return envelope
 
 
 __all__ = ["create_datatype", "update_datatype", "delete_datatype"]
+
+
+def _record_mutation(
+    envelope: Mapping[str, object],
+    *,
+    kind: str,
+    deleted: bool = False,
+) -> None:
+    """Add a data type change to the session ledger.
+
+    Recorded whether or not it was written: a dry run is a proposal, and
+    ``list_mutations`` renders the two differently.
+    """
+
+    path = str(envelope.get("path") or envelope.get("datatype", {}).get("path") or "?")
+    written = bool(envelope.get("written", False))
+    notes = envelope.get("notes")
+    reason = None
+    if not written and isinstance(notes, Sequence) and notes:
+        reason = str(notes[0])
+
+    datatype = envelope.get("datatype")
+    fields = datatype.get("fields") if isinstance(datatype, Mapping) else None
+    shape = f"{kind}({len(fields)} fields)" if isinstance(fields, Sequence) else kind
+
+    mutations.record(
+        kind="datatype",
+        target=path,
+        old=path if deleted else None,
+        new=None if deleted else shape,
+        applied=written,
+        reason=reason,
+    )

@@ -14,7 +14,7 @@
     {
       "bytes_tokens": 16141,
       "calls": 2,
-      "duration_ms": 7058.144,
+      "duration_ms": 6964.284,
       "errors": 0,
       "est_tokens": 16141,
       "hits": 139,
@@ -25,7 +25,7 @@
     {
       "bytes_tokens": 5003,
       "calls": 2,
-      "duration_ms": 622.0920000000001,
+      "duration_ms": 641.598,
       "errors": 0,
       "est_tokens": 5003,
       "hits": 56,
@@ -36,7 +36,7 @@
     {
       "bytes_tokens": 3799,
       "calls": 3,
-      "duration_ms": 2170.612,
+      "duration_ms": 2404.142,
       "errors": 0,
       "est_tokens": 3798,
       "hits": 139,
@@ -47,7 +47,7 @@
     {
       "bytes_tokens": 2908,
       "calls": 2,
-      "duration_ms": 1824.5,
+      "duration_ms": 1814.174,
       "errors": 0,
       "est_tokens": 2907,
       "hits": 62,
@@ -58,7 +58,7 @@
     {
       "bytes_tokens": 899,
       "calls": 3,
-      "duration_ms": 491.486,
+      "duration_ms": 560.865,
       "errors": 0,
       "est_tokens": 898,
       "hits": 47,
@@ -69,7 +69,7 @@
     {
       "bytes_tokens": 846,
       "calls": 2,
-      "duration_ms": 563.37,
+      "duration_ms": 566.863,
       "errors": 0,
       "est_tokens": 845,
       "hits": 4,
@@ -80,7 +80,7 @@
     {
       "bytes_tokens": 666,
       "calls": 1,
-      "duration_ms": 195.664,
+      "duration_ms": 185.493,
       "errors": 0,
       "est_tokens": 666,
       "hits": 16,
@@ -91,7 +91,7 @@
     {
       "bytes_tokens": 664,
       "calls": 4,
-      "duration_ms": 200.53699999999998,
+      "duration_ms": 211.23000000000002,
       "errors": 0,
       "est_tokens": 663,
       "hits": 64,
@@ -102,7 +102,7 @@
     {
       "bytes_tokens": 604,
       "calls": 5,
-      "duration_ms": 705.4069999999999,
+      "duration_ms": 763.116,
       "errors": 0,
       "est_tokens": 602,
       "hits": 11,
@@ -113,7 +113,7 @@
     {
       "bytes_tokens": 458,
       "calls": 1,
-      "duration_ms": 921.965,
+      "duration_ms": 920.573,
       "errors": 0,
       "est_tokens": 458,
       "hits": 20,
@@ -124,7 +124,7 @@
     {
       "bytes_tokens": 367,
       "calls": 2,
-      "duration_ms": 106.69800000000001,
+      "duration_ms": 110.43,
       "errors": 0,
       "est_tokens": 367,
       "hits": 18,
@@ -135,7 +135,7 @@
     {
       "bytes_tokens": 249,
       "calls": 1,
-      "duration_ms": 50.397,
+      "duration_ms": 57.997,
       "errors": 0,
       "est_tokens": 249,
       "hits": 10,
@@ -146,7 +146,7 @@
     {
       "bytes_tokens": 224,
       "calls": 1,
-      "duration_ms": 104.047,
+      "duration_ms": 116.137,
       "errors": 0,
       "est_tokens": 224,
       "hits": 17,
@@ -157,7 +157,7 @@
     {
       "bytes_tokens": 164,
       "calls": 1,
-      "duration_ms": 182.314,
+      "duration_ms": 205.541,
       "errors": 0,
       "est_tokens": 164,
       "hits": 10,
@@ -168,7 +168,7 @@
     {
       "bytes_tokens": 130,
       "calls": 2,
-      "duration_ms": 214.50900000000001,
+      "duration_ms": 197.101,
       "errors": 0,
       "est_tokens": 130,
       "hits": 2,
@@ -179,7 +179,7 @@
     {
       "bytes_tokens": 110,
       "calls": 1,
-      "duration_ms": 7.898,
+      "duration_ms": 8.198,
       "errors": 0,
       "est_tokens": 110,
       "hits": 3,
@@ -190,7 +190,7 @@
     {
       "bytes_tokens": 73,
       "calls": 2,
-      "duration_ms": 544.2520000000001,
+      "duration_ms": 554.4449999999999,
       "errors": 0,
       "est_tokens": 73,
       "hits": 12,
@@ -201,7 +201,7 @@
     {
       "bytes_tokens": 49,
       "calls": 1,
-      "duration_ms": 133.425,
+      "duration_ms": 165.892,
       "errors": 0,
       "est_tokens": 49,
       "hits": 1,
@@ -212,7 +212,7 @@
     {
       "bytes_tokens": 49,
       "calls": 1,
-      "duration_ms": 49.055,
+      "duration_ms": 53.246,
       "errors": 0,
       "est_tokens": 49,
       "hits": 0,
@@ -223,7 +223,7 @@
     {
       "bytes_tokens": 41,
       "calls": 1,
-      "duration_ms": 52.437,
+      "duration_ms": 49.652,
       "errors": 0,
       "est_tokens": 41,
       "hits": 0,
@@ -234,7 +234,7 @@
     {
       "bytes_tokens": 28,
       "calls": 1,
-      "duration_ms": 54.18,
+      "duration_ms": 50.998,
       "errors": 0,
       "est_tokens": 28,
       "hits": 0,
@@ -245,7 +245,7 @@
     {
       "bytes_tokens": 15,
       "calls": 1,
-      "duration_ms": 6.371,
+      "duration_ms": 10.05,
       "errors": 0,
       "est_tokens": 15,
       "hits": 0,

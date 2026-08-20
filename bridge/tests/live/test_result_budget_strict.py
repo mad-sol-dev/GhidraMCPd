@@ -66,45 +66,124 @@ def test_the_query_is_big_enough_to_be_worth_bounding(client):
     assert meta["estimate_tokens"] > 100, meta
 
 
-def test_strict_mode_actually_returns_result_too_large(http):
-    """The requirement: a tight budget in strict mode must produce the error.
+def _batch(client, *, budget):
+    """Three queries where the middle one is the only one over budget."""
 
-    Measured over the real request path, because that is where the limit
-    exception is turned into an envelope.
+    return execute_collect(
+        client,
+        [
+            {"id": "before", "op": "read_words",
+             "params": {"address": "0x002afb34", "count": 2}},
+            {"id": "over", "op": "read_words",
+             "params": {"address": "0x002afb34", "count": 64}},
+            {"id": "after", "op": "read_words",
+             "params": {"address": "0x002afb34", "count": 2}},
+        ],
+        result_budget=budget,
+    )
+
+
+def test_a_request_budget_violation_no_longer_takes_the_batch_with_it(client):
+    """Stage 5: both budget levels drop one sub-result, not the whole batch.
+
+    Whoever sends a batch wants the other answers.  Before this, a per-query
+    violation dropped one result while a request-level violation raised out of
+    execute_collect and the caller got a single error instead of twelve results.
+    """
+
+    result = _batch(client, budget={"max_result_tokens": 60, "mode": "strict"})
+
+    by_id = {entry["id"]: entry for entry in result["queries"]}
+    assert by_id["before"]["result"]["ok"] is True
+    assert by_id["over"]["result"]["ok"] is False
+    assert by_id["over"]["result"]["errors"][0]["code"] == "RESULT_TOO_LARGE"
+    assert by_id["after"]["result"]["ok"] is True, "the batch continued"
+
+
+def test_the_dropped_queries_are_named_not_just_counted(client):
+    """A partial batch must not read like a complete one."""
+
+    result = _batch(client, budget={"max_result_tokens": 60, "mode": "strict"})
+    assert result["meta"]["dropped_by_budget"] == ["over"]
+
+
+def test_nothing_is_named_when_nothing_was_dropped(client):
+    result = _batch(client, budget={"max_result_tokens": None, "mode": "auto_trim"})
+    assert "dropped_by_budget" not in result["meta"]
+    assert all(entry["result"]["ok"] for entry in result["queries"])
+
+
+def test_both_modes_report_what_they_dropped(client):
+    """auto_trim and strict differ in how much they drop, not in whether they say so.
+
+    auto_trim marks the budget spent once it overflows, so later queries fall
+    too; strict does not consume on refusal, so a small query after a large one
+    still fits.  Both name every id they dropped.
+    """
+
+    for mode in ("strict", "auto_trim"):
+        result = _batch(client, budget={"max_result_tokens": 60, "mode": mode})
+        dropped = result["meta"]["dropped_by_budget"]
+        assert "over" in dropped, mode
+        failed = {
+            entry["id"]
+            for entry in result["queries"]
+            if not entry["result"]["ok"]
+        }
+        assert failed == set(dropped), (mode, failed, dropped)
+
+
+def test_the_partial_batch_still_validates(client):
+    from bridge.api.validators import validate_payload
+
+    result = _batch(client, budget={"max_result_tokens": 60, "mode": "strict"})
+    valid, errors = validate_payload("collect.v1.json", result)
+    assert valid, errors
+
+
+def test_strict_mode_actually_returns_result_too_large(http):
+    """The Stage 2b requirement, restated for Stage 5's partial behaviour.
+
+    The error still appears, but per sub-result rather than as a 413 for the
+    whole request: a single-query batch over budget now returns HTTP 200 with
+    that one query failed and named in dropped_by_budget.
     """
 
     response = _post(http, budget={"max_result_tokens": 10, "mode": "strict"})
 
-    assert response.status_code == 413
-    payload = response.json()
-    assert payload["ok"] is False
-    assert [error["code"] for error in payload["errors"]] == ["RESULT_TOO_LARGE"]
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["meta"]["dropped_by_budget"] == ["pool"]
+    codes = [
+        error["code"]
+        for entry in payload["queries"]
+        for error in (entry["result"].get("errors") or [])
+    ]
+    assert codes == ["RESULT_TOO_LARGE"]
 
 
 def test_strict_mode_reaches_the_limit_check_with_a_real_payload(client):
     """The path itself, with the numbers that prove it was exercised.
 
-    Calling the feature function directly shows the raise, and the message
-    carries the estimate that triggered it -- under the old estimator this
-    payload counted as a handful of tokens and would have passed a budget of 10
-    untouched.
+    Since Stage 5 the limit no longer escapes execute_collect, so the evidence
+    is the error message rather than a raised exception.  It still carries the
+    estimate that triggered it -- under the pre-Stage-2b estimator this payload
+    counted as a handful of tokens and would have passed a budget of 10 untouched.
     """
 
-    with pytest.raises(SafetyLimitExceeded) as excinfo:
-        _run(client, budget={"max_result_tokens": 10, "mode": "strict"})
+    result = _run(client, budget={"max_result_tokens": 10, "mode": "strict"})
+    message = result["queries"][0]["result"]["errors"][0]["message"]
 
-    assert excinfo.value.limit == 10
-    assert excinfo.value.attempted > 100
+    assert "10" in message
+    estimate = result["queries"][0]["meta"]["estimate_tokens"]
+    assert estimate > 100
 
 
-def test_request_level_strict_aborts_where_per_query_strict_does_not(client, http):
-    """A behavioural asymmetry inside collect, recorded rather than changed.
+def test_both_budget_levels_now_behave_the_same(client, http):
+    """The asymmetry Stage 2b recorded, fixed in Stage 5.
 
-    A per-query strict violation is caught inside execute_collect and returned
-    as one failed sub-result, leaving the rest of the batch intact.  A
-    request-level violation propagates out and the whole batch fails.  Both end
-    up as RESULT_TOO_LARGE for the caller, but one is partial and one is total.
-    Changing that is not part of this stage.
+    A per-query violation and a request-level one both drop the offending
+    sub-result and leave the batch intact.
     """
 
     per_query = execute_collect(
@@ -119,7 +198,7 @@ def test_request_level_strict_aborts_where_per_query_strict_does_not(client, htt
     ]
     assert codes == ["RESULT_TOO_LARGE"]
 
-    assert _post(http, budget={"max_result_tokens": 10, "mode": "strict"}).status_code == 413
+    assert _post(http, budget={"max_result_tokens": 10, "mode": "strict"}).status_code == 200
 
 
 def test_a_generous_strict_budget_lets_the_query_through(client):

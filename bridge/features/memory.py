@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
+from . import mutations
 from ..utils import audit
 from ..utils.hex import int_to_hex
 from ..utils.logging import increment_counter, record_write_attempt
@@ -134,6 +135,15 @@ def write_bytes(
             "errors": list(errors),
             "notes": list(notes),
         },
+    )
+
+    mutations.record(
+        kind="bytes",
+        target=int_to_hex(address),
+        old=None,
+        new=f"{length} bytes",
+        applied=written,
+        reason=(notes[0] if notes and not written else None),
     )
 
     return payload

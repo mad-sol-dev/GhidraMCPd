@@ -363,6 +363,8 @@ def execute_collect(
 
     results: List[Dict[str, object]] = []
     total_estimate = 0
+    #: Query ids whose result was dropped to stay inside the request budget.
+    dropped_by_budget: List[str] = []
 
     for raw_query in queries:
         if isinstance(raw_query, Mapping):
@@ -448,14 +450,28 @@ def execute_collect(
                     )
                 else:
                     envelope = _envelope_ok(payload)
-                    request_allowed = request_budget.account(estimate_tokens)
+                    # A request-level violation used to propagate out of here and
+                    # take the whole batch with it, while a per-query violation
+                    # dropped one sub-result and left the rest.  Whoever sends a
+                    # batch wants the other twelve answers, so both levels now
+                    # behave the same way: drop this sub-result, keep going, and
+                    # say which ones were dropped.
+                    try:
+                        request_allowed = request_budget.account(estimate_tokens)
+                    except SafetyLimitExceeded as exc:
+                        request_allowed = False
+                        request_message = str(exc)
+                    else:
+                        request_message = (
+                            "Request-level result budget exceeded; sub-result omitted."
+                        )
                     total_estimate = request_budget.consumed
                     if not request_allowed:
                         truncated = True
                         notes.append("request_budget_exceeded")
+                        dropped_by_budget.append(qid)
                         envelope = _envelope_error(
-                            ErrorCode.RESULT_TOO_LARGE,
-                            "Request-level result budget exceeded; sub-result omitted.",
+                            ErrorCode.RESULT_TOO_LARGE, request_message
                         )
 
         meta: MutableMapping[str, object] = {
@@ -479,6 +495,10 @@ def execute_collect(
     budget_summary = request_budget.to_meta()
     if any(value is not None for value in budget_summary.values()):
         response_meta["result_budget"] = budget_summary
+    # Named, not merely counted: a caller has to be able to see *which* answers
+    # are missing, or a partial batch reads like a complete one.
+    if dropped_by_budget:
+        response_meta["dropped_by_budget"] = dropped_by_budget
 
     return {"queries": results, "meta": response_meta}
 

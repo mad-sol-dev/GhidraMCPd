@@ -86,10 +86,14 @@ def test_collect_route_budget_strict(contract_client: TestClient) -> None:
             "result_budget": {"max_result_tokens": 1, "mode": "strict"},
         },
     )
-    assert response.status_code == 413
+    # Stage 5: a request-level budget violation is partial, not fatal, so the
+    # request succeeds and the dropped sub-result is named.
+    assert response.status_code == 200
     body = response.json()
-    assert body["ok"] is False
-    assert body["errors"][0]["code"] == "RESULT_TOO_LARGE"
+    assert body["ok"] is True
+    data = body["data"]
+    assert data["meta"]["dropped_by_budget"] == ["functions"]
+    assert data["queries"][0]["result"]["errors"][0]["code"] == "RESULT_TOO_LARGE"
 
 
 def test_collect_route_multi_projects(contract_client: TestClient) -> None:

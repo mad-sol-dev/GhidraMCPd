@@ -27,6 +27,7 @@ from ..features import (
     strings,
     xrefs,
 )
+from ..features import listing, mutations
 from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient
 from ..utils import config
@@ -404,6 +405,45 @@ def register_tools(
     def _current_requestor() -> object:
         return requestor_from_context(server)
 
+    def _current_function_name(client, address: int) -> str | None:
+        """Read the name a rename is about to replace.
+
+        The plugin answers with ``{"Function": "<name> at <address>", ...}`` --
+        capitalised, and with the name inside a sentence rather than in a field
+        of its own.  Returns None when it cannot be determined, which the ledger
+        renders as "?" rather than as an empty name: those are different facts.
+        """
+
+        try:
+            meta = client.get_function_by_address(address)
+        except Exception:  # noqa: BLE001 - a ledger must not break the write
+            return None
+        if not isinstance(meta, Mapping):
+            return None
+
+        described = meta.get("Function") or meta.get("function")
+        if isinstance(described, str) and described.strip():
+            name, separator, _ = described.strip().rpartition(" at ")
+            if separator and name:
+                return name
+            return described.strip()
+
+        # Tolerate a plugin that grows a proper field later.
+        plain = meta.get("name")
+        return plain if isinstance(plain, str) and plain else None
+
+    def _current_function_comment(client, address: int) -> str | None:
+        """The comment a write is about to replace -- if it can be read at all.
+
+        It cannot: the plugin exposes no endpoint that returns an existing
+        comment, and get_function_by_address answers with Function, Signature,
+        Entry and Body only.  Rather than spend a round trip to learn nothing,
+        this reports None, and the ledger prints "?" for the old value instead
+        of implying the comment was empty.
+        """
+
+        return None
+
     @server.tool()
     @tracked_tool()
     def project_info(client) -> Dict[str, object]:
@@ -705,6 +745,53 @@ def register_tools(
             })
 
     @server.tool()
+    @tracked_tool(lock_usage=False, require_ready=False)
+    def list_mutations(client, fmt: str = "text") -> Dict[str, object]:
+        """Everything this session changed since the last save_program.
+
+        Renames, comments, data types and byte patches, with address, old value
+        and new value, rendered so the block drops straight into a commit
+        message or a TRUTH line. It is the answer check_dirty_state cannot give:
+        that tool knows *that* something is unsaved, this one knows *what*.
+
+        Proposals are included and marked. A dry-run rename is a decision you
+        made about the binary, worth writing down -- but it carries a
+        "[proposed]" prefix, because a ledger where an intention reads as an
+        accomplishment is worse than none.
+
+        Not for: history. The list resets on a successful save_program, since
+        everything before that is in the file. It also lives in this server
+        process, so a restart loses it -- save first.
+
+        Args:
+            fmt: 'text' (default) returns `lines`, ready to paste; 'json'
+                returns `mutations` as structured records.
+
+        Returns summary (total, applied, proposed, by_kind) plus lines or
+        mutations."""
+        with request_scope(
+            "list_mutations",
+            logger=logger,
+            extra={"tool": "list_mutations", "fmt": fmt},
+        ):
+            try:
+                normalized_fmt = listing.normalize_fmt(fmt)
+            except ValueError as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+
+            entries = mutations.since_last_save()
+            payload: Dict[str, object] = {"summary": mutations.summarise(entries)}
+            if normalized_fmt == "text":
+                payload["lines"] = mutations.render_lines(entries)
+            else:
+                payload["mutations"] = [entry.as_dict() for entry in entries]
+
+        valid, errors = validate_payload("list_mutations.v1.json", payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(payload)
+
+    @server.tool()
     @tracked_tool()
     def check_dirty_state(client) -> Dict[str, object]:
         """Report whether the active program has unsaved changes.
@@ -754,7 +841,8 @@ def register_tools(
             description: optional note about the changes, e.g. 'named USB
                 handlers'.
 
-        Returns saved (bool), program_name and a message."""
+        Returns saved (bool), program_name, mutations_cleared (how many entries
+        list_mutations was holding) and a message."""
         with request_scope(
             "save_program",
             logger=logger,
@@ -775,9 +863,14 @@ def register_tools(
                     response.get("error", "Failed to save program"),
                 )
 
+            saved = response.get("saved") == "true"
+            # The ledger resets only on an actual save: after a no-op the
+            # mutations are still unwritten, and list_mutations must keep saying so.
+            cleared = mutations.mark_saved() if saved else 0
             return envelope_ok({
-                "saved": response.get("saved") == "true",
+                "saved": saved,
                 "program_name": response.get("program_name"),
+                "mutations_cleared": cleared,
                 "message": response.get("message", "Save operation completed")
             })
 
@@ -819,8 +912,18 @@ def register_tools(
                     "new_name parameter is required and must be a non-empty string",
                 )
 
+            previous_name = _current_function_name(client, parsed_address)
+
             # Dry run mode - return success without executing
             if dry_run:
+                mutations.record(
+                    kind="rename",
+                    target=address,
+                    old=previous_name,
+                    new=new_name,
+                    applied=False,
+                    reason="dry_run",
+                )
                 return envelope_ok({
                     "success": False,
                     "address": address,
@@ -830,6 +933,14 @@ def register_tools(
 
             # Check if writes are enabled
             if not enable_writes:
+                mutations.record(
+                    kind="rename",
+                    target=address,
+                    old=previous_name,
+                    new=new_name,
+                    applied=False,
+                    reason="writes_disabled",
+                )
                 return envelope_error(
                     ErrorCode.INVALID_REQUEST,
                     "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
@@ -847,6 +958,13 @@ def register_tools(
                     upstream_error=upstream,
                 )
 
+            mutations.record(
+                kind="rename",
+                target=address,
+                old=previous_name,
+                new=new_name,
+                applied=True,
+            )
             return envelope_ok({
                 "success": True,
                 "address": address,
@@ -905,7 +1023,18 @@ def register_tools(
                 )
 
             # Dry run mode - return success without executing
+            previous_comment = _current_function_comment(client, parsed_address)
+
             if dry_run:
+                mutations.record(
+                    kind="comment",
+                    target=address,
+                    old=previous_comment,
+                    new=comment,
+                    applied=False,
+                    reason="dry_run",
+                    detail=comment_type,
+                )
                 return envelope_ok({
                     "success": False,
                     "address": address,
@@ -916,6 +1045,15 @@ def register_tools(
 
             # Check if writes are enabled
             if not enable_writes:
+                mutations.record(
+                    kind="comment",
+                    target=address,
+                    old=previous_comment,
+                    new=comment,
+                    applied=False,
+                    reason="writes_disabled",
+                    detail=comment_type,
+                )
                 return envelope_error(
                     ErrorCode.INVALID_REQUEST,
                     "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
@@ -936,6 +1074,14 @@ def register_tools(
                     upstream_error=upstream,
                 )
 
+            mutations.record(
+                kind="comment",
+                target=address,
+                old=previous_comment,
+                new=comment,
+                applied=True,
+                detail=comment_type,
+            )
             return envelope_ok({
                 "success": True,
                 "address": address,

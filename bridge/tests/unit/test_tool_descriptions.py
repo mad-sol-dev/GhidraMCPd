@@ -25,7 +25,8 @@ def tools():
 
 
 def test_the_full_surface_is_present(tools):
-    assert len(tools) == 35
+    # 35 through Stage 4; list_mutations is Stage 5.
+    assert len(tools) == 36
 
 
 def test_no_tool_without_a_description(tools):
@@ -119,7 +120,11 @@ def test_the_detail_lives_in_the_note_not_the_description(tools):
 #: per call.  Framework condition 6 governs: response volume is what gets
 #: optimised, the ceiling is a guard rail rather than a target, and whoever
 #: breaks it says why and sets a new one.
-SCHEMA_BASE_CEILING = 8400
+#:
+#: Raised again in Stage 5, to 8700: list_mutations is a 36th tool and costs 274
+#: tokens.  It is the only way a session's renames and comments leave Ghidra as
+#: anything other than a memory, which is worth a tool.
+SCHEMA_BASE_CEILING = 8700
 
 
 def test_schema_base_stays_within_budget(tools):

@@ -132,19 +132,53 @@ def test_execute_collect_request_budget_auto_trim() -> None:
 
 
 def test_execute_collect_request_budget_strict() -> None:
+    """Stage 5: a request-level violation drops the sub-result, not the batch.
+
+    It used to raise out of execute_collect, so one over-budget query cost the
+    caller every other answer in the batch.  Whoever sends a batch wants the
+    rest.
+    """
+
     client = StubClient()
-    with pytest.raises(SafetyLimitExceeded):
-        execute_collect(
-            client,
-            [
-                {
-                    "id": "search",
-                    "op": "search_functions",
-                    "params": {"query": "foo", "limit": 2},
-                }
-            ],
-            result_budget={"max_result_tokens": 1, "mode": "strict"},
-        )
+    result = execute_collect(
+        client,
+        [
+            {
+                "id": "search",
+                "op": "search_functions",
+                "params": {"query": "foo", "limit": 2},
+            }
+        ],
+        result_budget={"max_result_tokens": 1, "mode": "strict"},
+    )
+
+    entry = result["queries"][0]
+    assert entry["result"]["ok"] is False
+    assert entry["result"]["errors"][0]["code"] == "RESULT_TOO_LARGE"
+    assert entry["meta"]["truncated"] is True
+    assert result["meta"]["dropped_by_budget"] == ["search"]
+
+
+def test_execute_collect_keeps_the_queries_that_fit() -> None:
+    """The reason the change matters: the rest of the batch survives."""
+
+    client = StubClient()
+    result = execute_collect(
+        client,
+        [
+            {"id": "big", "op": "search_functions", "params": {"query": "foo", "limit": 2}},
+            {"id": "small", "op": "disassemble_at",
+             "params": {"address": "0x1000", "count": 1}},
+        ],
+        result_budget={"max_result_tokens": 40, "mode": "strict"},
+    )
+
+    by_id = {entry["id"]: entry for entry in result["queries"]}
+    dropped = result["meta"].get("dropped_by_budget", [])
+    assert dropped, "the budget has to bind for this test to mean anything"
+    survivors = [qid for qid, entry in by_id.items() if entry["result"]["ok"]]
+    assert set(survivors) | set(dropped) == {"big", "small"}
+    assert set(survivors) & set(dropped) == set()
 
 
 def test_search_functions_rejects_invalid_context_lines() -> None:
