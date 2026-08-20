@@ -84,6 +84,7 @@ class RecordingMMIOClient:
         self.comments: list[tuple[int, str]] = []
         self.calls: list[int] = []
         self._disassembly = [
+            "0044fffc: MOV R1, #0xb0000000",
             "00450000: LDR R0, [R1, #0x0]",
             "00450004: STR R0, [R1, #0x4]",
             "00450008: ORR R0, R0, #0x1",

@@ -21,6 +21,13 @@ _BRACKET_BASE_RE = re.compile(
     r"\[\s*(R\d+|SP|LR|PC)\s*(?:,\s*#\s*(-?0x[0-9A-Fa-f]+))?\s*\]",
     re.IGNORECASE,
 )
+#: "mov r0,#0xb0000000" -- the firmware's usual way of loading a peripheral
+#: base.  Without this the base is unknown and the offset alone gets reported
+#: as if it were the register address.
+_MOV_IMMEDIATE_RE = re.compile(
+    r"^\s*(R\d+|SP|LR|PC)\s*,\s*#\s*(-?0x[0-9A-Fa-f]+)\s*$",
+    re.IGNORECASE,
+)
 _ADD_IMMEDIATE_RE = re.compile(
     r"^\s*(R\d+|SP|LR|PC)\s*,\s*(R\d+|SP|LR|PC)\s*,\s*#\s*(-?0x[0-9A-Fa-f]+)\s*$",
     re.IGNORECASE,
@@ -230,6 +237,26 @@ def _collect_operations(disassembly: Iterable[str]) -> tuple[List[_Operation], i
                 indirect_address = _resolve_register_indirect_address(operands, register_bases)
                 if indirect_address is not None and indirect_address in memory_literals:
                     register_bases[dest_register] = memory_literals[indirect_address]
+        if _is_base_load_store(mnemonic, "MOV") or _is_base_load_store(mnemonic, "MVN"):
+            mov_match = _MOV_IMMEDIATE_RE.match(operands)
+            if mov_match:
+                dest = _normalize_register(mov_match.group(1))
+                try:
+                    value = int(mov_match.group(2), 16)
+                except ValueError:
+                    value = None
+                if dest and value is not None:
+                    if _is_base_load_store(mnemonic, "MVN"):
+                        value = (~value) & 0xFFFFFFFF
+                    register_bases[dest] = value
+            else:
+                # A register-to-register move invalidates whatever base the
+                # destination held; keeping the stale value would resolve later
+                # accesses to a plausible wrong address.
+                dest = _extract_dest_register(operands)
+                if dest:
+                    register_bases.pop(dest, None)
+
         if mnemonic.startswith("ADD"):
             add_match = _ADD_IMMEDIATE_RE.match(operands)
             if add_match:
@@ -256,7 +283,11 @@ def _collect_operations(disassembly: Iterable[str]) -> tuple[List[_Operation], i
                         target = memory_literals[resolved_address]
                     else:
                         target = resolved_address
-            if target is None:
+            if target is None and not _BRACKET_BASE_RE.search(operands):
+                # Only for a directly addressed operand.  For a register-indirect
+                # access the bracket holds an *offset*, and taking it as the
+                # address turns "ldr r0,[sp,#0x8]" into an MMIO register at 0x8 --
+                # a wrong answer that reads exactly like a right one.
                 target = _extract_target(operands)
             if target is None:
                 # Skip load/store instructions that do not reference an immediate
@@ -311,8 +342,12 @@ def annotate(
         notes.append(_NOTE_DRY_RUN)
     if not writes_enabled:
         notes.append(_NOTE_WRITES_DISABLED)
-    if reads + writes == 0 and skipped > 0:
-        notes.append(_NOTE_SKIPPED_INDIRECT)
+    if skipped > 0:
+        notes.append(
+            f"{skipped} load/store instruction(s) could not be placed: no "
+            "immediate address and no resolvable base register. They are not "
+            "counted above."
+        )
     if not dry_run and writes_enabled and samples:
         for op in operations[:max_samples]:
             comment = _format_comment(op)
@@ -328,6 +363,12 @@ def annotate(
         "bitwise_and": bitwise_and,
         "toggles": toggles,
         "annotated": annotated,
+        # What the classifier could not resolve.  Counted since 0d45e14 but
+        # never reported, and until the base-register fix it stayed near zero
+        # because the offset fallback swallowed these cases as if they were
+        # hits.  A load/store this tool cannot place has to be visible, or the
+        # counts above read as a complete picture of the function.
+        "skipped": skipped,
         "samples": samples,
         "notes": notes,
     }

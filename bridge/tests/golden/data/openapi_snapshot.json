@@ -2614,6 +2614,11 @@
                       },
                       "type": "array"
                     },
+                    "skipped": {
+                      "description": "Load/store instructions that could not be placed: no immediate address and no resolvable base register. Not included in reads/writes.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "toggles": {
                       "minimum": 0,
                       "type": "integer"
@@ -2631,7 +2636,8 @@
                     "bitwise_and",
                     "toggles",
                     "annotated",
-                    "samples"
+                    "samples",
+                    "skipped"
                   ],
                   "type": "object"
                 }

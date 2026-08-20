@@ -271,22 +271,11 @@
       "bitwise_or": 1,
       "function": "0x00007000",
       "notes": [
-        "dry-run requested: annotations were not applied"
+        "dry-run requested: annotations were not applied",
+        "2 load/store instruction(s) could not be placed: no immediate address and no resolvable base register. They are not counted above."
       ],
-      "reads": 1,
+      "reads": 0,
       "samples": [
-        {
-          "addr": "0x00007000",
-          "address_abs": "0x00007000",
-          "op": "READ",
-          "target": "0x00000000"
-        },
-        {
-          "addr": "0x00007004",
-          "address_abs": "0x00000004",
-          "op": "WRITE",
-          "target": "0x00000004"
-        },
         {
           "addr": "0x00007008",
           "address_abs": "0x00000002",
@@ -298,10 +287,17 @@
           "address_abs": "0xfffffffd",
           "op": "AND",
           "target": "0xfffffffd"
+        },
+        {
+          "addr": "0x00007010",
+          "address_abs": "0x00000001",
+          "op": "TOGGLE",
+          "target": "0x00000001"
         }
       ],
+      "skipped": 2,
       "toggles": 1,
-      "writes": 1
+      "writes": 0
     },
     "errors": [],
     "ok": true

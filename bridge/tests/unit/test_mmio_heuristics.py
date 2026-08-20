@@ -16,6 +16,7 @@ class DummyClient:
 
 def test_skips_register_indirect_loads_and_stores():
     disassembly = [
+        "0044fffc: MOV R2, #0xb1006000",
         "00450000: LDR R0, [R1]",
         "00450004: STR R0, [R2]",
         "00450008: LDR R2, [R3, R4]",
@@ -26,14 +27,20 @@ def test_skips_register_indirect_loads_and_stores():
 
     payload = mmio.annotate(client, function_addr=0x450000)
 
+    # Only the access with a resolvable base counts.  R1, R3/R4 and R6/R7 are
+    # unknown, and "STR R0,[R2]" is a store through the base itself.
     assert payload["reads"] == 1
-    assert payload["writes"] == 0
-    assert [sample["addr"] for sample in payload["samples"]] == ["0x00450010"]
+    assert payload["writes"] == 1
+    assert payload["skipped"] == 3
+    targets = {s["addr"]: s["target"] for s in payload["samples"]}
+    assert targets["0x00450010"] == "0xb1006010"
+    assert targets["0x00450004"] == "0xb1006000"
     assert client.requested == [0x450000]
 
 
 def test_literal_pool_loads_are_counted():
     disassembly = [
+        "0045fffc: MOV R1, #0xb1006000",
         "00460000: LDR R0, =0x60000000",
         "00460004: STR R0, [R1, #0x20]",
     ]
@@ -45,7 +52,8 @@ def test_literal_pool_loads_are_counted():
     assert payload["reads"] == 1
     assert payload["writes"] == 1
     assert samples["0x00460000"]["target"] == "0x60000000"
-    assert samples["0x00460004"]["target"] == "0x00000020"
+    # R1 now has a base, so this is 0xb1006020 rather than the bare offset.
+    assert samples["0x00460004"]["target"] == "0xb1006020"
     assert client.requested == [0x460000]
 
 

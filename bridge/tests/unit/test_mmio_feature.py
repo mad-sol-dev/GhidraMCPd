@@ -21,6 +21,10 @@ class DummyClient:
 
 def test_mmio_annotate_collects_counts_and_samples():
     disassembly = [
+        # R1 gets a real base: without it these are register-indirect accesses
+        # the classifier cannot place, and counting the offset as the address
+        # is exactly the bug this fixture used to encode.
+        "003ffffc: MOV R1, #0xb0000000",
         "00400000: LDR R0, [R1, #0x4000]",
         "00400004: STR R0, [R1, #0x5000]",
         "00400008: ORR R0, R0, #0x1",
@@ -54,6 +58,7 @@ def test_mmio_annotate_collects_counts_and_samples():
 @pytest.mark.parametrize("success", [True, False])
 def test_mmio_annotate_sets_comments_when_writes_enabled(success):
     disassembly = [
+        "0040fffc: MOV R2, #0xb0000000",
         "00410000: LDR R1, [R2, #0x4100]",
         "00410004: STR R1, [R2, #0x4100]",
         "00410008: ORR R1, R1, #0x2",
@@ -77,6 +82,7 @@ def test_mmio_annotate_sets_comments_when_writes_enabled(success):
 
 def test_mmio_annotate_skips_block_transfer_instructions():
     disassembly = [
+        "0041fffc: MOV R1, #0xb0000000",
         "00420000: LDM R0!, {R1, R2, R3}",
         "00420004: STM R3!, {R4, R5}",
         "00420008: LDR R0, [R1, #0x4200]",
@@ -93,6 +99,7 @@ def test_mmio_annotate_skips_block_transfer_instructions():
 
 def test_mmio_annotate_ignores_byte_and_halfword_variants():
     disassembly = [
+        "00424ffc: MOV R1, #0xb0000000",
         "00425000: LDRB R0, [R1, #0x1]",
         "00425004: STRH R0, [R1, #0x2]",
         "00425008: LDRNE R0, [R1, #0x4]",
@@ -108,11 +115,16 @@ def test_mmio_annotate_ignores_byte_and_halfword_variants():
         "0x00425008",
         "0x0042500c",
     ]
+    # The base is known, so the offsets resolve to real register addresses.
+    targets = {s["addr"]: s["target"] for s in payload["samples"]}
+    assert targets["0x00425008"] == "0xb0000004"
+    assert targets["0x0042500c"] == "0xb0000008"
     assert "dry-run" in " ".join(payload["notes"])
 
 
 def test_mmio_annotate_extracts_literal_and_offset_targets():
     disassembly = [
+        "0042fffc: MOV R1, #0xb0000000",
         "00430000: LDR R0, =0x50000000",
         "00430004: STR R0, [R1, #0x100]",
         "00430008: LDR R2, [R3, R4]",
@@ -124,7 +136,9 @@ def test_mmio_annotate_extracts_literal_and_offset_targets():
 
     samples = {sample["addr"]: sample for sample in payload["samples"]}
     assert samples["0x00430000"]["target"] == "0x50000000"
-    assert samples["0x00430004"]["target"] == "0x00000100"
+    # Base 0xb0000000 plus offset 0x100 -- not the bare offset, which is what
+    # this assertion checked before the base-register fix.
+    assert samples["0x00430004"]["target"] == "0xb0000100"
     assert "0x00430008" not in samples
     assert samples["0x0043000c"]["target"] == "0x00000008"
     assert "dry-run" in " ".join(payload["notes"])
@@ -143,4 +157,7 @@ def test_mmio_annotate_notes_skipped_indirect_accesses():
     assert payload["reads"] == 0
     assert payload["writes"] == 0
     assert payload["samples"] == []
-    assert "skipped register-indirect mmio accesses" in " ".join(payload["notes"]).lower()
+    assert payload["skipped"] == 2
+    notes = " ".join(payload["notes"]).lower()
+    assert "could not be placed" in notes
+    assert "not counted above" in notes

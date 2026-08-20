@@ -406,6 +406,9 @@ class StubGhidraClient:
             ]
         if address == 0x00006000:
             return [
+                # R1 needs a base, or the accesses below are unplaceable and
+                # the classifier correctly reports nothing.
+                "00005ffc: MOV R1, #0xb0000000",
                 "00006000: LDR R0, [R1, #0x10]",
                 "00006004: STR R0, [R1, #0x10]",
                 "00006008: ORR R0, R0, #0x1",

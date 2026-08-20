@@ -3,32 +3,92 @@
   "$id": "urn:schema:mmio-annotate.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["function", "reads", "writes", "bitwise_or", "bitwise_and", "toggles", "annotated", "samples"],
+  "required": [
+    "function",
+    "reads",
+    "writes",
+    "bitwise_or",
+    "bitwise_and",
+    "toggles",
+    "annotated",
+    "samples",
+    "skipped"
+  ],
   "properties": {
-    "function": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "reads": {"type": "integer", "minimum": 0},
-    "writes": {"type": "integer", "minimum": 0},
-    "bitwise_or": {"type": "integer", "minimum": 0},
-    "bitwise_and": {"type": "integer", "minimum": 0},
-    "toggles": {"type": "integer", "minimum": 0},
-    "annotated": {"type": "integer", "minimum": 0},
+    "function": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$"
+    },
+    "reads": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "writes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "bitwise_or": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "bitwise_and": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "toggles": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "annotated": {
+      "type": "integer",
+      "minimum": 0
+    },
     "samples": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["addr", "op", "target"],
+        "required": [
+          "addr",
+          "op",
+          "target"
+        ],
         "properties": {
-          "addr": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "op": {"type": "string", "enum": ["READ", "WRITE", "OR", "AND", "TOGGLE"]},
-          "target": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "address_abs": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"}
+          "addr": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "READ",
+              "WRITE",
+              "OR",
+              "AND",
+              "TOGGLE"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "address_abs": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          }
         }
       }
     },
     "notes": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
+    },
+    "skipped": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Load/store instructions that could not be placed: no immediate address and no resolvable base register. Not included in reads/writes."
     }
   }
 }
