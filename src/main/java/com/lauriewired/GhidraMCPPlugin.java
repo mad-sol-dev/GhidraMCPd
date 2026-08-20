@@ -3294,6 +3294,15 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 file, warnings);
         }
 
+        // Ensure the tracker transitions out of LOADING even when the program
+        // is already open and Ghidra does not fire programOpened/programActivated
+        // callbacks.  Without this, the state stays LOADING permanently and all
+        // subsequent operations are blocked with 503 UNAVAILABLE.
+        Program currentProgram = pm.getCurrentProgram();
+        if (currentProgram != null) {
+            statusTracker.onProgramActivated(currentProgram);
+        }
+
         statusTracker.applyWarnings(warnings);
 
         return openProgramResponse("ok", null, file, warnings);
