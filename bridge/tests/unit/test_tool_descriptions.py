@@ -129,3 +129,22 @@ def test_schema_base_stays_within_budget(tools):
     assert total <= SCHEMA_BASE_CEILING, (
         f"schema base is {total} tokens, ceiling is {SCHEMA_BASE_CEILING}"
     )
+
+
+def test_analyze_default_fields_leave_out_the_expensive_two(tools):
+    """The default answers "is this the right function?", not "show me everything".
+
+    Measured on 0x002AF9C0: decompile is 36% of a full dossier and disasm 22%.
+    Both are available on better terms elsewhere, so an unparameterised call
+    should not pay for them.
+    """
+
+    from bridge.features.analyze import _ALLOWED_FIELDS, _DEFAULT_FIELDS
+
+    assert set(_DEFAULT_FIELDS) == {"function", "xrefs", "strings", "features"}
+    assert set(_DEFAULT_FIELDS) < set(_ALLOWED_FIELDS)
+    assert "decompile" not in _DEFAULT_FIELDS
+    assert "disasm" not in _DEFAULT_FIELDS
+
+    description = tools["analyze_function_complete"].description or ""
+    assert "function, xrefs, strings, features" in description

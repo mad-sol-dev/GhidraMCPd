@@ -1015,21 +1015,28 @@ def register_tools(
         max_result_tokens: int | None = None,
         options: dict[str, object] | None = None,
     ) -> Dict[str, object]:
-        """One dossier for one function: disassembly, decompilation, xrefs,
-        callgraph, referenced strings and derived features in a single call.
+        """One dossier for one function: xrefs, referenced strings, derived
+        features and, on request, the disassembly and decompilation.
 
-        Not for: finding a function -- you must know its address. The most
-        expensive single read here (~6 KB per call), so pass fields rather than
-        taking the default. find_in_function is far cheaper when you only need
-        matching lines.
+        The default answers "is this the function I want?" and costs about
+        2 KB. It leaves out 'disasm' and 'decompile', which are 58% of a full
+        dossier and which you can fetch on better terms once you know:
+        disassemble_at returns the listing as text at half the bytes, and
+        find_in_function returns only the lines that match.
+
+        Not for: finding a function -- you must know its address.
 
         Args:
             address: function entry, hex, e.g. '0x002af9c0'.
             fields: sections to include, any of 'function' (name, entry, size,
                 prototype), 'disasm', 'decompile', 'xrefs', 'callgraph',
-                'strings', 'features' (derived counts). Default: all seven.
-                This is the main size control.
-            fmt: only 'json' is accepted; anything else is an error.
+                'strings', 'features' (derived counts). Default:
+                function, xrefs, strings, features. Naming any field replaces
+                the default set rather than adding to it, so pass
+                ['disasm'] to get only the listing.
+            fmt: only 'json' is accepted; anything else is an error. Note
+                this is not the listing fmt of disassemble_at -- an embedded
+                'disasm' section is always objects, never rendered lines.
             max_result_tokens: int ceiling on the response, or null (default)
                 for none. When exceeded, disasm and decompile are trimmed and
                 meta.truncated is set.

@@ -70,6 +70,17 @@ OLD_RANGE_LIMIT = 200
 OLD_FIND_LIMIT = 50
 OLD_COMPACT_LIMIT = 50
 
+#: analyze_function_complete returned every field before Stage 3.
+ALL_FIELDS = [
+    "function",
+    "disasm",
+    "decompile",
+    "xrefs",
+    "callgraph",
+    "strings",
+    "features",
+]
+
 #: Fixed-parameter session.  Same shape as the baseline run, but nothing is
 #: left to a default and the listings are requested as text.
 CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
@@ -148,8 +159,11 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
         },
     ),
     ("mmio_annotate_compact", {"function_addr": FN_USBD_INIT_PHY_CEP, "dry_run": True}),
-    ("analyze_function_complete", {"address": FN_USBD_INIT_PHY_CEP}),
-    ("analyze_function_complete", {"address": FN_USBD_IRQ_SETUP}),
+    # The pre-Stage-3 default was all seven fields; named explicitly so this
+    # run keeps measuring the same requested amount rather than the default
+    # change.
+    ("analyze_function_complete", {"address": FN_USBD_INIT_PHY_CEP, "fields": ALL_FIELDS}),
+    ("analyze_function_complete", {"address": FN_USBD_IRQ_SETUP, "fields": ALL_FIELDS}),
     (
         "collect",
         {

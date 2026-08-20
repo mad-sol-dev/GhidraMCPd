@@ -42,8 +42,18 @@ class StubClient:
 
 
 def test_analyze_function_complete_full_payload() -> None:
+    """All seven fields, asked for explicitly.
+
+    They are no longer the default -- see
+    test_analyze_default_omits_disasm_and_decompile -- so this names them.
+    """
+
     client = StubClient()
-    payload = analyze.analyze_function_complete(client, address=0x00001004)
+    payload = analyze.analyze_function_complete(
+        client,
+        address=0x00001004,
+        fields=list(analyze._ALLOWED_FIELDS),
+    )
 
     assert payload["address"] == "0x00001004"
     assert payload["function"]["name"] == "sub_1000"
@@ -63,6 +73,38 @@ def test_analyze_function_complete_full_payload() -> None:
     assert payload["meta"]["fields"] == sorted(
         ["function", "disasm", "decompile", "xrefs", "callgraph", "strings", "features"]
     )
+
+
+def test_analyze_default_omits_disasm_and_decompile() -> None:
+    """An unparameterised call answers "is this the right function?".
+
+    disasm and decompile are 58% of a full dossier and are available on better
+    terms from disassemble_at and find_in_function, so the default leaves them
+    out rather than making every caller pay for them.
+    """
+
+    client = StubClient()
+    payload = analyze.analyze_function_complete(client, address=0x00001004)
+
+    assert payload["meta"]["fields"] == sorted(
+        ["function", "xrefs", "strings", "features"]
+    )
+    assert "disasm" not in payload
+    assert "decompile" not in payload
+
+    # The cheap fields that make the dossier worth calling are still there.
+    assert payload["function"]["name"] == "sub_1000"
+    assert payload["xrefs"]["summary"] == {"inbound": 2, "outbound": 2}
+    assert payload["features"]["instruction_count"] == 4
+
+
+def test_naming_a_field_replaces_the_default_rather_than_adding_to_it() -> None:
+    client = StubClient()
+    payload = analyze.analyze_function_complete(
+        client, address=0x00001004, fields=["disasm"]
+    )
+    assert payload["meta"]["fields"] == ["disasm"]
+    assert "function" not in payload
 
 
 def test_analyze_function_respects_field_filter() -> None:

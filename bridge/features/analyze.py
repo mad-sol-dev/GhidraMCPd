@@ -21,6 +21,22 @@ _ALLOWED_FIELDS: Tuple[str, ...] = (
     "features",
 )
 
+#: Fields returned when the caller names none.
+#:
+#: ``decompile`` and ``disasm`` are omitted deliberately.  Measured on
+#: 0x002AF9C0 they are 36% and 22% of a full dossier -- 58% together -- and they
+#: are the two a caller can fetch on their own terms once the cheap fields have
+#: told them whether this is the right function: ``disassemble_at`` gives the
+#: listing (as text, at half the bytes), ``find_in_function`` gives only the
+#: matching lines.  What remains is the part that answers "is this the function
+#: I want?", which is what an unparameterised call is asking.
+_DEFAULT_FIELDS: Tuple[str, ...] = (
+    "function",
+    "xrefs",
+    "strings",
+    "features",
+)
+
 _CALL_OPCODE = re.compile(r"\b(?:BL|BLX|CALL|JAL|JALR)\b", re.IGNORECASE)
 _HEX_ADDRESS = re.compile(r"0x[0-9A-Fa-f]{4,}")
 _REGISTER_TOKENS = {
@@ -90,7 +106,7 @@ def analyze_function_complete(
     if fmt != "json":
         raise ValueError("fmt must be 'json'")
 
-    requested = set(fields) if fields is not None else set(_ALLOWED_FIELDS)
+    requested = set(fields) if fields is not None else set(_DEFAULT_FIELDS)
     unknown = requested.difference(_ALLOWED_FIELDS)
     if unknown:
         raise ValueError(f"Unsupported fields requested: {sorted(unknown)}")

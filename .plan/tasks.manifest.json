@@ -249,14 +249,14 @@
       "depends_on": [
         "D.1"
       ],
-        "dod": [
-          "MCP tools expose select_program/domain_file_id and get_current_program",
-          "Analysis endpoints consume the active program context",
-          "Docs clarify switching rules and validation"
-        ],
-        "status": "done",
-        "commit": "pending"
-      },
+      "dod": [
+        "MCP tools expose select_program/domain_file_id and get_current_program",
+        "Analysis endpoints consume the active program context",
+        "Docs clarify switching rules and validation"
+      ],
+      "status": "done",
+      "commit": "pending"
+    },
     {
       "id": "R.9",
       "title": "Firmware-set workflows",
@@ -559,6 +559,54 @@
         "tasks.manifest.json and state.json synchronized"
       ],
       "status": "done"
+    },
+    {
+      "id": "DIAG.3",
+      "title": "Force-refresh endpoint for manual state re-checking",
+      "area": "bridge, plugin",
+      "depends_on": [
+        "R.23"
+      ],
+      "dod": [
+        "Endpoint triggers trackProgram() on demand",
+        "Response reports the state before and after the refresh",
+        "Documented as the recovery step when a program appears stuck in LOADING"
+      ],
+      "status": "todo",
+      "notes": [
+        "Taken verbatim from .plan/TODO.md (NEXT); entry added so plan_check passes. Scope beyond the TODO line has not been decided."
+      ]
+    },
+    {
+      "id": "DIAG.4",
+      "title": "Analysis completion metadata in search results",
+      "area": "bridge, plugin",
+      "depends_on": [
+        "R.23"
+      ],
+      "dod": [
+        "Search responses carry an analysis_complete flag",
+        "Flag derives from AutoAnalysisManager state, not from a guess",
+        "Absent rather than false when the state cannot be determined"
+      ],
+      "status": "todo",
+      "notes": [
+        "Taken verbatim from .plan/TODO.md (NEXT); entry added so plan_check passes. Scope beyond the TODO line has not been decided."
+      ]
+    },
+    {
+      "id": "BUILD.1",
+      "title": "Docker cache workaround documentation",
+      "area": "docs, build",
+      "depends_on": [],
+      "dod": [
+        "Document docker build --no-cache and version-tagged images",
+        "State the symptom it fixes: the extension version not updating"
+      ],
+      "status": "todo",
+      "notes": [
+        "Taken verbatim from .plan/TODO.md (NEXT); entry added so plan_check passes. Scope beyond the TODO line has not been decided."
+      ]
     }
   ]
 }
