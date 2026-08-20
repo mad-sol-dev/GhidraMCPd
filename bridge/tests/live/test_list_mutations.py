@@ -68,6 +68,35 @@ def test_the_old_names_are_actually_readable(client):
         assert _current_name(client, int(address, 16)) == expected
 
 
+def test_a_ledger_of_unknowns_would_not_count(client, rename):
+    """The acceptance is about content, not arity.
+
+    "lists exactly those three" was satisfied on the first run by three entries
+    reading "? -> new": the count was right and the old values were missing,
+    because the plugin's prose was parsed with meta.get("name").  Half of what
+    the ledger is for -- old value *and* new value -- was empty and the test
+    said nothing.  So the resolved old value is asserted explicitly.
+    """
+
+    import asyncio
+    import json
+
+    async def run():
+        for address, _, new_name in TRIAL_RENAMES:
+            await rename.call_tool(
+                "rename_function", {"address": address, "new_name": new_name}
+            )
+        result = await rename.call_tool("list_mutations", {"fmt": "json"})
+        text = result[0].text if isinstance(result, list) else result.content[0].text
+        return json.loads(text)
+
+    entries = asyncio.run(run())["data"]["mutations"]
+
+    assert all(entry["old"] is not None for entry in entries), entries
+    assert all(entry["old"] != "?" for entry in entries), entries
+    assert all(entry["old"] != entry["new"] for entry in entries), entries
+
+
 def test_three_dry_run_renames_are_listed_as_exactly_three(client, rename):
     import asyncio
     import json

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from functools import wraps
 from time import monotonic
 from typing import Any, Callable, Dict, List, Mapping, Sequence
@@ -53,6 +54,10 @@ from ..utils.program_context import (
 from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
 from .validators import validate_payload
 
+
+#: The plugin renders a function as "<name> at <hex>".  Anchored at both ends so
+#: a response in any other shape is rejected rather than partially believed.
+_FUNCTION_PROSE = re.compile(r"^(?P<name>.+) at (?P<address>[0-9a-fA-F]+)$")
 
 COLLECT_DOCS_URL = "docs/api.md#/api/collect.json"
 _SUPPORTED_COLLECT_OPS: tuple[str, ...] = tuple(
@@ -406,12 +411,21 @@ def register_tools(
         return requestor_from_context(server)
 
     def _current_function_name(client, address: int) -> str | None:
-        """Read the name a rename is about to replace.
+        """Read the name a rename is about to replace, or admit it cannot.
 
-        The plugin answers with ``{"Function": "<name> at <address>", ...}`` --
+        The plugin answers in prose: ``{"Function": "<name> at <hex>"}`` --
         capitalised, and with the name inside a sentence rather than in a field
-        of its own.  Returns None when it cannot be determined, which the ledger
-        renders as "?" rather than as an empty name: those are different facts.
+        of its own.  Parsing prose invites a plausible-looking wrong answer, so
+        the match is exact and cross-checked:
+
+        * the value must end in `` at `` followed by hex and nothing else,
+        * that hex must be the address that was asked about.
+
+        Anything else returns None, which the ledger renders as "?".  A name
+        that itself contains `` at `` is handled by the anchor -- the last
+        separator wins -- but a response in any other shape yields no guess.
+        The alternative, falling back to the whole string, would put a sentence
+        where a function name belongs and read exactly like a real one.
         """
 
         try:
@@ -423,14 +437,17 @@ def register_tools(
 
         described = meta.get("Function") or meta.get("function")
         if isinstance(described, str) and described.strip():
-            name, separator, _ = described.strip().rpartition(" at ")
-            if separator and name:
-                return name
-            return described.strip()
+            match = _FUNCTION_PROSE.match(described.strip())
+            if match is None:
+                return None
+            if int(match.group("address"), 16) != address:
+                return None
+            name = match.group("name").strip()
+            return name or None
 
         # Tolerate a plugin that grows a proper field later.
         plain = meta.get("name")
-        return plain if isinstance(plain, str) and plain else None
+        return plain if isinstance(plain, str) and plain.strip() else None
 
     def _current_function_comment(client, address: int) -> str | None:
         """The comment a write is about to replace -- if it can be read at all.
