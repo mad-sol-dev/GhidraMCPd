@@ -582,16 +582,17 @@ def register_tools(
     @server.tool()
     @tracked_tool(lock_usage=False)
     def select_program(client, domain_file_id: str, on_dirty: str | None = None) -> Dict[str, object]:
-        """
-        Select and open a program from the current project.
+        """Open a program from the current project, making it the active one.
+
+        Not for: discovering what is available -- take domain_file_id from
+        project_overview. Switching mid-session is governed by
+        GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY.
 
         Args:
-            domain_file_id: The domain file ID from project_overview
-            on_dirty: Action if current program has unsaved changes:
-                     - "error" (default): Fail with error
-                     - "save": Auto-save before switching
-                     - "discard": Switch without saving (data loss warning)
-        """
+            domain_file_id: from project_overview.
+            on_dirty: what to do if the current program has unsaved work --
+                'error' (default, refuse), 'save' (save first) or 'discard'
+                (switch and lose it)."""
         with request_scope(
             "select_program",
             logger=logger,
@@ -663,18 +664,15 @@ def register_tools(
     @server.tool()
     @tracked_tool()
     def goto_address(client, address: str) -> Dict[str, object]:
-        """
-        Navigate CodeBrowser to a specific address.
+        """Move the CodeBrowser cursor to an address and centre it.
 
-        Moves the cursor in the CodeBrowser listing window to the specified address,
-        centering it on screen for visibility.
+        Affects the Ghidra window only -- useful when you want to look at what
+        the model is discussing. Returns no program data.
+
+        Not for: reading anything. Use disassemble_at or read_bytes.
 
         Args:
-            address: Hex address string (e.g., "0x401000" or "0x200000")
-
-        Returns:
-            Success envelope with navigated address, or error if navigation fails.
-        """
+            address: hex, e.g. '0x401000'."""
         with request_scope(
             "goto_address",
             logger=logger,
@@ -709,18 +707,12 @@ def register_tools(
     @server.tool()
     @tracked_tool()
     def check_dirty_state(client) -> Dict[str, object]:
-        """
-        Check if the current program has unsaved changes.
+        """Report whether the active program has unsaved changes.
 
-        Returns dirty state information including whether the program can be saved.
+        Not for: finding out *what* changed -- it answers whether, not which.
 
-        Returns:
-            Envelope with dirty state information:
-            - changed: bool - Whether program has unsaved changes
-            - can_save: bool - Whether program can be saved
-            - program_name: str - Name of current program (if any)
-            - message: str - Human-readable status message
-        """
+        Takes no parameters. Returns changed (bool), can_save (bool),
+        program_name and a human-readable message."""
         with request_scope(
             "check_dirty_state",
             logger=logger,
@@ -751,21 +743,18 @@ def register_tools(
     @server.tool()
     @tracked_tool()
     def save_program(client, description: str | None = None) -> Dict[str, object]:
-        """
-        Save the current program with optional description.
+        """Persist unsaved changes to the active program.
 
-        Persists any unsaved changes to the current program. Requires that the user
-        is the owner of the program and it is not read-only.
+        Requires ownership and a program that is not read-only.
+
+        Not for: exporting anything -- this writes into the Ghidra project, not
+        to a file you can version.
 
         Args:
-            description: Optional description of changes being saved (e.g., "Fixed string references")
+            description: optional note about the changes, e.g. 'named USB
+                handlers'.
 
-        Returns:
-            Envelope with save result:
-            - saved: bool - Whether save was performed
-            - program_name: str - Name of saved program (if saved)
-            - message: str - Human-readable result message
-        """
+        Returns saved (bool), program_name and a message."""
         with request_scope(
             "save_program",
             logger=logger,
@@ -801,24 +790,16 @@ def register_tools(
         *,
         dry_run: bool = True,
     ) -> Dict[str, object]:
-        """
-        Rename a function at the specified address.
+        """Rename the function at an address.
 
-        Renames a function in the current program. Requires GHIDRA_MCP_ENABLE_WRITES=true
-        unless running in dry_run mode.
+        Needs GHIDRA_MCP_ENABLE_WRITES=true unless dry_run.
 
         Args:
-            address: Hex address string (e.g., "0x401000") where the function is located
-            new_name: New name for the function
-            dry_run: If True, validates the request but doesn't execute (default: True)
+            address: function entry, hex, e.g. '0x401000'.
+            new_name: the new name.
+            dry_run: default true; validate and report without renaming.
 
-        Returns:
-            Envelope with rename result:
-            - success: bool - Whether the rename was performed (False in dry_run mode)
-            - address: str - The target address
-            - new_name: str - The requested new name
-            - message: str - Human-readable result message
-        """
+        Returns success (false in dry_run), address, new_name and a message."""
         with request_scope(
             "rename_function",
             logger=logger,
@@ -883,26 +864,20 @@ def register_tools(
         comment_type: str = "decompiler",
         dry_run: bool = True,
     ) -> Dict[str, object]:
-        """
-        Add or update a comment at the specified address.
+        """Add or replace a comment at an address.
 
-        Sets a comment in the current program. Supports both decompiler and disassembly comments.
-        Requires GHIDRA_MCP_ENABLE_WRITES=true unless running in dry_run mode.
+        Needs GHIDRA_MCP_ENABLE_WRITES=true unless dry_run. Replaces any
+        existing comment of the same type at that address rather than appending.
 
         Args:
-            address: Hex address string (e.g., "0x401000") where to place the comment
-            comment: The comment text to add
-            comment_type: Type of comment - "decompiler" or "disassembly" (default: "decompiler")
-            dry_run: If True, validates the request but doesn't execute (default: True)
+            address: hex, e.g. '0x401000'.
+            comment: the text.
+            comment_type: 'decompiler' (default) or 'disassembly' -- they are
+                separate comments and do not overwrite each other.
+            dry_run: default true; validate and report without writing.
 
-        Returns:
-            Envelope with comment result:
-            - success: bool - Whether the comment was set (False in dry_run mode)
-            - address: str - The target address
-            - comment: str - The comment text
-            - comment_type: str - The type of comment set
-            - message: str - Human-readable result message
-        """
+        Returns success (false in dry_run), address, comment, comment_type and
+        a message."""
         with request_scope(
             "set_comment",
             logger=logger,
@@ -2390,19 +2365,18 @@ def register_tools(
         addresses: list[str],
         count: int = 16,
     ) -> Dict[str, object]:
-        """
-        Disassemble multiple addresses in one call for efficient batch processing.
-        
-        Useful when you need to examine several functions or code locations at once
-        without making separate calls for each address.
-        
+        """Disassemble several addresses in one call.
+
+        Not for: narrowing down what you need -- it returns every instruction
+        for every address, so 20 addresses at the default count is 320 lines.
+        find_in_function filters server-side when you know what you are after.
+
         Args:
-            addresses: List of hex strings like ['0x1000', '0x2000']
-            count: Number of instructions per address (default: 16)
-            
-        Returns:
-            Dictionary with results keyed by address string.
-        """
+            addresses: list of hex strings, e.g. ['0x1000', '0x2000']. Bounded
+                by GHIDRA_MCP_MAX_ITEMS_PER_BATCH (256).
+            count: instructions per address, >= 1, default 16.
+
+        Returns results keyed by address string."""
         request_payload = {"addresses": addresses, "count": count}
         valid, errors = validate_payload("disassemble_batch.request.v1.json", request_payload)
         if not valid:
