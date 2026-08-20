@@ -1118,24 +1118,24 @@ def register_tools(
             metadata: arbitrary JSON returned unchanged.
 
         Supported ``op`` values and their params:
-            disassemble_at              address, count (16)
-            disassemble_batch           addresses[], count (16)
+            disassemble_at              address, count (16), fmt ("json"/"text")
+            disassemble_batch           addresses[], count (16), fmt
             read_bytes                  address, length (64)
             read_words                  address, count (1)
-            search_strings              query, limit (100), page (1)
+            search_strings              query, limit (20), page (1)
             strings_compact             limit (required), offset (0)
-            string_xrefs                string_addr, limit (50)
-            search_imports              query, limit (100), page (1)
-            search_exports              query, limit (100), page (1)
-            search_functions            query, limit (100), page (1),
+            string_xrefs                string_addr, limit (20)
+            search_imports              query, limit (20), page (1)
+            search_exports              query, limit (20), page (1)
+            search_functions            query, limit (20), page (1),
                                         rank="simple" with k, resume_cursor
                                         (excludes rank), context_lines (0-16)
             search_xrefs_to             address, query (required, may be ""),
-                                        limit (100), page (1)
-            search_scalars              value (dec or hex), query, limit (100),
+                                        limit (20), page (1)
+            search_scalars              value (dec or hex), query, limit (20),
                                         page (1), resume_cursor
             search_scalars_with_context value, context_lines (0-16, default 4),
-                                        limit (25)
+                                        limit (20), fmt
 
         Each query returns its own envelope. Aggregate metadata records the
         total token estimate across all queries and projects."""
@@ -1690,7 +1690,7 @@ def register_tools(
     def string_xrefs_compact(
         client,
         string_addr: str,
-        limit: int = 50,
+        limit: int = 20,
     ) -> Dict[str, object]:
         """List the code locations referencing one string, compactly.
 
@@ -1702,7 +1702,7 @@ def register_tools(
 
         Args:
             string_addr: the string's address, hex, from search_strings.
-            limit: max references, >= 1, default 50."""
+            limit: max references, >= 1, default 20."""
         request_payload = {
             "string_addr": string_addr,
             "limit": limit,
@@ -1731,7 +1731,7 @@ def register_tools(
     def search_strings(
         client,
         query: str,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
         include_literals: bool = False,
     ) -> Dict[str, object]:
@@ -1744,7 +1744,7 @@ def register_tools(
 
         Args:
             query: substring, case-insensitive, non-empty.
-            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            limit: results per page, >= 1, default 20. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             page: 1-based, >= 1, default 1.
             include_literals: include the text, truncated to 120 chars. Default
                 false, which returns addresses only and is markedly cheaper."""
@@ -1783,7 +1783,7 @@ def register_tools(
     @tracked_tool()
     def strings_compact(
         client,
-        limit: int = 50,
+        limit: int = 20,
         offset: int = 0,
         include_literals: bool = False,
     ) -> Dict[str, object]:
@@ -1796,7 +1796,7 @@ def register_tools(
         raw bytes.
 
         Args:
-            limit: strings per page, >= 1, default 50. limit+offset must stay
+            limit: strings per page, >= 1, default 20. limit+offset must stay
                 <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             offset: strings to skip, >= 0, default 0.
             include_literals: include the text, truncated to 120 chars, default
@@ -1851,7 +1851,7 @@ def register_tools(
     def search_imports(
         client,
         query: str,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
     ) -> Dict[str, object]:
         """Find imported symbols whose name matches a query.
@@ -1861,7 +1861,7 @@ def register_tools(
 
         Args:
             query: substring, case-insensitive, non-empty.
-            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            limit: results per page, >= 1, default 20. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             page: 1-based, >= 1, default 1."""
 
         request_payload = {"query": query, "limit": limit, "page": page}
@@ -1896,7 +1896,7 @@ def register_tools(
     def search_exports(
         client,
         query: str,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
     ) -> Dict[str, object]:
         """Find exported symbols whose name matches a query.
@@ -1908,7 +1908,7 @@ def register_tools(
 
         Args:
             query: substring, case-insensitive, non-empty.
-            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            limit: results per page, >= 1, default 20. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             page: 1-based, >= 1, default 1."""
 
         request_payload = {"query": query, "limit": limit, "page": page}
@@ -1944,7 +1944,7 @@ def register_tools(
         client,
         address: str,
         query: str,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
     ) -> Dict[str, object]:
         """List the locations that reference an address.
@@ -1954,7 +1954,7 @@ def register_tools(
         Args:
             address: target, hex, e.g. '0x002af9c0'.
             query: substring filter on referencing symbol names; '' keeps all.
-            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            limit: results per page, >= 1, default 20. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             page: 1-based, >= 1, default 1."""
 
         request_payload = {
@@ -1997,7 +1997,7 @@ def register_tools(
     def search_functions(
         client,
         query: str,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
         *,
         rank: str | None = None,
@@ -2010,7 +2010,7 @@ def register_tools(
 
         Args:
             query: substring, case-insensitive, non-empty.
-            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            limit: results per page, >= 1, default 20. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             page: 1-based, >= 1, default 1.
             rank: only 'simple' is recognised, sorting by match quality; null
                 (default) keeps address order. Excludes cursor pagination.
@@ -2064,7 +2064,7 @@ def register_tools(
         regex: bool = False,
         case_sensitive: bool = False,
         context_lines: int = 3,
-        limit: int = 50,
+        limit: int = 20,
     ) -> Dict[str, object]:
         """Search a function's disassembly or decompilation for a pattern.
 
@@ -2078,7 +2078,7 @@ def register_tools(
             regex: treat query as a regex, default false.
             case_sensitive: default false.
             context_lines: lines each side of a match, default 3, max 16.
-            limit: matches per mode, default 50, max 200.
+            limit: matches per mode, default 20, max 200.
 
         Example: find_in_function('0x002af9c0', 'ldr') to locate the constant
         pool a function loads from."""
@@ -2167,7 +2167,7 @@ def register_tools(
     def search_scalars(
         client,
         value: str | int,
-        limit: int = 100,
+        limit: int = 20,
         page: int = 1,
     ) -> Dict[str, object]:
         """Find instructions whose operand is a given constant.
@@ -2176,7 +2176,7 @@ def register_tools(
 
         Args:
             value: the constant, hex string '0xB1008000' or int.
-            limit: results per page, >= 1, default 100.
+            limit: results per page, >= 1, default 20.
             page: 1-based, >= 1, default 1."""
 
         request_payload = {"value": value, "limit": limit, "page": page}
@@ -2222,19 +2222,18 @@ def register_tools(
         client,
         address_min: str,
         address_max: str,
-        limit: int = 200,
+        limit: int = 20,
         page: int = 1,
     ) -> Dict[str, object]:
         """List the functions defined within an address range, in address order.
 
-        Not for: searching by name or behaviour. The default limit of 200 makes
-        it easy to pull far more than you need -- narrow the range instead of
-        paging.
+        Not for: searching by name or behaviour. Narrow the range rather than paging: the
+        response grows with the number of functions, not with their size.
 
         Args:
             address_min: inclusive lower bound, hex, e.g. '0x002af000'.
             address_max: inclusive upper bound, hex, >= address_min.
-            limit: results per page, >= 1, default 200.
+            limit: results per page, >= 1, default 20.
             page: 1-based, >= 1, default 1."""
 
         request_payload = {
@@ -2276,6 +2275,7 @@ def register_tools(
         client,
         address: str,
         count: int = 16,
+        fmt: str = "json",
     ) -> Dict[str, object]:
         """Disassemble a run of instructions at an address.
 
@@ -2285,7 +2285,10 @@ def register_tools(
 
         Args:
             address: start, hex, inside a mapped block.
-            count: instructions, >= 1, default 16, clamped to 128."""
+            count: instructions, >= 1, default 16, clamped to 128.
+            fmt: 'json' (default) returns items as objects; 'text' returns
+                lines as "address: bytes mnemonic" strings, about half the
+                bytes. Use text unless you need to parse the fields."""
 
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
@@ -2302,6 +2305,7 @@ def register_tools(
                     client,
                     address=parse_hex(address),
                     count=count,
+                    fmt=fmt,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -2364,6 +2368,7 @@ def register_tools(
         client,
         addresses: list[str],
         count: int = 16,
+        fmt: str = "json",
     ) -> Dict[str, object]:
         """Disassemble several addresses in one call.
 
@@ -2375,6 +2380,7 @@ def register_tools(
             addresses: list of hex strings, e.g. ['0x1000', '0x2000']. Bounded
                 by GHIDRA_MCP_MAX_ITEMS_PER_BATCH (256).
             count: instructions per address, >= 1, default 16.
+            fmt: 'json' (default) or 'text'; see disassemble_at.
 
         Returns results keyed by address string."""
         request_payload = {"addresses": addresses, "count": count}
@@ -2392,6 +2398,7 @@ def register_tools(
                     client,
                     addresses=addresses,
                     count=count,
+                    fmt=fmt,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
@@ -2461,7 +2468,8 @@ def register_tools(
         client,
         value: str | int,
         context_lines: int = 4,
-        limit: int = 100,
+        limit: int = 20,
+        fmt: str = "json",
     ) -> Dict[str, object]:
         """search_scalars plus a disassembly window per hit.
 
@@ -2474,8 +2482,10 @@ def register_tools(
         Args:
             value: the constant, hex string '0xB1008000' or int.
             context_lines: instructions each side of a hit, >= 0, default 4.
-            limit: results per page, >= 1, default 100.
-            page: 1-based, >= 1, default 1."""
+            limit: results per page, >= 1, default 20.
+            page: 1-based, >= 1, default 1.
+            fmt: 'json' (default) puts instruction objects under disassembly;
+                'text' puts rendered lines under lines, about half the bytes."""
         request_payload = {
             "value": value,
             "context_lines": context_lines,
@@ -2504,6 +2514,7 @@ def register_tools(
                     value=normalized_value,
                     context_lines=context_lines,
                     limit=limit,
+                    fmt=fmt,
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))

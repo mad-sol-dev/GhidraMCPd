@@ -3,25 +3,64 @@
   "$id": "urn:schema:list-functions-in-range.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["query", "total", "page", "limit", "has_more", "items"],
+  "required": [
+    "query",
+    "page",
+    "limit",
+    "has_more",
+    "items",
+    "truncated"
+  ],
   "properties": {
-    "query": {"type": "string"},
-    "total": {"type": "integer", "minimum": 0},
-    "page": {"type": "integer", "minimum": 1},
-    "limit": {"type": "integer", "minimum": 1},
-    "has_more": {"type": "boolean"},
+    "query": {
+      "type": "string"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated."
+    },
+    "page": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "has_more": {
+      "type": "boolean"
+    },
     "items": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "address"],
+        "required": [
+          "name",
+          "address"
+        ],
         "properties": {
-          "name": {"type": "string"},
-          "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "size": {"type": ["integer", "null"], "minimum": 0}
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
         }
       }
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "True when results were left out. Separate from has_more/cursor, which say how to fetch the rest: a hard per-request cap truncates with nothing to page to."
     }
   }
 }

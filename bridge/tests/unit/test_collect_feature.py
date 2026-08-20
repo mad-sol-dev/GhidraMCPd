@@ -250,12 +250,18 @@ def test_search_scalars_with_context_accepts_edge_values(
     captured: dict[str, object] = {}
 
     def fake_search_scalars_with_context(
-        client_arg: StubClient, *, value: int, context_lines: int, limit: int
+        client_arg: StubClient,
+        *,
+        value: int,
+        context_lines: int,
+        limit: int,
+        fmt: str = "json",
     ) -> dict[str, object]:
         captured["client"] = client_arg
         captured["value"] = value
         captured["context_lines"] = context_lines
         captured["limit"] = limit
+        captured["fmt"] = fmt
         return {"value": value, "matches": []}
 
     monkeypatch.setattr(collect, "enforce_batch_limit", fake_enforce)

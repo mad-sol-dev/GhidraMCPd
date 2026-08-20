@@ -15,12 +15,15 @@ from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import enforce_batch_limit, increment_counter
 from . import scalars
 from . import method_notes
+from .listing import batch_to_text, normalize_fmt, render_lines
+from .pagination import finalize_page
 
 
 def disassemble_batch(
     client: GhidraClient,
     addresses: List[str],
     count: int = 16,
+    fmt: str = "json",
 ) -> Dict[str, object]:
     """Disassemble instructions at multiple addresses in one call.
     
@@ -28,12 +31,14 @@ def disassemble_batch(
         client: GhidraClient instance for communicating with Ghidra
         addresses: List of address strings (hex format) to disassemble
         count: Number of instructions to disassemble at each address
-        
+        fmt: "json" for instruction objects, "text" for rendered lines
+
     Returns:
         Dictionary with keys:
         - addresses: Original list of address strings
         - count: Number of instructions per address
-        - results: Dict mapping address strings to instruction lists
+        - results: Dict mapping address strings to instruction lists (json) or
+          to lists of rendered lines (text)
     """
     enforce_batch_limit(len(addresses), counter="disassemble_batch.addresses")
     increment_counter("batch_ops.disassemble_batch")
@@ -44,6 +49,9 @@ def disassemble_batch(
         instructions = client.disassemble_at(addr, count)
         results[addr_str] = instructions if instructions is not None else []
     
+    if normalize_fmt(fmt) == "text":
+        results = batch_to_text(results)
+
     return {
         "addresses": addresses,
         "count": count,
@@ -105,7 +113,8 @@ def search_scalars_with_context(
     client: GhidraClient,
     value: int,
     context_lines: int = 4,
-    limit: int = 100,
+    limit: int = 20,
+    fmt: str = "json",
 ) -> Dict[str, object]:
     """Search for scalar values and include surrounding disassembly context.
     
@@ -118,6 +127,8 @@ def search_scalars_with_context(
         value: Scalar value to search for
         context_lines: Number of instructions before/after to include
         limit: Maximum number of results to return
+        fmt: "json" for instruction objects under `disassembly`, "text" for
+            rendered strings under `lines` (roughly half the bytes)
         
     Returns:
         Dictionary with keys:
@@ -134,6 +145,7 @@ def search_scalars_with_context(
     """
     enforce_batch_limit(limit, counter="search_scalars_with_context.limit")
     increment_counter("batch_ops.search_scalars_with_context")
+    text_mode = normalize_fmt(fmt) == "text"
     
     # Get scalar search results
     results = scalars.search_scalars(
@@ -157,13 +169,17 @@ def search_scalars_with_context(
         # Get disassembly context
         context_disasm = client.disassemble_at(context_start, context_count)
         
-        match = {
+        context_disasm = context_disasm if context_disasm is not None else []
+        match: Dict[str, object] = {
             "address": addr_str,
             "value": int_to_hex(value),
             "function": item.get("function", ""),
             "context_text": item.get("context", ""),
-            "disassembly": context_disasm if context_disasm is not None else [],
         }
+        if text_mode:
+            match["lines"] = render_lines(context_disasm)
+        else:
+            match["disassembly"] = context_disasm
         matches.append(match)
     
     total = results.get("total")
@@ -185,5 +201,6 @@ def search_scalars_with_context(
         response["resume_cursor"] = resume_cursor
 
     method_notes.attach("search_scalars_with_context", response)
+    finalize_page(response)
 
     return response

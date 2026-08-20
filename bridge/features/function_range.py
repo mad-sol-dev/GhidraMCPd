@@ -4,6 +4,7 @@ from typing import Dict, List
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import increment_counter
+from .pagination import finalize_page
 
 
 def list_functions_in_range(
@@ -69,14 +70,16 @@ def list_functions_in_range(
 
     increment_counter("function_range.list.results", len(paginated_items))
 
-    return {
-        "query": query,
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "has_more": end < total,
-        "items": paginated_items,
-    }
+    return finalize_page(
+        {
+            "query": query,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "has_more": end < total,
+            "items": paginated_items,
+        }
+    )
 
 
 __all__ = ["list_functions_in_range"]

@@ -11,6 +11,7 @@ from ..utils.cache import (
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import increment_counter, SafetyLimitExceeded
 from . import method_notes
+from .pagination import finalize_page
 
 
 _LIMIT_ERROR_MARKERS = ("scan limit", "too large")
@@ -139,6 +140,7 @@ def search_scalars(
     }
 
     method_notes.attach("search_scalars", result)
+    finalize_page(result)
 
     if cache_key is not None and not page_result.error:
         cache.set(cache_key, result)

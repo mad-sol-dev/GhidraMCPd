@@ -3,20 +3,50 @@
   "$id": "urn:schema:disassemble-at.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["items"],
+  "required": [],
   "properties": {
     "items": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["address", "bytes", "text"],
+        "required": [
+          "address",
+          "bytes",
+          "text"
+        ],
         "properties": {
-          "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "bytes": {"type": "string"},
-          "text": {"type": "string"}
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "bytes": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
         }
       }
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Rendered listing, one \"address: bytes mnemonic\" per line. Present when fmt is \"text\"; items/disassembly are then absent."
     }
-  }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "items"
+      ]
+    },
+    {
+      "required": [
+        "lines"
+      ]
+    }
+  ]
 }

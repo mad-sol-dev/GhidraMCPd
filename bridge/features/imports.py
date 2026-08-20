@@ -1,19 +1,21 @@
 from typing import Dict, List
 
 from ..ghidra.client import GhidraClient
+from ..utils.hex import normalize_symbol_address
 from ..utils.cache import (
     build_search_cache_key,
     get_program_digest,
     get_search_cache,
     normalize_search_query,
 )
+from .pagination import finalize_page
 
 
 def search_imports(
     client: GhidraClient,
     *,
     query: str,
-    limit: int = 100,
+    limit: int = 20,
     page: int = 1,
 ) -> Dict[str, object]:
     """Search for imported symbols matching ``query`` and return paginated results."""
@@ -53,8 +55,7 @@ def search_imports(
         address = address_part.strip()
         if not name or not address:
             continue
-        if not address.startswith("0x"):
-            address = f"0x{address}"
+        address = normalize_symbol_address(address)
         items.append({"name": name, "address": address})
 
     total = len(items)
@@ -73,6 +74,7 @@ def search_imports(
         "items": paginated_items,
         "has_more": has_more,
     }
+    finalize_page(result)
 
     if cache_key is not None:
         cache.set(cache_key, result)

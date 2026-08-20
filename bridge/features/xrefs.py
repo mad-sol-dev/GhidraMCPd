@@ -12,6 +12,7 @@ from ..utils.cache import (
 from ..utils.config import MAX_ITEMS_PER_BATCH
 from ..utils.logging import SafetyLimitExceeded
 from . import method_notes
+from .pagination import finalize_page
 
 
 def search_xrefs_to(
@@ -19,7 +20,7 @@ def search_xrefs_to(
     *,
     address: str,
     query: str,
-    limit: int = 100,
+    limit: int = 20,
     page: int = 1,
 ) -> Dict[str, object]:
     """Search cross-references to ``address`` and return a paginated response.
@@ -114,6 +115,7 @@ def search_xrefs_to(
     }
 
     method_notes.attach("search_xrefs_to", result)
+    finalize_page(result)
 
     if cache_key is not None:
         cache.set(cache_key, result)

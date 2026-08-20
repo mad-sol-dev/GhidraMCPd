@@ -127,12 +127,12 @@
   "collect": {
     "data": {
       "meta": {
-        "estimate_tokens": 136,
+        "estimate_tokens": 146,
         "result_budget": {
-          "consumed_tokens": 136,
+          "consumed_tokens": 146,
           "max_result_tokens": 2048,
           "mode": "auto_trim",
-          "remaining_tokens": 1912
+          "remaining_tokens": 1902
         }
       },
       "queries": [
@@ -140,11 +140,11 @@
           "id": "imports",
           "meta": {
             "budget": {
-              "consumed_tokens": 49,
+              "consumed_tokens": 54,
               "max_result_tokens": null,
               "mode": "auto_trim"
             },
-            "estimate_tokens": 49,
+            "estimate_tokens": 54,
             "max_result_tokens": null,
             "truncated": false
           },
@@ -165,7 +165,8 @@
               "limit": 2,
               "page": 1,
               "query": "import",
-              "total": 16
+              "total": 16,
+              "truncated": true
             },
             "errors": [],
             "ok": true
@@ -175,11 +176,11 @@
           "id": "xrefs",
           "meta": {
             "budget": {
-              "consumed_tokens": 87,
+              "consumed_tokens": 92,
               "max_result_tokens": null,
               "mode": "auto_trim"
             },
-            "estimate_tokens": 87,
+            "estimate_tokens": 92,
             "max_result_tokens": null,
             "truncated": false
           },
@@ -207,7 +208,8 @@
               "limit": 5,
               "page": 1,
               "query": "",
-              "total": 3
+              "total": 3,
+              "truncated": false
             },
             "errors": [],
             "ok": true

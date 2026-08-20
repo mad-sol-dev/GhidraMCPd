@@ -14,6 +14,7 @@ from ..utils.cache import (
 )
 from ..utils.hex import parse_hex
 from . import method_notes
+from .pagination import finalize_page
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
@@ -60,7 +61,7 @@ def search_functions(
     client: GhidraClient,
     *,
     query: str,
-    limit: int = 100,
+    limit: int = 20,
     page: int = 1,
     rank: str | None = None,
     k: int | None = None,
@@ -311,6 +312,7 @@ def search_functions(
     }
 
     method_notes.attach("search_functions", result)
+    finalize_page(result)
 
     if cache_key is not None and not had_error:
         cache.set(cache_key, result)

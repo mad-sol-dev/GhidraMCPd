@@ -19,6 +19,31 @@ def parse_hex(value: str) -> int:
     return int(value, 16)
 
 
+def normalize_symbol_address(raw: str) -> str:
+    """Return a well-formed address for a symbol reported by the Ghidra plugin.
+
+    The plugin renders every address as ``"0x" + address.toString()``.  For the
+    default address space that is right; for a named space it is not, because
+    Ghidra already renders those as ``SPACE:offset``.  An imported symbol on the
+    reference firmware therefore arrives as ``0xEXTERNAL:00000001``, which is
+    neither valid hex nor what Ghidra meant, and the response schema rejected
+    it -- so ``search_imports`` failed outright on that program.
+
+    Space-qualified addresses keep their qualifier and lose the bogus prefix;
+    plain addresses gain the ``0x`` they may be missing.
+    """
+
+    address = raw.strip()
+    if not address:
+        return address
+
+    body = address[2:] if address[:2].lower() == "0x" else address
+    if ":" in body:
+        # SPACE:offset -- a named address space, not a number.
+        return body
+    return f"0x{body}"
+
+
 def slot_address(jt_base: int, slot_index: int) -> int:
     """Calculate the absolute address of a jump-table slot."""
 

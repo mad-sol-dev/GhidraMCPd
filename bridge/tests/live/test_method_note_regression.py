@@ -63,7 +63,7 @@ def test_the_note_still_validates_against_the_response_schema(empty_scalar_searc
 def test_a_search_with_hits_carries_no_note(client):
     """The note marks a negative finding; on a hit it would be noise.
 
-    Note that ``total`` is ``None`` here: with a small limit the search paginates
+    Note that ``total`` is absent here: with a small limit the search paginates
     by cursor and does not know the total.  "attach a note when total == 0" would
     therefore have been the wrong rule on its own -- the emptiness of the result
     list has to decide when the total is unknown.
@@ -71,7 +71,7 @@ def test_a_search_with_hits_carries_no_note(client):
 
     found = scalars.search_scalars(client, value="0x1000", query="", limit=5, page=1)
     assert found["items"], "0x1000 should appear as an operand somewhere"
-    assert found["total"] is None or found["total"] > 0
+    assert "total" not in found or found["total"] > 0
     assert "method_note" not in found
 
 
@@ -172,3 +172,54 @@ def test_xrefs_with_hits_stays_quiet(client):
     found = xrefs.search_xrefs_to(client, address="0x00200000", query="", limit=10, page=1)
     assert found["total"] > 0
     assert "method_note" not in found
+
+
+# ------------------------------------------------------------- search_imports
+
+def test_search_imports_no_longer_fails_on_this_program(client):
+    """The Stage 0 side finding: one import, in the EXTERNAL address space.
+
+    It made search_imports return INVALID_REQUEST on the main program for every
+    query that matched it.
+    """
+
+    from bridge.api.validators import validate_payload
+    from bridge.features import imports
+
+    payload = imports.search_imports(client, query="e", limit=20, page=1)
+
+    valid, errors = validate_payload("search_imports.v1.json", payload)
+    assert valid, errors
+
+    addresses = [item["address"] for item in payload["items"]]
+    assert "EXTERNAL:00000001" in addresses, payload
+
+
+# ------------------------------------------------------------- Stage 3 contract
+
+def test_an_unknown_total_is_absent_rather_than_null(client):
+    """A cursor-paged search does not know the total, and must not pretend to.
+
+    Reporting null would leave a caller reading `data["total"]` a value that
+    looks like an answer; omitting the key makes the absence of knowledge
+    explicit, at the cost of breaking exactly that kind of caller -- which is
+    the point.
+    """
+
+    from bridge.features import scalars
+
+    paged = scalars.search_scalars(client, value="0x1000", query="", limit=5, page=1)
+    assert "total" not in paged, paged.get("total")
+    assert paged["truncated"] is True
+    assert paged["has_more"] is True
+
+
+def test_a_complete_result_reports_its_total_and_is_not_truncated(client):
+    """Where the total is genuinely known it is still reported."""
+
+    from bridge.features import imports
+
+    complete = imports.search_imports(client, query="e", limit=20, page=1)
+    assert complete["total"] == 1
+    assert complete["truncated"] is False
+    assert complete["has_more"] is False

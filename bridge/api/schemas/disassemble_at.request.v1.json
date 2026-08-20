@@ -3,9 +3,26 @@
   "$id": "urn:schema:disassemble-at.request.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["address"],
+  "required": [
+    "address"
+  ],
   "properties": {
-    "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "count": {"type": "integer", "minimum": 1, "maximum": 128, "default": 16}
+    "address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128,
+      "default": 16
+    },
+    "fmt": {
+      "type": "string",
+      "enum": [
+        "json",
+        "text"
+      ]
+    }
   }
 }

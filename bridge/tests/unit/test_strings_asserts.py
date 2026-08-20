@@ -37,7 +37,7 @@ def test_xrefs_compact_records_limit_and_disassembly_calls():
     payload = xrefs_compact(client, string_addr=0x1000)
 
     assert payload["count"] == len(xrefs)
-    assert client.last_limit == 50
+    assert client.last_limit == 20  # Stage 3 lowered the default page size
     assert client.disasm_calls == [0x401000, 0x401010]
 
 

@@ -18,7 +18,7 @@ def find_in_function(
     regex: bool = False,
     case_sensitive: bool = False,
     context_lines: int = 3,
-    limit: int = 50,
+    limit: int = 20,
 ) -> Dict[str, object]:
     """Search for text patterns within a function's disassembly or decompilation.
 

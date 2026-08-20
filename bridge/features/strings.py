@@ -19,6 +19,7 @@ from ..utils.logging import (
     increment_counter,
 )
 from . import method_notes
+from .pagination import finalize_page
 
 
 _REGISTER_ARG_ORDER = {
@@ -160,7 +161,7 @@ def _extract_context(
     return (snippet or _normalize_context(fallback), arg_index, hint)
 
 
-def xrefs_compact(client: GhidraClient, *, string_addr: int, limit: int = 50) -> Dict[str, object]:
+def xrefs_compact(client: GhidraClient, *, string_addr: int, limit: int = 20) -> Dict[str, object]:
     increment_counter("strings.xrefs.calls")
     enforce_batch_limit(limit, counter="strings.xrefs.limit")
     refs = client.get_xrefs_to(string_addr, limit=limit)
@@ -252,6 +253,7 @@ def search_strings(
     }
 
     method_notes.attach("search_strings", result)
+    finalize_page(result)
 
     if cache_key is not None:
         cache.set(cache_key, result)

@@ -5,9 +5,9 @@
   "additionalProperties": false,
   "required": [
     "value",
-    "total",
     "matches",
-    "has_more"
+    "has_more",
+    "truncated"
   ],
   "properties": {
     "value": {
@@ -15,11 +15,9 @@
       "pattern": "^0x[0-9A-Fa-f]+$"
     },
     "total": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "minimum": 0
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated."
     },
     "has_more": {
       "type": "boolean"
@@ -38,8 +36,7 @@
         "additionalProperties": false,
         "required": [
           "address",
-          "value",
-          "disassembly"
+          "value"
         ],
         "properties": {
           "address": {
@@ -82,13 +79,36 @@
                 }
               }
             }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Rendered context lines. Present when fmt is \"text\"; disassembly is then absent."
           }
-        }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "disassembly"
+            ]
+          },
+          {
+            "required": [
+              "lines"
+            ]
+          }
+        ]
       }
     },
     "method_note": {
       "type": "string",
       "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary."
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "True when results were left out. Separate from has_more/cursor, which say how to fetch the rest: a hard per-request cap truncates with nothing to page to."
     }
   }
 }

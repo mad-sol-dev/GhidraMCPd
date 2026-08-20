@@ -122,7 +122,8 @@ def _require(params: Mapping[str, object], key: str) -> object:
 def _op_disassemble_at(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
     count = int(params.get("count", 16))
-    return disasm.disassemble_at(client, address=address, count=count)
+    fmt = str(params.get("fmt", "json"))
+    return disasm.disassemble_at(client, address=address, count=count, fmt=fmt)
 
 
 def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
@@ -131,7 +132,8 @@ def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) ->
         raise TypeError("addresses must be an array of hex strings")
     addresses = [str(value) for value in addresses_param]
     count = int(params.get("count", 16))
-    return batch_ops.disassemble_batch(client, addresses=addresses, count=count)
+    fmt = str(params.get("fmt", "json"))
+    return batch_ops.disassemble_batch(client, addresses=addresses, count=count, fmt=fmt)
 
 
 def _op_read_bytes(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
@@ -160,7 +162,7 @@ def _op_read_words(client: GhidraClient, params: Mapping[str, object]) -> Mappin
 
 def _op_search_strings(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     query = str(_require(params, "query"))
-    limit = int(params.get("limit", 100))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -195,13 +197,13 @@ def _op_strings_compact(client: GhidraClient, params: Mapping[str, object]) -> M
 
 def _op_string_xrefs(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     string_addr = parse_hex(str(_require(params, "string_addr")))
-    limit = int(params.get("limit", 50))
+    limit = int(params.get("limit", 20))
     return strings.xrefs_compact(client, string_addr=string_addr, limit=limit)
 
 
 def _op_search_imports(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     query = str(_require(params, "query"))
-    limit = int(params.get("limit", 100))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -212,7 +214,7 @@ def _op_search_imports(client: GhidraClient, params: Mapping[str, object]) -> Ma
 
 def _op_search_exports(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     query = str(_require(params, "query"))
-    limit = int(params.get("limit", 100))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -223,7 +225,7 @@ def _op_search_exports(client: GhidraClient, params: Mapping[str, object]) -> Ma
 
 def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     query = str(params.get("query", ""))
-    limit = int(params.get("limit", 100))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     cursor_param = params.get("resume_cursor") or params.get("cursor")
     rank_param = params.get("rank")
@@ -266,7 +268,7 @@ def _op_search_functions(client: GhidraClient, params: Mapping[str, object]) -> 
 def _op_search_xrefs_to(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = str(_require(params, "address"))
     query = str(params.get("query", ""))
-    limit = int(params.get("limit", 100))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -280,7 +282,7 @@ def _op_search_scalars(client: GhidraClient, params: Mapping[str, object]) -> Ma
     if value is None:
         raise KeyError("Missing required parameter: value")
     query = str(params.get("query", value))
-    limit = int(params.get("limit", 50))
+    limit = int(params.get("limit", 20))
     page = int(params.get("page", 1))
     cursor_param = params.get("resume_cursor") or params.get("cursor")
     if limit <= 0:
@@ -303,18 +305,20 @@ def _op_search_scalars_with_context(
     value_raw = _require(params, "value")
     value = parse_hex(str(value_raw)) if isinstance(value_raw, str) else int(value_raw)
     context_lines = int(params.get("context_lines", 4))
-    limit = int(params.get("limit", 25))
+    limit = int(params.get("limit", 20))
     if context_lines < 0 or context_lines > 16:
         raise ValueError("context_lines must be between 0 and 16")
     if limit <= 0:
         raise ValueError("limit must be positive")
     context_window = context_lines * 2 + 1
     enforce_batch_limit(context_window, counter="search_scalars_with_context.window")
+    fmt = str(params.get("fmt", "json"))
     return batch_ops.search_scalars_with_context(
         client,
         value=value,
         context_lines=context_lines,
         limit=limit,
+        fmt=fmt,
     )
 
 

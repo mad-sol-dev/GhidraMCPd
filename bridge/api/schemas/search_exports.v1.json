@@ -2,14 +2,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_exports.v1.json",
   "type": "object",
-  "required": ["query", "total", "page", "limit", "items", "has_more"],
+  "required": [
+    "query",
+    "page",
+    "limit",
+    "items",
+    "has_more",
+    "truncated"
+  ],
   "properties": {
     "query": {
       "type": "string"
     },
     "total": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated."
     },
     "page": {
       "type": "integer",
@@ -23,20 +31,30 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "address"],
+        "required": [
+          "name",
+          "address"
+        ],
         "properties": {
           "name": {
             "type": "string"
           },
           "address": {
             "type": "string",
-            "pattern": "^0x[0-9a-fA-F]+$"
+            "pattern": "^(0x[0-9a-fA-F]+|[A-Za-z_][A-Za-z0-9_.]*:[0-9a-fA-F]+)$",
+            "description": "A hex address, or SPACE:offset for a symbol in a named address space such as EXTERNAL. Ghidra renders the latter without a 0x prefix because it is not a number."
           }
         },
         "additionalProperties": false
       }
     },
-    "has_more": {"type": "boolean"}
+    "has_more": {
+      "type": "boolean"
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "True when results were left out. Separate from has_more/cursor, which say how to fetch the rest: a hard per-request cap truncates with nothing to page to."
+    }
   },
   "additionalProperties": false
 }

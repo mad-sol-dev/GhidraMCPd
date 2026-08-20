@@ -21,8 +21,10 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
     data = payload["data"]
 
     assert data["query"] == "func"
-    total = data["total"]
-    assert total is None or isinstance(total, int)
+    # Since Stage 3 an unknown total is absent rather than null: a caller must
+    # not be able to read a placeholder as a count.
+    assert "total" not in data or isinstance(data["total"], int)
+    assert isinstance(data["truncated"], bool)
     assert data["page"] == 1
     assert data["limit"] == 8
     assert isinstance(data["items"], list)
@@ -68,6 +70,7 @@ def test_search_functions_page_mode_totals(contract_client: TestClient) -> None:
             seen_addresses.append(item["address"])
         if not data["has_more"]:
             assert isinstance(data["total"], int)
+            assert data["truncated"] is False
             total_reported = data["total"]
             assert data["resume_cursor"] is None
             break
