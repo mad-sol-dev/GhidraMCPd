@@ -16,7 +16,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
-- {R.12} Write-path utilities (rename_function/set_comment/apply_label) with dry-run + env gate + error codes
+- {R.12} Write-path utilities — **`apply_label` fehlt und blockiert real**: das Plugin kann kein Label an einer Adresse ohne definierte Daten setzen (createLabel nur als Zweig in `renameDataAtAddress` hinter `getDefinedDataAt != null`), `/renameData` meldet trotzdem Erfolg, und die Bridge bietet nichts davon an. Workaround: `scripts/ghidra/import_mmio_labels.py`. Braucht Plugin-Rebuild. `rename_function`/`set_comment` existieren bereits.
 - {R.13} Extension ZIP packaging + install checklist + CI/script smoke-test hook
 - {R.17} AGENTS.md guidance for ghidra-bridge usage and prompting defaults
 - {R.18} Cookbook snippets for USB/update/boot/MMIO workflows using MCP tools only

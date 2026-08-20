@@ -300,17 +300,26 @@
     },
     {
       "id": "R.12",
-      "title": "Write-path utilities",
+      "title": "Write-path utilities (apply_label is the missing one)",
       "area": "bridge",
       "depends_on": [
         "D.6"
       ],
       "dod": [
-        "rename_function/set_comment/apply_label tools gated by GHIDRA_MCP_ENABLE_WRITES",
-        "Dry-run mode and structured error codes",
-        "Docs warn about write scope and confirmation requirements"
+        "apply_label creates a label at an arbitrary address, including one with no defined data -- that is the case the current path cannot handle",
+        "Java: a dedicated endpoint calling SymbolTable.createLabel(), NOT the getDefinedDataAt() branch inside renameDataAtAddress()",
+        "The endpoint reports success or failure; /renameData answers 'Rename data attempted' regardless, which is how this went unnoticed",
+        "Bridge tool with dry_run default and the GHIDRA_MCP_ENABLE_WRITES gate",
+        "Name collisions handled (see the script's make_unique_name)",
+        "rename_function and set_comment already exist and are unaffected"
       ],
-      "status": "todo"
+      "status": "todo",
+      "notes": [
+        "Blocked in practice, not merely unimplemented: labelling MMIO registers at 0xB1006xxx was needed and could not be done through the plugin.",
+        "Root cause (verified 2026-08-20): the plugin's only createLabel() call is a fallback inside renameDataAtAddress(), guarded by listing.getDefinedDataAt(addr) != null. An unmapped MMIO register has no defined data, so the whole block is skipped. The /renameData handler ignores the outcome and always answers 'Rename data attempted'. The bridge exposes neither the endpoint nor any label tool.",
+        "Working around it: scripts/ghidra/import_mmio_labels.py, a Ghidra script that calls createLabel() unconditionally. It is what unblocked the work and shows what the endpoint has to do.",
+        "Needs a plugin rebuild, so it is a session of its own."
+      ]
     },
     {
       "id": "R.13",

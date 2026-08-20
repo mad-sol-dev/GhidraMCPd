@@ -38,3 +38,4 @@
 - 2025-11-12 **D.9** — 5-min short cache per {digest,query} (TTL caching layer, metrics, docs/tests) _commit:af5291a_
 - 2025-11-12 **R.1** — Batch project analysis lanes (collector lanes span multiple programs with deterministic envelopes + docs/tests) _commit:pending_
 - 2025-11-12 **R.2** — Enhanced search ranking/context windows (function context windows with deterministic unit/contract/golden coverage) _commit:pending_
+- 2026-08-20 **MMIO-BASE-RESOLUTION** — MOV-Immediate als Basisregister; Offset wird nicht mehr als Adresse geraten; `skipped` wird ausgewiesen (ui_main_loop: 161/153 Phantom-Zugriffe → 51/2 bei 375 skipped) _commit:a807184_
