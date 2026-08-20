@@ -1,38 +1,46 @@
 """Shared token estimation used by result budgets and the usage log.
 
-``collect`` and ``analyze_function_complete`` already report an
-``estimate_tokens`` value in their aggregate metadata.  The usage log applies
-the very same function to every tool call so the numbers stay comparable
-across tools.
+The estimate approximates the cost of a response as its serialized length over
+four.  ``collect`` and ``analyze_function_complete`` bound their output with it,
+and the usage log records it per call, so it has to measure the whole payload --
+not a part of it.
+
+History, because it explains the shape: this counted string characters only.
+Numbers, addresses, byte counts and every structural character were invisible,
+so ``read_words`` was estimated at 4 tokens for a 292-byte response.  A budget
+that undercounts by a factor of two is not a limit, and
+``max_result_tokens`` never bound anything in practice.  Serializing the payload
+and dividing by four is the simplest estimate that measures what is actually
+sent.
 """
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+import json
 
-__all__ = ["estimate_tokens"]
+__all__ = ["estimate_tokens", "serialized_length"]
+
+#: Characters per token.  A rough industry rule, and deliberately rough: the
+#: point is a bound that tracks payload size, not a tokenizer.
+_CHARS_PER_TOKEN = 4
+
+
+def serialized_length(data: object) -> int:
+    """Return the length of ``data`` as JSON, in characters.
+
+    Uses the same serialization the client receives, so the estimate and the
+    measured response size describe the same thing.  Values JSON cannot
+    represent fall back to their ``str()`` form rather than raising: an
+    estimator that throws on an odd payload would be worse than one that
+    approximates it.
+    """
+
+    try:
+        return len(json.dumps(data, default=str))
+    except (TypeError, ValueError):  # pragma: no cover - defensive
+        return len(str(data))
 
 
 def estimate_tokens(data: object) -> int:
-    """Estimate the token cost of ``data`` as ``string characters / 4``.
+    """Estimate the token cost of ``data`` as serialized length over four."""
 
-    Only string content is counted; this is the historical behaviour of the
-    ``collect`` budget accounting and is kept unchanged so budgets and the
-    usage log measure the same thing.  Callers that need the true payload size
-    should record the serialized byte count alongside this value.
-    """
-
-    total_chars = 0
-
-    def _walk(value: object) -> None:
-        nonlocal total_chars
-        if isinstance(value, str):
-            total_chars += len(value)
-        elif isinstance(value, Mapping):
-            for item in value.values():
-                _walk(item)
-        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-            for item in value:
-                _walk(item)
-
-    _walk(data)
-    return total_chars // 4 if total_chars else 0
+    return serialized_length(data) // _CHARS_PER_TOKEN

@@ -89,7 +89,21 @@ def test_hits_prefers_explicit_total():
 
 
 def test_estimator_is_shared_with_collect_budget():
+    """One estimator, so the budget and the log measure the same thing."""
+
     from bridge.features.analyze import _estimate_tokens
 
-    payload = {"a": "x" * 40, "b": [{"c": "y" * 8}]}
-    assert _estimate_tokens(payload) == estimate_tokens(payload) == 12
+    payload = {"a": "x" * 40, "b": [{"c": "y" * 8}], "n": list(range(20))}
+    assert _estimate_tokens(payload) == estimate_tokens(payload)
+
+
+def test_the_log_estimate_matches_the_bytes_it_records():
+    """After Stage 2b both columns describe the same serialized payload.
+
+    They are no longer independent measurements -- that is the fix, not a
+    coincidence -- so the report must not present their agreement as evidence
+    of anything beyond the estimator measuring the response.
+    """
+
+    payload = {"ok": True, "data": {"words": list(range(64))}, "errors": []}
+    assert estimate_tokens(payload) == len(json.dumps(payload)) // 4

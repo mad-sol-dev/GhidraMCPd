@@ -65,7 +65,7 @@
         "signature": null
       },
       "meta": {
-        "estimate_tokens": 83,
+        "estimate_tokens": 382,
         "fields": [
           "callgraph",
           "decompile",
@@ -127,12 +127,12 @@
   "collect": {
     "data": {
       "meta": {
-        "estimate_tokens": 39,
+        "estimate_tokens": 136,
         "result_budget": {
-          "consumed_tokens": 39,
+          "consumed_tokens": 136,
           "max_result_tokens": 2048,
           "mode": "auto_trim",
-          "remaining_tokens": 2009
+          "remaining_tokens": 1912
         }
       },
       "queries": [
@@ -140,11 +140,11 @@
           "id": "imports",
           "meta": {
             "budget": {
-              "consumed_tokens": 15,
+              "consumed_tokens": 49,
               "max_result_tokens": null,
               "mode": "auto_trim"
             },
-            "estimate_tokens": 15,
+            "estimate_tokens": 49,
             "max_result_tokens": null,
             "truncated": false
           },
@@ -175,11 +175,11 @@
           "id": "xrefs",
           "meta": {
             "budget": {
-              "consumed_tokens": 24,
+              "consumed_tokens": 87,
               "max_result_tokens": null,
               "mode": "auto_trim"
             },
-            "estimate_tokens": 24,
+            "estimate_tokens": 87,
             "max_result_tokens": null,
             "truncated": false
           },

@@ -5,15 +5,23 @@ Reads the JSONL produced by ``GHIDRA_MCP_USAGE_LOG`` (see
 ``scripts/reference_run.py``) and prints the per-tool ranking that the rework
 baseline is measured against.
 
-Two token columns are reported on purpose:
+Two token columns are reported:
 
 ``est_tokens``
     The shared estimator (``bridge.utils.tokens.estimate_tokens``), i.e. the
-    same function that drives the ``collect`` result budget.  It counts string
-    characters only, so payloads made of numbers are under-reported.
+    same function that drives the ``collect`` result budget.
 ``bytes/4``
-    The serialized response size divided by four.  This is the honest upper
-    bound and makes the estimator's blind spot visible instead of hiding it.
+    The serialized response size divided by four.
+
+Since Stage 2b these two agree to within rounding, and that agreement is **not
+evidence of anything**: the estimator was changed to measure the serialized
+payload, which is what the byte column measures.  A ratio of 1.00 here means the
+estimator is doing its job, not that it has been independently confirmed.  What
+the fix is actually judged by lives in bridge/tests/unit/test_token_estimator.py
+and bridge/tests/live/test_result_budget_strict.py.
+
+Before Stage 2b the estimator counted string characters only and the ratio ran
+at 0.44 on average -- 0.05 for ``read_words``, 0.00 for ``strings_compact``.
 
 Usage::
 
