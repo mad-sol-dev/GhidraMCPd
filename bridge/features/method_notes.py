@@ -18,10 +18,11 @@ is meant to prevent.
 """
 from __future__ import annotations
 
-from typing import Dict, Mapping, NamedTuple
+from typing import Mapping, MutableMapping, NamedTuple, Sequence
 
 __all__ = [
     "METHOD_NOTES",
+    "attach",
     "SHORT_FORM",
     "MethodNote",
     "method_note_for",
@@ -153,3 +154,43 @@ def short_form(tool: str) -> str | None:
     """Return the one-line form used in the tool description."""
 
     return SHORT_FORM.get(tool)
+
+
+#: Where each tool keeps its result list, for the empty-result check.
+_RESULT_KEYS = ("items", "matches")
+
+
+def _looks_empty(payload: Mapping[str, object]) -> bool:
+    """True when the response carries no results.
+
+    ``total == 0`` is the primary signal.  Cursor-paginated responses may report
+    ``total`` as ``None``; there the emptiness of the result list decides, so a
+    genuinely empty page still gets its note.
+    """
+
+    total = payload.get("total")
+    if isinstance(total, int) and not isinstance(total, bool):
+        return total == 0
+
+    for key in _RESULT_KEYS:
+        value = payload.get(key)
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            return len(value) == 0
+        if isinstance(value, Mapping):
+            return not any(value.values())
+    return False
+
+
+def attach(tool: str, payload: MutableMapping[str, object]) -> MutableMapping[str, object]:
+    """Add ``method_note`` to ``payload`` when the search came back empty.
+
+    Called from the feature functions rather than the tool wrappers, so the MCP
+    tools, the HTTP routes and ``collect`` all carry the note without three
+    copies of this decision.
+    """
+
+    note = METHOD_NOTES.get(tool)
+    if note is None or not _looks_empty(payload):
+        return payload
+    payload["method_note"] = note.as_text()
+    return payload

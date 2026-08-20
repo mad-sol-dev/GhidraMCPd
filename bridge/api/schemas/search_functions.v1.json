@@ -2,13 +2,23 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "search_functions.v1.json",
   "type": "object",
-  "required": ["query", "total", "page", "limit", "items", "has_more"],
+  "required": [
+    "query",
+    "total",
+    "page",
+    "limit",
+    "items",
+    "has_more"
+  ],
   "properties": {
     "query": {
       "type": "string"
     },
     "total": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0
     },
     "page": {
@@ -23,7 +33,10 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "address"],
+        "required": [
+          "name",
+          "address"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -34,14 +47,27 @@
           },
           "context": {
             "type": "object",
-            "required": ["window", "disassembly"],
+            "required": [
+              "window",
+              "disassembly"
+            ],
             "properties": {
               "window": {
                 "type": "object",
-                "required": ["before", "after", "center"],
+                "required": [
+                  "before",
+                  "after",
+                  "center"
+                ],
                 "properties": {
-                  "before": {"type": "integer", "minimum": 0},
-                  "after": {"type": "integer", "minimum": 0},
+                  "before": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "after": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
                   "center": {
                     "type": "string",
                     "pattern": "^0x[0-9a-fA-F]+$"
@@ -53,14 +79,22 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": ["address", "bytes", "text"],
+                  "required": [
+                    "address",
+                    "bytes",
+                    "text"
+                  ],
                   "properties": {
                     "address": {
                       "type": "string",
                       "pattern": "^0x[0-9a-fA-F]+$"
                     },
-                    "bytes": {"type": "string"},
-                    "text": {"type": "string"}
+                    "bytes": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
                   },
                   "additionalProperties": false
                 }
@@ -72,14 +106,26 @@
         "additionalProperties": false
       }
     },
-    "has_more": {"type": "boolean"},
+    "has_more": {
+      "type": "boolean"
+    },
     "resume_cursor": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
     },
     "cursor": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "minLength": 1
+    },
+    "method_note": {
+      "type": "string",
+      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary."
     }
   },
   "additionalProperties": false

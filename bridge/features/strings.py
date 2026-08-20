@@ -18,6 +18,7 @@ from ..utils.logging import (
     enforce_batch_limit,
     increment_counter,
 )
+from . import method_notes
 
 
 _REGISTER_ARG_ORDER = {
@@ -249,6 +250,8 @@ def search_strings(
         "items": paginated_items,
         "has_more": has_more,
     }
+
+    method_notes.attach("search_strings", result)
 
     if cache_key is not None:
         cache.set(cache_key, result)

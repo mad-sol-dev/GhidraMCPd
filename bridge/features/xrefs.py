@@ -11,6 +11,7 @@ from ..utils.cache import (
 )
 from ..utils.config import MAX_ITEMS_PER_BATCH
 from ..utils.logging import SafetyLimitExceeded
+from . import method_notes
 
 
 def search_xrefs_to(
@@ -111,6 +112,8 @@ def search_xrefs_to(
         "items": paginated_items,
         "has_more": has_more,
     }
+
+    method_notes.attach("search_xrefs_to", result)
 
     if cache_key is not None:
         cache.set(cache_key, result)

@@ -3460,6 +3460,10 @@
                       "minimum": 1,
                       "type": "integer"
                     },
+                    "method_note": {
+                      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary.",
+                      "type": "string"
+                    },
                     "page": {
                       "minimum": 1,
                       "type": "integer"
@@ -3710,6 +3714,10 @@
                       "minimum": 1,
                       "type": "integer"
                     },
+                    "method_note": {
+                      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary.",
+                      "type": "string"
+                    },
                     "page": {
                       "minimum": 1,
                       "type": "integer"
@@ -3808,6 +3816,10 @@
                     "limit": {
                       "minimum": 1,
                       "type": "integer"
+                    },
+                    "method_note": {
+                      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary.",
+                      "type": "string"
                     },
                     "page": {
                       "minimum": 1,
@@ -3922,6 +3934,10 @@
                     "limit": {
                       "minimum": 1,
                       "type": "integer"
+                    },
+                    "method_note": {
+                      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary.",
+                      "type": "string"
                     },
                     "page": {
                       "minimum": 1,

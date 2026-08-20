@@ -12,14 +12,33 @@
     "has_more"
   ],
   "properties": {
-    "query": {"type": "string"},
-    "total": {"type": "integer", "minimum": 0},
-    "page": {"type": "integer", "minimum": 1},
-    "limit": {"type": "integer", "minimum": 1},
+    "query": {
+      "type": "string"
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "page": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
     "items": {
       "type": "array",
-      "items": {"$ref": "urn:schema:strings-compact.v1#/properties/items/items"}
+      "items": {
+        "$ref": "urn:schema:strings-compact.v1#/properties/items/items"
+      }
     },
-    "has_more": {"type": "boolean"}
+    "has_more": {
+      "type": "boolean"
+    },
+    "method_note": {
+      "type": "string",
+      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary."
+    }
   }
 }

@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from bridge.features.method_notes import METHOD_NOTES, method_note_for, note_text
+from bridge.features.method_notes import (
+    METHOD_NOTES,
+    attach,
+    method_note_for,
+    note_text,
+)
 
 
 def test_every_note_names_both_halves():
@@ -57,3 +62,61 @@ def test_the_scalar_note_describes_the_case_that_cost_seven_months():
     assert "pc-relative" in note.blind_spot.lower()
     assert "read_words" in note.alternative
     assert "find_in_function" in note.alternative
+
+
+# --------------------------------------------------------------- attach()
+
+def test_attach_adds_the_note_on_an_empty_result():
+    payload = {"query": "x", "total": 0, "items": []}
+    attach("search_functions", payload)
+    assert payload["method_note"] == note_text("search_functions")
+
+
+def test_attach_is_silent_when_there_are_hits():
+    payload = {"query": "x", "total": 3, "items": [1, 2, 3]}
+    attach("search_functions", payload)
+    assert "method_note" not in payload
+
+
+def test_attach_uses_the_result_list_when_total_is_unknown():
+    """Cursor-paginated searches report total as None.
+
+    "attach when total == 0" would silently skip exactly those responses, which
+    is the case the note exists for.
+    """
+
+    empty = {"query": "x", "total": None, "items": []}
+    attach("search_functions", empty)
+    assert "method_note" in empty
+
+    filled = {"query": "x", "total": None, "items": [1]}
+    attach("search_functions", filled)
+    assert "method_note" not in filled
+
+
+def test_attach_handles_the_matches_shape():
+    """search_scalars_with_context returns `matches`, not `items`."""
+
+    payload = {"value": "0xB1008000", "total": 0, "matches": []}
+    attach("search_scalars_with_context", payload)
+    assert "method_note" in payload
+
+
+def test_attach_ignores_tools_without_a_note():
+    payload = {"total": 0, "items": []}
+    attach("read_bytes", payload)
+    assert payload == {"total": 0, "items": []}
+
+
+def test_attach_returns_the_same_mapping():
+    payload = {"total": 0, "items": []}
+    assert attach("search_strings", payload) is payload
+
+
+def test_every_note_is_attachable_by_its_own_key():
+    """A note keyed under a name no feature passes would never be emitted."""
+
+    for tool in METHOD_NOTES:
+        payload = {"total": 0, "items": []}
+        attach(tool, payload)
+        assert "method_note" in payload, tool

@@ -3,28 +3,86 @@
   "$id": "urn:schema:search-scalars.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["query", "total", "page", "limit", "items", "has_more"],
+  "required": [
+    "query",
+    "total",
+    "page",
+    "limit",
+    "items",
+    "has_more"
+  ],
   "properties": {
-    "query": {"type": "string"},
-    "total": {"type": ["integer", "null"], "minimum": 0},
-    "page": {"type": "integer", "minimum": 1},
-    "limit": {"type": "integer", "minimum": 1},
+    "query": {
+      "type": "string"
+    },
+    "total": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "page": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1
+    },
     "items": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["address", "value"],
+        "required": [
+          "address",
+          "value"
+        ],
         "properties": {
-          "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "value": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-          "function": {"type": ["string", "null"]},
-          "context": {"type": ["string", "null"]}
+          "address": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+          },
+          "function": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "context": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
-    "has_more": {"type": "boolean"},
-    "resume_cursor": {"type": ["string", "null"], "minLength": 1},
-    "cursor": {"type": ["string", "null"], "minLength": 1}
+    "has_more": {
+      "type": "boolean"
+    },
+    "resume_cursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "method_note": {
+      "type": "string",
+      "description": "Present only when the search returned nothing. Names what this search mode structurally cannot see and the path that does work. An empty result is a statement about the search, not about the binary."
+    }
   }
 }

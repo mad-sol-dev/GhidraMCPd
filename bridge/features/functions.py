@@ -13,6 +13,7 @@ from ..utils.cache import (
     normalize_search_query,
 )
 from ..utils.hex import parse_hex
+from . import method_notes
 
 _FUNCTION_LINE = re.compile(
     r"^(?P<name>.+?)\s+(?:@|at)\s+(?P<addr>(?:0x)?[0-9A-Fa-f]+)\s*$"
@@ -308,6 +309,8 @@ def search_functions(
         "resume_cursor": computed_cursor,
         "cursor": computed_cursor,
     }
+
+    method_notes.attach("search_functions", result)
 
     if cache_key is not None and not had_error:
         cache.set(cache_key, result)

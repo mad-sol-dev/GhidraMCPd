@@ -14,6 +14,7 @@ from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import enforce_batch_limit, increment_counter
 from . import scalars
+from . import method_notes
 
 
 def disassemble_batch(
@@ -182,5 +183,7 @@ def search_scalars_with_context(
     }
     if resume_cursor is not None:
         response["resume_cursor"] = resume_cursor
+
+    method_notes.attach("search_scalars_with_context", response)
 
     return response
