@@ -407,20 +407,14 @@ def register_tools(
     @server.tool()
     @tracked_tool()
     def project_info(client) -> Dict[str, object]:
-        """Identity and layout of the program that is currently open.
+        """Identity and layout of the open program.
 
-        Returns the program name, executable path, MD5/SHA-256 of the binary,
-        format, image base, language and compiler spec, the entry points, the
-        memory blocks (name, start, end, length, rwx, loaded/initialized) and
-        the import/export counts.
+        Name, executable path, MD5/SHA-256, format, image base, language,
+        compiler spec, entry points, memory blocks (name, start, end, length,
+        rwx, loaded/initialized) and import/export counts.
 
-        Not for: locating anything. It describes the container, not the
-        contents -- no functions, symbols, strings or data. Use it to confirm
-        which binary you are looking at and which address ranges exist before
-        reads that would otherwise fall outside a mapped block.
-
-        Takes no parameters.
-        """
+        Not for: locating anything -- it describes the container, not the
+        contents. Takes no parameters."""
         with request_scope(
             "project_info",
             logger=logger,
@@ -454,16 +448,10 @@ def register_tools(
     def project_overview(client) -> Dict[str, object]:
         """List the programs in the open Ghidra project.
 
-        Returns one entry per program file with its ``domain_file_id``, path,
-        name and open/ready state. The ``domain_file_id`` is what
-        ``select_program`` expects.
+        One entry per program file with its domain_file_id (what select_program
+        expects), path, name and open state. Works before analysis finishes.
 
-        Not for: anything about the contents of a program -- this reads the
-        project directory, not the binaries. Works whether or not a program is
-        open, and does not require analysis to be finished.
-
-        Takes no parameters.
-        """
+        Not for: anything inside a program. Takes no parameters."""
         with request_scope(
             "project_overview",
             logger=logger,
@@ -497,20 +485,14 @@ def register_tools(
     @server.tool()
     @tracked_tool(lock_usage=False)
     def get_current_program(client) -> Dict[str, object]:
-        """Report which program is active and whether it is ready to query.
+        """Which program is active, and whether it is ready to query.
 
-        Returns the program name, its ``domain_file_id`` and the analysis state
-        (``READY`` once auto-analysis has finished; ``LOADING`` while it runs),
-        plus any warnings. Most other tools refuse to run unless the state is
-        ``READY``, so this is the tool to call when they report
-        "Program is not ready".
+        Returns name, domain_file_id and analysis state: READY once
+        auto-analysis has finished, LOADING while it runs. Most tools refuse to
+        run unless READY, so call this when they report "Program is not ready".
 
-        Not for: switching programs -- that is ``select_program`` -- and not a
-        substitute for ``check_dirty_state``, which answers whether there is
-        unsaved work.
-
-        Takes no parameters.
-        """
+        Not for: switching programs (select_program) or unsaved-work checks
+        (check_dirty_state). Takes no parameters."""
         with request_scope(
             "current_program",
             logger=logger,
@@ -996,26 +978,20 @@ def register_tools(
         dry_run: bool = True,
         confirm: bool = False,
     ) -> Dict[str, object]:
-        """Move the program's image base to a new address.
+        """Move the program's image base, shifting every address in the database.
 
-        Every address in the database shifts. Use it when a raw binary was
-        loaded at the wrong base and the vector table or literal pools do not
-        line up.
+        For a raw binary loaded at the wrong base, where the vector table or
+        literal pools do not line up.
 
-        Not for: routine work. This invalidates every address you have already
-        recorded -- notes, comments and any address in your own notes now point
-        somewhere else. Disabled unless GHIDRA_MCP_ENABLE_PROJECT_REBASE=true.
+        Not for: routine work -- every address you have already noted now points
+        somewhere else. Disabled unless
+        GHIDRA_MCP_ENABLE_PROJECT_REBASE=true.
 
         Args:
-            new_base: The new image base, hex string, e.g. '0x00200000'.
-            dry_run: When true (default) report what would change without
-                touching the program.
-            confirm: Must be true for a real rebase. ``dry_run=false`` alone is
-                not enough -- both are required, deliberately.
-
-        Returns:
-            Envelope with the old and new base and what the change affects.
-        """
+            new_base: new image base, hex, e.g. '0x00200000'.
+            dry_run: default true; report without touching the program.
+            confirm: must be true for a real rebase. dry_run=false alone is
+                deliberately not enough."""
         request_payload: Dict[str, object] = {
             "new_base": new_base,
             "dry_run": dry_run,
@@ -1067,53 +1043,28 @@ def register_tools(
         """One dossier for one function: disassembly, decompilation, xrefs,
         callgraph, referenced strings and derived features in a single call.
 
-        Replaces the usual four-or-five-call sequence around a function. It is
-        the most expensive single read on the server, so select ``fields``
-        rather than taking the default.
-
-        Not for: finding a function -- you must already know its address. Not
-        for scanning many functions; two dossiers cost roughly 12 KB. Use
-        ``find_in_function`` when you only need the lines matching a pattern,
-        and ``disassemble_at`` when you only need instructions.
+        Not for: finding a function -- you must know its address. The most
+        expensive single read here (~6 KB per call), so pass fields rather than
+        taking the default. find_in_function is far cheaper when you only need
+        matching lines.
 
         Args:
-            address: Entry point of the function, hex string, e.g.
-                '0x002af9c0'. Must be inside a mapped memory block.
-            fields: Which sections to include. Any of
-                'function'   - name, entry, size, prototype
-                'disasm'     - instruction window around the entry
-                'decompile'  - decompiler output
-                'xrefs'      - inbound and outbound references
-                'callgraph'  - callers and callees
-                'strings'    - string literals referenced by the function
-                'features'   - derived counts (calls, loops, MMIO touches)
-                Defaults to all seven. Passing a subset is the main way to
-                control the response size.
-            fmt: Output format. Only 'json' is accepted; any other value is an
-                error. The parameter exists for forward compatibility.
-            max_result_tokens: Soft ceiling on the response. When the estimate
-                exceeds it, 'disasm' and 'decompile' are truncated and
-                ``meta.truncated`` is set to true. ``null`` (default) means no
-                ceiling. Note that the estimate counts serialized length, so it
-                tracks the real payload size.
-            options: Per-section tuning. Every value is range-checked; an
-                out-of-range value is an error, not a silent clamp.
-                disasm.before          instructions before the entry, 0-64, default 8
-                disasm.after           instructions after the entry, 0-64, default 8
-                disasm.max_instructions total window, 1-128, default 48
-                xrefs.inbound_limit    0-256, default 40
-                xrefs.outbound_limit   0-256, default 40
-                callgraph.limit        0-256, default 24
-                strings.limit          0-64, default 6
-                strings.max_cstring_len 1-1024, default 256
-                decompile.enabled      bool, default true
-                decompile.max_lines    1-500, default 120
-
-        Returns:
-            Envelope whose ``data`` holds the requested sections plus ``meta``
-            with the fields actually returned, the token estimate and
-            ``truncated``.
-        """
+            address: function entry, hex, e.g. '0x002af9c0'.
+            fields: sections to include, any of 'function' (name, entry, size,
+                prototype), 'disasm', 'decompile', 'xrefs', 'callgraph',
+                'strings', 'features' (derived counts). Default: all seven.
+                This is the main size control.
+            fmt: only 'json' is accepted; anything else is an error.
+            max_result_tokens: int ceiling on the response, or null (default)
+                for none. When exceeded, disasm and decompile are trimmed and
+                meta.truncated is set.
+            options: per-section bounds, each range-checked (out of range is an
+                error, not a clamp):
+                disasm.before/after 0-64 (8), disasm.max_instructions 1-128 (48),
+                xrefs.inbound_limit/outbound_limit 0-256 (40),
+                callgraph.limit 0-256 (24), strings.limit 0-64 (6),
+                strings.max_cstring_len 1-1024 (256),
+                decompile.enabled bool (true), decompile.max_lines 1-500 (120)."""
         request_payload: Dict[str, object] = {"address": address}
         if fields is not None:
             request_payload["fields"] = list(fields)
@@ -1171,76 +1122,48 @@ def register_tools(
         result_budget: dict[str, object] | None = None,
         metadata: dict[str, object] | None = None,
     ) -> Dict[str, object]:
-        """Execute read-only feature queries across one or more projects.
+        """Run several read-only queries in one call, optionally across projects.
 
-        The request envelope mirrors ``collect.request.v1`` and accepts:
+        Batches what would otherwise be separate round trips, and applies one
+        shared token budget over the lot.
 
-        * ``queries`` – in-project query objects. Each entry requires an ``id``
-          and ``op`` plus optional ``params`` (default ``{}``), per-query
-          ``result_budget`` overrides, ``max_result_tokens`` hints, and arbitrary
-          ``metadata`` echoed into the response.
-        * ``projects`` – cross-project overrides. Each project entry includes
-          an ``id`` (used to annotate the response), a ``queries`` list with the
-          same shape as the top-level collection, optional ``result_budget``
-          overrides, ``metadata`` passthrough, and an alternate ``ghidra_url`` or
-          ``base_url`` for remote analysis.
-        * ``result_budget`` – aggregate budget controls shared by all queries.
-          Budgets accept ``max_result_tokens`` (``int`` or ``null`` for
-          unlimited) and ``mode`` (``"auto_trim"`` to soft cap or
-          ``"strict"`` to raise ``RESULT_TOO_LARGE`` when exceeded).
-        * ``metadata`` – an arbitrary JSON object returned unchanged alongside
-          the aggregated result bundle.
+        Args:
+            queries: in-project queries. Each needs an ``id`` and an ``op``,
+                plus optional ``params`` (default {}), a per-query
+                ``result_budget``, and ``metadata`` echoed back.
+                Example: {"id": "head", "op": "disassemble_at",
+                          "params": {"address": "0x401000", "count": 8}}
+            projects: cross-project overrides. Each entry has an ``id``, its own
+                ``queries`` list of the same shape, optional ``result_budget``
+                and ``metadata``, and an alternate ``ghidra_url``/``base_url``
+                for a remote instance.
+            result_budget: shared budget. ``max_result_tokens`` is an int or
+                null for unlimited; ``mode`` is "auto_trim" (soft cap) or
+                "strict" (raise RESULT_TOO_LARGE when exceeded).
+            metadata: arbitrary JSON returned unchanged.
 
-        Supported ``op`` values and common parameters:
+        Supported ``op`` values and their params:
+            disassemble_at              address, count (16)
+            disassemble_batch           addresses[], count (16)
+            read_bytes                  address, length (64)
+            read_words                  address, count (1)
+            search_strings              query, limit (100), page (1)
+            strings_compact             limit (required), offset (0)
+            string_xrefs                string_addr, limit (50)
+            search_imports              query, limit (100), page (1)
+            search_exports              query, limit (100), page (1)
+            search_functions            query, limit (100), page (1),
+                                        rank="simple" with k, resume_cursor
+                                        (excludes rank), context_lines (0-16)
+            search_xrefs_to             address, query (required, may be ""),
+                                        limit (100), page (1)
+            search_scalars              value (dec or hex), query, limit (100),
+                                        page (1), resume_cursor
+            search_scalars_with_context value, context_lines (0-16, default 4),
+                                        limit (25)
 
-        * ``disassemble_at`` – ``address`` (hex) with optional ``count`` of
-          instructions (default ``16``).
-          Example: ``{"id": "head", "op": "disassemble_at", "params": {"address": "0x401000", "count": 8}}``
-        * ``disassemble_batch`` – ``addresses`` (array of hex strings) and
-          optional ``count`` (default ``16``).
-          Example: ``{"id": "epilogue", "op": "disassemble_batch", "params": {"addresses": ["0x401000", "0x401020"], "count": 4}}``
-        * ``read_bytes`` – ``address`` (hex) and ``length`` in bytes (default
-          ``64``).
-          Example: ``{"id": "bytes", "op": "read_bytes", "params": {"address": "0x401000", "length": 32}}``
-        * ``read_words`` – ``address`` (hex) and ``count`` of machine words
-          (default ``1``).
-          Example: ``{"id": "words", "op": "read_words", "params": {"address": "0x401000", "count": 2}}``
-        * ``search_strings`` – ``query`` substring, optional ``limit``
-          (default ``100``) and ``page`` (default ``1``).
-          Example: ``{"id": "long-strings", "op": "search_strings", "params": {"query": "init", "limit": 25}}``
-        * ``strings_compact`` – paginated listing with ``limit`` (required) and
-          ``offset`` (default ``0``).
-          Example: ``{"id": "strings", "op": "strings_compact", "params": {"limit": 100, "offset": 0}}``
-        * ``string_xrefs`` – ``string_addr`` (hex) target and optional ``limit``
-          (default ``50``).
-          Example: ``{"id": "string-xrefs", "op": "string_xrefs", "params": {"string_addr": "0x500123", "limit": 10}}``
-        * ``search_imports`` – ``query`` substring plus ``limit``/``page``
-          pagination (defaults ``100``/``1``).
-          Example: ``{"id": "imports", "op": "search_imports", "params": {"query": "socket", "limit": 10}}``
-        * ``search_exports`` – ``query`` substring plus ``limit``/``page``
-          pagination (defaults ``100``/``1``).
-          Example: ``{"id": "exports", "op": "search_exports", "params": {"query": "init", "limit": 10}}``
-        * ``search_functions`` – optional ``query`` text, ``limit``/``page``
-          pagination (defaults ``100``/``1``), optional ``rank="simple"`` with
-          ``k`` best results, cursor-based pagination via ``resume_cursor``
-          (mutually exclusive with ranking), and ``context_lines`` (0–16).
-          Example: ``{"id": "init-funcs", "op": "search_functions", "params": {"query": "init", "limit": 20, "context_lines": 2}}``
-        * ``search_xrefs_to`` – destination ``address`` (hex) with required
-          empty ``query`` plus ``limit``/``page`` (defaults ``100``/``1``).
-          Example: ``{"id": "xref", "op": "search_xrefs_to", "params": {"address": "0x401050", "query": "", "limit": 50}}``
-        * ``search_scalars`` – numeric ``value`` (decimal or hex), optional
-          ``query`` label, ``limit``/``page`` pagination, and ``resume_cursor``
-          for deep paging.
-          Example: ``{"id": "scalars", "op": "search_scalars", "params": {"value": "0xDEADBEEF", "limit": 10}}``
-        * ``search_scalars_with_context`` – numeric ``value``, ``context_lines``
-          (0–16, default ``4``), and ``limit`` (default ``25``) for annotated
-          disassembly windows.
-          Example: ``{"id": "scalar-context", "op": "search_scalars_with_context", "params": {"value": "0x8040123", "context_lines": 3}}``
-
-        Each query returns an envelope containing ``result.ok``/``errors`` as
-        described by ``envelope.v1``; aggregate metadata records the total token
-        estimate for all queries (including per-project batches).
-        """
+        Each query returns its own envelope. Aggregate metadata records the
+        total token estimate across all queries and projects."""
         request_payload: Dict[str, object] = {}
         if queries is not None:
             request_payload["queries"] = [dict(item) for item in queries]
@@ -1374,39 +1297,22 @@ def register_tools(
         fields: list[dict[str, object]],
         dry_run: bool = True,
     ) -> Dict[str, object]:
-        """Create a structure or union in the program's data type manager.
-
-        Defining the register block or packet layout you have worked out, so it
-        can be applied to memory and shows up in the decompiler.
+        """Create a structure or union in the data type manager.
 
         Not for: applying the type to an address -- this only defines it. Not
-        for editing an existing type; that is ``datatypes_update``, and creating
-        a name that already exists is an error. Requires
-        GHIDRA_MCP_ENABLE_WRITES=true.
+        for editing an existing one (datatypes_update); a duplicate name is an
+        error. Needs GHIDRA_MCP_ENABLE_WRITES=true.
 
         Args:
-            kind: 'structure' or 'union'. No other value is accepted.
-            name: Type name, e.g. 'USBD_Regs'. Must not already exist in the
-                category.
-            category: Category path in the data type manager, e.g. '/USB'. Use
-                '/' for the root.
-            fields: The members, at least one. Each is an object with
-                name    required, non-empty
-                type    required, a Ghidra type name, e.g. 'uint', 'byte',
-                        'char[16]', 'void *'
-                offset  byte offset from the start, >= 0. Required for
-                        structures, optional for unions.
-                length  size in bytes, >= 0. Optional; used for the size
-                        estimate when the type alone does not give one.
-                Structure fields are sorted by offset. Overlaps are not
-                checked here -- Ghidra rejects them when the type is applied.
-            dry_run: When true (default) validate and report the resulting
-                layout without creating anything.
-
-        Returns:
-            Envelope with the type path, the normalized fields and the
-            estimated size.
-        """
+            kind: 'structure' or 'union'; nothing else.
+            name: type name, must not exist in the category.
+            category: path in the data type manager, e.g. '/USB', '/' for root.
+            fields: at least one member, each {name, type, offset?, length?}.
+                type is a Ghidra type name ('uint', 'char[16]', 'void *').
+                offset is bytes from the start, >= 0, required for structures.
+                length is size in bytes, >= 0, optional. Structure fields are
+                sorted by offset; overlaps are rejected by Ghidra on apply.
+            dry_run: default true; report the layout without creating it."""
         request_payload: Dict[str, object] = {
             "kind": kind,
             "name": name,
@@ -1456,31 +1362,17 @@ def register_tools(
     ) -> Dict[str, object]:
         """Replace the fields of an existing structure or union.
 
-        Not for: partial edits. The field list replaces the existing one
-        wholesale -- fields you leave out are gone. Read the current definition
-        first. Anywhere the type is already applied follows the new layout.
-        Requires GHIDRA_MCP_ENABLE_WRITES=true.
+        Not for: partial edits -- the list replaces the existing one wholesale,
+        so fields you leave out are gone. Read the current definition first;
+        every place the type is applied follows the new layout. Needs
+        GHIDRA_MCP_ENABLE_WRITES=true.
 
         Args:
-            kind: 'structure' or 'union'. Must match what the type already is.
-            path: Full path of the existing type, e.g. '/USB/USBD_Regs'.
-            fields: The members, at least one. Each is an object with
-                name    required, non-empty
-                type    required, a Ghidra type name, e.g. 'uint', 'byte',
-                        'char[16]', 'void *'
-                offset  byte offset from the start, >= 0. Required for
-                        structures, optional for unions.
-                length  size in bytes, >= 0. Optional; used for the size
-                        estimate when the type alone does not give one.
-                Structure fields are sorted by offset. Overlaps are not
-                checked here -- Ghidra rejects them when the type is applied.
-            dry_run: When true (default) validate and report the resulting
-                layout without changing anything.
-
-        Returns:
-            Envelope with the type path, the normalized fields and the
-            estimated size.
-        """
+            kind: 'structure' or 'union'; must match what the type is.
+            path: full path of the type, e.g. '/USB/USBD_Regs'.
+            fields: at least one member, each {name, type, offset?, length?};
+                same shape as datatypes_create.
+            dry_run: default true; report the layout without changing anything."""
         request_payload: Dict[str, object] = {
             "kind": kind,
             "path": path,
@@ -1527,19 +1419,14 @@ def register_tools(
     ) -> Dict[str, object]:
         """Delete a structure or union from the data type manager.
 
-        Not for: use while the type is applied anywhere -- every location using
-        it reverts to undefined data, and there is no undo through this API. Run
-        with ``dry_run=true`` first. Requires GHIDRA_MCP_ENABLE_WRITES=true.
+        Not for: use while the type is applied -- every location using it
+        reverts to undefined data, with no undo through this API. Needs
+        GHIDRA_MCP_ENABLE_WRITES=true.
 
         Args:
-            kind: 'structure' or 'union'. Must match what the type is.
-            path: Full path of the type, e.g. '/USB/USBD_Regs'.
-            dry_run: When true (default) report what would be deleted without
-                deleting it.
-
-        Returns:
-            Envelope with the type path and whether the deletion was applied.
-        """
+            kind: 'structure' or 'union'; must match what the type is.
+            path: full path of the type, e.g. '/USB/USBD_Regs'.
+            dry_run: default true; report without deleting."""
         request_payload: Dict[str, object] = {
             "kind": kind,
             "path": path,
@@ -1585,22 +1472,15 @@ def register_tools(
     ) -> Dict[str, object]:
         """Patch raw bytes into the program's memory.
 
-        Not for: anything you cannot undo by hand. This edits the database, not
-        the file on disk, but there is no undo through this API. Requires
-        GHIDRA_MCP_ENABLE_WRITES=true; without it the call reports what it would
-        do and changes nothing.
+        Not for: anything you cannot undo by hand. Edits the database, not the
+        file, and there is no undo through this API. Needs
+        GHIDRA_MCP_ENABLE_WRITES=true.
 
         Args:
-            address: Start address, hex string, e.g. '0x002afb34'. Must be
-                inside a writable, initialized memory block.
-            data: The bytes, base64-encoded.
-            encoding: Only 'base64' is accepted; any other value is an error.
-            dry_run: When true (default) validate and report without writing.
-
-        Returns:
-            Envelope with the address, byte count and whether the write was
-            applied.
-        """
+            address: start, hex, in a writable initialized block.
+            data: the bytes, base64-encoded.
+            encoding: only 'base64' is accepted.
+            dry_run: default true; validate and report without writing."""
         request_payload: Dict[str, object] = {
             "address": address,
             "data": data,
@@ -1653,32 +1533,22 @@ def register_tools(
     ) -> Dict[str, object]:
         """Read one jump-table slot and judge whether it holds a code pointer.
 
-        Reads the 32-bit word at ``jt_base + slot_index * 4``, rejects it if it
-        looks like an instruction rather than a pointer or falls outside the
-        code range, and reports the ARM/Thumb mode plus the function it points
-        at.
+        Reads the word at jt_base + slot_index*4, rejects it if it looks like an
+        instruction or falls outside the code range, and reports ARM/Thumb mode
+        and the target function. Read-only.
 
-        Not for: finding the jump table. You must already know ``jt_base``, and
-        a wrong base produces confident-looking nonsense -- every slot resolves
-        to something. Read-only; use ``jt_slot_process`` to name the target.
+        Not for: finding the table -- a wrong jt_base yields confident nonsense,
+        since every slot resolves to something. Check with jt_scan first.
 
         Args:
-            jt_base: Table start address, hex string, e.g. '0x00250000'.
-            slot_index: Slot number, >= 0. The word read is
-                jt_base + slot_index * 4.
-            code_min: Lower bound of the valid code range, hex string. A
-                pointer outside [code_min, code_max] is reported as invalid.
-            code_max: Upper bound of the valid code range, hex string.
-            arch: Pointer decoding. 'auto' (default), 'arm' and 'thumb' all use
-                the ARM/Thumb decoder, which strips the Thumb bit and reports
-                the mode. Other values fall back to a passthrough decoder unless
-                enabled via BRIDGE_OPTIONAL_ADAPTERS.
-
-        Returns:
-            Envelope with the slot index and address, the raw word, the decoded
-            mode ('arm', 'thumb' or 'none'), the target address, and errors
-            naming why a slot was rejected.
-        """
+            jt_base: table start, hex.
+            slot_index: slot number, >= 0.
+            code_min: lower bound of the valid code range, hex.
+            code_max: upper bound of the valid code range, hex.
+            arch: 'auto' (default), 'arm' or 'thumb' -- all use the ARM/Thumb
+                decoder, which strips the Thumb bit. Other values fall back to a
+                passthrough decoder unless enabled via
+                BRIDGE_OPTIONAL_ADAPTERS."""
         request_payload = {
             "jt_base": jt_base,
             "slot_index": slot_index,
@@ -1724,31 +1594,24 @@ def register_tools(
     ) -> Dict[str, object]:
         """Check one jump-table slot and name the function it points at.
 
-        ``jt_slot_check`` plus a rename and a comment on the target, verified
-        after the fact and recorded in the audit log.
+        jt_slot_check plus a rename and a comment on the target, verified
+        afterwards and recorded in the audit log.
 
-        Not for: bulk work -- it handles one slot per call, and the write limit
-        (GHIDRA_MCP_MAX_WRITES_PER_REQUEST, 2 by default) applies. A wrong
-        ``jt_base`` renames real functions after table entries that do not
-        exist; check with ``jt_scan`` first. Requires
-        GHIDRA_MCP_ENABLE_WRITES=true.
+        Not for: bulk work -- one slot per call, and the write limit applies
+        (GHIDRA_MCP_MAX_WRITES_PER_REQUEST, 2). A wrong jt_base renames real
+        functions after table entries that do not exist; run jt_scan first.
+        Needs GHIDRA_MCP_ENABLE_WRITES=true.
 
         Args:
-            jt_base: Table start address, hex string.
-            slot_index: Slot number, >= 0.
-            code_min: Lower bound of the valid code range, hex string.
-            code_max: Upper bound of the valid code range, hex string.
-            rename_pattern: New name for the target function. '{slot}' is
-                replaced by the slot index, e.g. 'jt_handler_{slot}'.
-            comment: Comment placed at the target function.
-            dry_run: When true (default) report the rename and comment without
-                applying them.
-            arch: As for ``jt_slot_check``: 'auto' (default), 'arm', 'thumb'.
-
-        Returns:
-            Envelope with the slot result, the old and new name, whether rename
-            and comment succeeded, and the verification read-back.
-        """
+            jt_base: table start, hex.
+            slot_index: slot number, >= 0.
+            code_min: lower bound of the valid code range, hex.
+            code_max: upper bound of the valid code range, hex.
+            rename_pattern: new name for the target; '{slot}' is replaced by the
+                slot index, e.g. 'jt_handler_{slot}'.
+            comment: comment placed at the target function.
+            dry_run: default true; report without applying.
+            arch: 'auto' (default), 'arm' or 'thumb'; see jt_slot_check."""
         request_payload = {
             "jt_base": jt_base,
             "slot_index": slot_index,
@@ -1803,28 +1666,18 @@ def register_tools(
     ) -> Dict[str, object]:
         """Check a run of jump-table slots in one call.
 
-        ``jt_slot_check`` over ``count`` consecutive slots, with a summary of
-        how many resolved. The way to confirm a suspected table base: a correct
-        base gives a long run of valid slots, a wrong one gives scattered
-        rejects.
-
-        Not for: locating the table in the first place, and not a write
-        operation -- it never renames anything.
+        jt_slot_check over count consecutive slots plus a summary. The way to
+        confirm a suspected base: a correct one gives a long run of valid slots,
+        a wrong one scattered rejects. Never writes.
 
         Args:
-            jt_base: Table start address, hex string.
-            start: First slot index, >= 0.
-            count: Number of consecutive slots, >= 1. Bounded by the batch
-                ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH, 256 by default); each
-                slot costs one memory read.
-            code_min: Lower bound of the valid code range, hex string.
-            code_max: Upper bound of the valid code range, hex string.
-            arch: As for ``jt_slot_check``: 'auto' (default), 'arm', 'thumb'.
-
-        Returns:
-            Envelope with the scanned range, a summary (total, valid, invalid)
-            and one entry per slot.
-        """
+            jt_base: table start, hex.
+            start: first slot index, >= 0.
+            count: consecutive slots, >= 1, <= 256
+                (GHIDRA_MCP_MAX_ITEMS_PER_BATCH). One memory read each.
+            code_min: lower bound of the valid code range, hex.
+            code_max: upper bound of the valid code range, hex.
+            arch: 'auto' (default), 'arm' or 'thumb'; see jt_slot_check."""
         request_payload = {
             "jt_base": jt_base,
             "start": start,
@@ -1864,24 +1717,17 @@ def register_tools(
         string_addr: str,
         limit: int = 50,
     ) -> Dict[str, object]:
-        """List the code locations that reference one string, compactly.
+        """List the code locations referencing one string, compactly.
 
-        The second half of the string-to-function path: ``search_strings`` gives
-        the address, this gives the functions that use it. The response carries
-        one line per reference rather than a full xref record.
+        Second half of the string-to-function path: search_strings gives the
+        address, this gives the users.
 
-        Not for: references Ghidra has not recognised -- a pointer built at
-        runtime or held in an unanalysed table produces no xref. An empty result
-        means "Ghidra sees no reference", not "nothing uses this string".
+        Not for: references Ghidra never recognised. An empty result means
+        Ghidra sees none, not that nothing uses the string.
 
         Args:
-            string_addr: Address of the string, hex string, e.g. '0x00400040'.
-                Take it from ``search_strings`` or ``strings_compact``.
-            limit: Maximum references returned, >= 1, default 50.
-
-        Returns:
-            Envelope with the string address and the referencing locations.
-        """
+            string_addr: the string's address, hex, from search_strings.
+            limit: max references, >= 1, default 50."""
         request_payload = {
             "string_addr": string_addr,
             "limit": limit,
@@ -1916,33 +1762,17 @@ def register_tools(
     ) -> Dict[str, object]:
         """Find defined strings whose text matches a query.
 
-        Returns matching strings with their addresses, so the result feeds
-        straight into ``string_xrefs_compact`` to reach the code that uses them.
-        On a stripped binary this is usually the fastest way to a named
-        function.
+        Feeds straight into string_xrefs_compact, which is usually the fastest
+        route to a named function on a stripped binary.
 
-        Not for: strings Ghidra has not defined as data. This searches the
-        string table, not memory -- bytes in an unanalysed region, obfuscated
-        or runtime-assembled text do not appear. An empty result means "no
-        defined string matches", never "the firmware does not contain it". Read
-        the suspected region with 'read_bytes' and decode it, or define the data
-        in Ghidra first and search again.
+        Not for: bytes Ghidra never defined as a string. On zero hits the response carries a method_note with the way around it.
 
         Args:
-            query: Substring to match, case-insensitive. Required and
-                non-empty.
-            limit: Results per page, >= 1, default 100. ``limit * page`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default) or the call is rejected.
-            page: 1-based page number, >= 1, default 1.
-            include_literals: When true, include the string text itself,
-                truncated to 120 characters. Default false, which returns
-                addresses and lengths only and is markedly cheaper.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            matching items.
-        """
+            query: substring, case-insensitive, non-empty.
+            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            page: 1-based, >= 1, default 1.
+            include_literals: include the text, truncated to 120 chars. Default
+                false, which returns addresses only and is markedly cheaper."""
         request_payload = {
             "query": query,
             "limit": limit,
@@ -1984,25 +1814,18 @@ def register_tools(
     ) -> Dict[str, object]:
         """Page through all defined strings, without a query.
 
-        The reconnaissance counterpart to ``search_strings``: use it to see what
-        kind of strings a binary contains at all when you do not yet know what
-        to search for.
+        Reconnaissance for when you do not yet know what to search for.
 
-        Not for: targeted lookups -- ``search_strings`` is cheaper and
-        narrower. Like ``search_strings`` it only sees strings Ghidra has
-        defined as data, so an empty page says nothing about the raw bytes.
+        Not for: targeted lookups (search_strings is cheaper). Sees only
+        strings Ghidra defined as data, so an empty page says nothing about the
+        raw bytes.
 
         Args:
-            limit: Strings per page, >= 1, default 50. ``limit + offset`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default).
-            offset: Number of strings to skip, >= 0, default 0.
-            include_literals: When true, include the string text, truncated to
-                120 characters. Default false.
-
-        Returns:
-            Envelope with ``total``, ``offset``, ``limit`` and the items.
-        """
+            limit: strings per page, >= 1, default 50. limit+offset must stay
+                <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            offset: strings to skip, >= 0, default 0.
+            include_literals: include the text, truncated to 120 chars, default
+                false."""
         request_payload = {
             "limit": limit,
             "offset": offset,
@@ -2058,22 +1881,13 @@ def register_tools(
     ) -> Dict[str, object]:
         """Find imported symbols whose name matches a query.
 
-        Not for: statically linked firmware, which has no imports worth
-        speaking of -- the reference image has exactly one. An empty result on
-        such a binary is expected and says nothing.
+        Not for: statically linked firmware, which has essentially none -- the
+        reference image has one. An empty result there is expected.
 
         Args:
-            query: Substring to match, case-insensitive. Required and
-                non-empty.
-            limit: Results per page, >= 1, default 100. ``limit * page`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default).
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            matching imports.
-        """
+            query: substring, case-insensitive, non-empty.
+            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload(
@@ -2112,24 +1926,15 @@ def register_tools(
     ) -> Dict[str, object]:
         """Find exported symbols whose name matches a query.
 
-        On bare-metal firmware the exports are usually the vector table entries
-        rather than a library surface.
+        On bare-metal firmware the exports are usually vector-table entries.
 
-        Not for: discovering internal functions -- most of them are not
-        exported. Use ``search_functions`` or ``list_functions_in_range``.
+        Not for: discovering internal functions -- most are not exported. Use
+        search_functions or list_functions_in_range.
 
         Args:
-            query: Substring to match, case-insensitive. Required and
-                non-empty.
-            limit: Results per page, >= 1, default 100. ``limit * page`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default).
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            matching exports.
-        """
+            query: substring, case-insensitive, non-empty.
+            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {"query": query, "limit": limit, "page": page}
         valid, errors = validate_payload(
@@ -2167,32 +1972,15 @@ def register_tools(
         limit: int = 100,
         page: int = 1,
     ) -> Dict[str, object]:
-        """List the locations that reference a given address.
+        """List the locations that reference an address.
 
-        The standard way from a piece of data or a function to its users.
-
-        Not for: references Ghidra has not recognised as such. A pointer sitting
-        in an unanalysed data region, a hand-rolled jump table or a computed
-        branch produces no xref at all. An empty result means "Ghidra sees no
-        reference", not "nothing points here".
-
-        When it returns nothing: read the suspected table directly with
-        ``read_words`` and look for the address word, or disassemble the caller
-        with ``disassemble_at`` and check the branch target by hand.
+        Not for: references Ghidra never recognised, such as computed branches or hand-rolled tables. On zero hits the response carries a method_note with the way around it.
 
         Args:
-            address: Target address, hex string, e.g. '0x002af9c0'. Required.
-            query: Substring filter applied to the referencing symbol names.
-                Pass '' to keep every reference.
-            limit: Results per page, >= 1, default 100. ``limit * page`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default).
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            referencing locations.
-        """
+            address: target, hex, e.g. '0x002af9c0'.
+            query: substring filter on referencing symbol names; '' keeps all.
+            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {
             "address": address,
@@ -2243,39 +2031,17 @@ def register_tools(
     ) -> Dict[str, object]:
         """Find functions whose name matches a query.
 
-        Fast when the binary carries symbols, or after you have renamed things
-        yourself.
-
-        Not for: finding functionality. This matches names, not behaviour. On a
-        stripped binary almost every name is 'FUN_<address>', so an empty result
-        means the name is absent, not the functionality.
-
-        When it returns nothing: search for a string the code must reference
-        (``search_strings``), then follow it back with
-        ``string_xrefs_compact``; or narrow by address with
-        ``list_functions_in_range``.
+        Not for: finding functionality -- this matches names, and a stripped binary has none. On zero hits the response carries a method_note with the way around it.
 
         Args:
-            query: Substring to match against function names,
-                case-insensitive. Required and non-empty.
-            limit: Results per page, >= 1, default 100. ``limit * page`` must
-                stay within the batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH,
-                256 by default).
-            page: 1-based page number, >= 1, default 1.
-            rank: Result ordering. Only 'simple' is recognised, which sorts by
-                how closely the name matches ``query``. ``null`` (default)
-                keeps address order. Cannot be combined with cursor
-                pagination.
-            k: With ``rank='simple'``, keep only the best k results, >= 1.
-                Ignored when ``rank`` is null.
-            context_lines: Instructions of disassembly to include per hit,
-                >= 0, default 0. Every line multiplies the response size --
-                leave it at 0 unless you need to recognise the function body.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            matching functions with their addresses.
-        """
+            query: substring, case-insensitive, non-empty.
+            limit: results per page, >= 1, default 100. limit*page must stay <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            page: 1-based, >= 1, default 1.
+            rank: only 'simple' is recognised, sorting by match quality; null
+                (default) keeps address order. Excludes cursor pagination.
+            k: with rank='simple', keep the best k, >= 1. Ignored otherwise.
+            context_lines: disassembly lines per hit, >= 0, default 0. Every
+                line multiplies the response."""
         request_payload = {
             "query": query,
             "limit": limit,
@@ -2325,39 +2091,22 @@ def register_tools(
         context_lines: int = 3,
         limit: int = 50,
     ) -> Dict[str, object]:
-        """
-        Search for text patterns within a function's disassembly or decompilation.
+        """Search a function's disassembly or decompilation for a pattern.
 
-        Useful for finding specific instructions, register usage, constants, or
-        code patterns within a single function. Performs server-side search and
-        returns only matches with surrounding context lines.
+        Filters server-side and returns only the matching lines with context,
+        which is what makes it far cheaper than disassembling and reading.
 
         Args:
-            address: Function address (hex string like "0x401000")
-            query: Search string or regex pattern
-            mode: Search in "disasm", "decompile", or "both" (default: "both")
-            regex: Treat query as regex pattern (default: False)
-            case_sensitive: Perform case-sensitive search (default: False)
-            context_lines: Lines of context before/after match (default: 3, max: 16)
-            limit: Maximum matches to return per mode (default: 50, max: 200)
+            address: function entry, hex, e.g. '0x401000'.
+            query: literal text, or a regex when regex=True.
+            mode: 'disasm', 'decompile' or 'both' (default).
+            regex: treat query as a regex, default false.
+            case_sensitive: default false.
+            context_lines: lines each side of a match, default 3, max 16.
+            limit: matches per mode, default 50, max 200.
 
-        Returns:
-            Dictionary with matches from disassembly and/or decompilation, including
-            line numbers, matched text, and surrounding context for each match.
-
-        Examples:
-            # Find all references to offset 0x251 in function
-            find_in_function("0x401000", "0x251")
-
-            # Find register usage in disassembly only
-            find_in_function("0x401000", "R7", mode="disasm")
-
-            # Regex search for function calls
-            find_in_function("0x401000", r"BL\\s+0x[0-9A-Fa-f]+", regex=True)
-
-            # Find variable in decompiled code
-            find_in_function("0x401000", "g_configTable", mode="decompile")
-        """
+        Example: find_in_function('0x002af9c0', 'ldr') to locate the constant
+        pool a function loads from."""
         try:
             with request_scope(
                 "find_in_function",
@@ -2389,30 +2138,23 @@ def register_tools(
         dry_run: bool = True,
         max_samples: int = 8,
     ) -> Dict[str, object]:
-        """Summarise a function's memory-mapped I/O accesses, and optionally
-        comment them.
+        """Summarise a function's memory-mapped I/O accesses, optionally
+        commenting them.
 
         Counts reads, writes and the read-modify-write patterns (OR, AND,
-        toggle) that mark register manipulation, and returns a few sample lines
+        toggle) that mark register manipulation, and returns sample lines
         rather than the whole function.
 
-        Not for: finding which registers a function touches when the addresses
-        come from a constant pool -- the classifier reads instruction operands,
-        so a base address loaded via 'ldr' is counted as a load, not as the
-        register it points to. Not a substitute for reading the function.
+        Not for: identifying which registers are touched when the base address
+        comes from a constant pool -- the classifier reads operands, so an 'ldr'
+        base counts as a load, not as the register behind it.
 
         Args:
-            function_addr: Entry point of the function, hex string, e.g.
-                '0x002af9c0'.
-            dry_run: When true (default) classify and report without writing
-                comments. Writing also requires GHIDRA_MCP_ENABLE_WRITES=true.
-            max_samples: Sample lines returned, >= 1, default 8. Bounded by the
-                batch ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH, 256 by default).
-
-        Returns:
-            Envelope with per-category counts, the samples, how many
-            annotations were applied and notes explaining why they were not.
-        """
+            function_addr: function entry, hex.
+            dry_run: default true; classify without writing comments. Writing
+                also needs GHIDRA_MCP_ENABLE_WRITES=true.
+            max_samples: sample lines, >= 1, default 8, <= 256
+                (GHIDRA_MCP_MAX_ITEMS_PER_BATCH)."""
         request_payload = {
             "function_addr": function_addr,
             "dry_run": dry_run,
@@ -2455,31 +2197,12 @@ def register_tools(
     ) -> Dict[str, object]:
         """Find instructions whose operand is a given constant.
 
-        Use it to locate register addresses, magic numbers and sizes where they
-        appear literally in the instruction stream.
-
-        Not for: constants held in a constant pool. This searches instruction
-        operands only. A value reached via a PC-relative load -- the usual ARM
-        way to materialise a 32-bit constant -- is invisible here, and so is a
-        value assembled from several immediates. An empty result is a statement
-        about the search, not about the firmware.
-
-        When it returns nothing: find the constant pool the function loads from
-        -- ``find_in_function`` with query 'ldr' shows the pool address in the
-        operand, e.g. 'ldr r1,[0x2afb34]' -- then ``read_words`` at that
-        address. This is how 0xB1008000 is found at 0x002AFB4C in the reference
-        firmware, where this tool reports zero hits.
+        Not for: constants held in a constant pool -- this reads instruction operands only. On zero hits the response carries a method_note with the way around it.
 
         Args:
-            value: The constant, as a hex string ('0xB1008000') or an integer.
-                Required.
-            limit: Results per page, >= 1, default 100.
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            matching instruction addresses.
-        """
+            value: the constant, hex string '0xB1008000' or int.
+            limit: results per page, >= 1, default 100.
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {"value": value, "limit": limit, "page": page}
         valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)
@@ -2527,26 +2250,17 @@ def register_tools(
         limit: int = 200,
         page: int = 1,
     ) -> Dict[str, object]:
-        """List the functions defined within an address range.
+        """List the functions defined within an address range, in address order.
 
-        Use it to work through a region systematically, or to find out what sits
-        next to a known function.
-
-        Not for: searching by name or behaviour -- it returns everything in the
-        range in address order. The default limit of 200 makes it easy to pull
-        far more than you need; narrow the range instead of paging.
+        Not for: searching by name or behaviour. The default limit of 200 makes
+        it easy to pull far more than you need -- narrow the range instead of
+        paging.
 
         Args:
-            address_min: Inclusive lower bound, hex string, e.g. '0x002af000'.
-            address_max: Inclusive upper bound, hex string, e.g. '0x002b0000'.
-                Must be >= address_min.
-            limit: Results per page, >= 1, default 200.
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total`` for the whole range, ``page``, ``limit``,
-            ``has_more`` and the functions with name, address and size.
-        """
+            address_min: inclusive lower bound, hex, e.g. '0x002af000'.
+            address_max: inclusive upper bound, hex, >= address_min.
+            limit: results per page, >= 1, default 200.
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {
             "address_min": address_min,
@@ -2588,24 +2302,15 @@ def register_tools(
         address: str,
         count: int = 16,
     ) -> Dict[str, object]:
-        """Disassemble a run of instructions starting at an address.
+        """Disassemble a run of instructions at an address.
 
-        The plain read: no filtering, no decompilation, no xrefs.
-
-        Not for: locating anything -- you must know the address. Not for
-        scanning several places at once; use ``disassemble_batch``. When you
-        only want the lines matching a pattern, ``find_in_function`` filters
-        server-side and returns a fraction of the bytes.
+        Not for: locating anything, or several places at once
+        (disassemble_batch). When you only want matching lines,
+        find_in_function filters server-side and returns a fraction of this.
 
         Args:
-            address: Where to start, hex string, e.g. '0x002af9c0'. Must be
-                inside a mapped memory block.
-            count: Number of instructions, >= 1, default 16. Values above 128
-                are clamped to 128.
-
-        Returns:
-            Envelope with the start address and the disassembled lines.
-        """
+            address: start, hex, inside a mapped block.
+            count: instructions, >= 1, default 16, clamped to 128."""
 
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
@@ -2639,26 +2344,15 @@ def register_tools(
         length: int,
         include_literals: bool = False,
     ) -> Dict[str, object]:
-        """Read raw bytes from memory.
+        """Read raw bytes from memory, returned as base64.
 
-        Returns base64. For 32-bit words use ``read_words`` instead -- it
-        decodes them for you and is what constant-pool inspection needs.
-
-        Not for: searching. There is no byte-search on this server; this reads a
-        known address. Not for reading code you intend to understand -- use
-        ``disassemble_at``.
+        Not for: searching -- there is no byte-search on this server. For
+        32-bit words use read_words, which decodes them.
 
         Args:
-            address: Start address, hex string, e.g. '0x002afb34'. Must be
-                inside a mapped memory block.
-            length: Number of bytes, >= 1. Values above 4096 are clamped to
-                4096.
-            include_literals: When true, include a decoded ASCII rendering
-                alongside the base64. Default false.
-
-        Returns:
-            Envelope with the address, length, encoding ('base64') and data.
-        """
+            address: start, hex, inside a mapped block.
+            length: bytes, >= 1, clamped to 4096.
+            include_literals: add a decoded ASCII rendering, default false."""
 
         request_payload = {
             "address": address,
@@ -2743,28 +2437,21 @@ def register_tools(
     ) -> Dict[str, object]:
         """Read consecutive 32-bit words and return them as integers.
 
-        Decodes little-endian words instead of handing back base64, which makes
-        this the tool for reading a constant pool: when ``search_scalars``
-        reports nothing, the value is usually sitting here as data.
+        Little-endian, decoded rather than base64. This is the tool for reading
+        a constant pool: when search_scalars reports nothing, the value is
+        usually sitting here as data.
 
-        Not for: searching -- you must know the address. There is no byte-search
-        on this server. Reading a large region word by word is also the wrong
-        shape; ``read_bytes`` returns bulk data in one field.
+        Not for: searching -- you must know the address.
 
         Args:
-            address: Start address, hex string, e.g. '0x002afb34'. Must be
-                inside a mapped memory block.
-            count: Number of 32-bit words, >= 1, default 1. Bounded by the batch
-                ceiling (GHIDRA_MCP_MAX_ITEMS_PER_BATCH, 256 by default).
-            include_literals: When true, add a ``literals`` array with each
-                word's raw four bytes base64-encoded, in the same order.
-                Default false. Useful when a word may be four ASCII characters
-                rather than a number.
+            address: start, hex, e.g. '0x002afb34', inside a mapped block.
+            count: words, >= 1, default 1, <= 256
+                (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
+            include_literals: add a literals array with each word's four raw
+                bytes base64-encoded, default false. Useful when a word may be
+                four ASCII characters.
 
-        Returns:
-            Envelope with the address, the count and a ``words`` array of
-            integers, ``null`` where the address could not be read.
-        """
+        Returns words as integers, null where the address could not be read."""
         request_payload = {
             "address": address,
             "count": count,
@@ -2802,37 +2489,19 @@ def register_tools(
         context_lines: int = 4,
         limit: int = 100,
     ) -> Dict[str, object]:
-        """Find a constant in instruction operands, with surrounding disassembly.
+        """search_scalars plus a disassembly window per hit.
 
-        ``search_scalars`` plus a disassembly window per hit, so you can judge
-        what each hit does without a follow-up call.
+        The most expensive call on this server: at the default limit of 100 with
+        4 context lines one call can return ~900 lines of disassembly. In the
+        reference run two calls were 61% of all response bytes. Set limit.
 
-        The most expensive call on this server. At the default limit of 100 with
-        4 context lines a single call can return roughly 900 lines of
-        disassembly -- in the reference measurement two calls accounted for 61%
-        of an entire session's response bytes. Set ``limit`` deliberately.
-
-        Not for: constants held in a constant pool. Like ``search_scalars`` this
-        searches instruction operands only. A value reached via a PC-relative
-        load -- the usual ARM way to materialise a 32-bit constant -- is
-        invisible here, and so is a value assembled from several immediates.
-
-        When it returns nothing: find the constant pool the function loads from
-        -- ``find_in_function`` with query 'ldr' shows the pool address in the
-        operand -- then ``read_words`` at that address.
+        Not for: constants held in a constant pool -- this reads instruction operands only. On zero hits the response carries a method_note with the way around it.
 
         Args:
-            value: The constant, as a hex string ('0xB1008000') or an integer.
-                Required.
-            context_lines: Instructions shown before and after each hit, >= 0,
-                default 4. The response grows with limit * context_lines.
-            limit: Results per page, >= 1, default 100.
-            page: 1-based page number, >= 1, default 1.
-
-        Returns:
-            Envelope with ``total``, ``page``, ``limit``, ``has_more`` and the
-            hits, each with its disassembly window.
-        """
+            value: the constant, hex string '0xB1008000' or int.
+            context_lines: instructions each side of a hit, >= 0, default 4.
+            limit: results per page, >= 1, default 100.
+            page: 1-based, >= 1, default 1."""
         request_payload = {
             "value": value,
             "context_lines": context_lines,

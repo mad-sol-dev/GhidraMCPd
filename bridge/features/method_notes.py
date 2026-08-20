@@ -6,10 +6,11 @@ the most expensive documented mistake in this project: ``search_scalars`` cannot
 see constant-pool words, so ``0xB1008000`` came back empty while the value sat
 at ``0x002AFB4C`` all along, and the USB path stayed blocked for seven months.
 
-The text lives here once and is used twice: it is quoted in the tool
-descriptions (so the limit is known *before* the call) and attached to empty
-responses as ``method_note`` (so the limit is restated at the moment it bites).
-``bridge/tests/unit/test_method_notes.py`` keeps the two copies in sync.
+The long text lives here and nowhere else.  A tool description is paid for in
+every session; a method note is paid for only when a search comes back empty,
+which is the moment the detail is actually worth reading.  So the descriptions
+carry a one-line version and these notes carry the addresses and the worked
+example.
 
 Every alternative path named here must be a tool that exists.  Naming a
 capability the server does not have would recreate the very failure this module
@@ -19,7 +20,14 @@ from __future__ import annotations
 
 from typing import Dict, Mapping, NamedTuple
 
-__all__ = ["METHOD_NOTES", "MethodNote", "method_note_for", "note_text"]
+__all__ = [
+    "METHOD_NOTES",
+    "SHORT_FORM",
+    "MethodNote",
+    "method_note_for",
+    "note_text",
+    "short_form",
+]
 
 
 class MethodNote(NamedTuple):
@@ -32,31 +40,30 @@ class MethodNote(NamedTuple):
         return f"Blind spot: {self.blind_spot} Instead: {self.alternative}"
 
 
+_POOL_BLIND_SPOT = (
+    "this searches instruction operands only. A value held in a constant pool "
+    "and reached by a PC-relative load -- the usual ARM way to materialise a "
+    "32-bit constant -- never appears as an operand, and neither does a value "
+    "assembled from several immediates."
+)
+
 _POOL_ALTERNATIVE = (
-    "find the constant pool the function loads from -- 'find_in_function' with "
-    "query 'ldr' shows the pool address in the operand, e.g. "
-    "'ldr r1,[0x2afb34]' -- then 'read_words' at that address. Constants "
-    "reached through a PC-relative load are only visible as data, never as "
-    "operands."
+    "find the pool the function loads from, then read it as data. "
+    "find_in_function(address, 'ldr') shows the pool address inside the "
+    "operand, e.g. 'ldr r1,[0x2afb34]'; read_words at that address returns the "
+    "constants themselves. Worked example from the reference firmware: "
+    "search_scalars('0xB1008000') returns 0 hits, while "
+    "read_words('0x002AFB34', 10) shows 0xB1008000 at 0x002AFB4C and "
+    "0xB1008704 at 0x002AFB40."
 )
 
 METHOD_NOTES: Mapping[str, MethodNote] = {
     "search_scalars": MethodNote(
-        blind_spot=(
-            "this searches instruction operands only. Values held in a constant "
-            "pool and reached via a PC-relative load (the usual ARM way to "
-            "materialise a 32-bit constant) are invisible to it, and so are "
-            "values assembled from several immediates."
-        ),
+        blind_spot=_POOL_BLIND_SPOT,
         alternative=_POOL_ALTERNATIVE,
     ),
     "search_scalars_with_context": MethodNote(
-        blind_spot=(
-            "this searches instruction operands only. Values held in a constant "
-            "pool and reached via a PC-relative load (the usual ARM way to "
-            "materialise a 32-bit constant) are invisible to it, and so are "
-            "values assembled from several immediates."
-        ),
+        blind_spot=_POOL_BLIND_SPOT,
         alternative=_POOL_ALTERNATIVE,
     ),
     "search_functions": MethodNote(
@@ -66,33 +73,65 @@ METHOD_NOTES: Mapping[str, MethodNote] = {
             "name is absent, not the functionality."
         ),
         alternative=(
-            "search for a string the code must reference ('search_strings'), "
-            "then follow it back with 'string_xrefs_compact'; or narrow by "
-            "address with 'list_functions_in_range'."
+            "reach the function through data it must touch. "
+            "search_strings for a string the code references, then "
+            "string_xrefs_compact on that string's address gives the callers. "
+            "Where you already know the region, list_functions_in_range walks "
+            "it in address order."
         ),
     ),
     "search_xrefs_to": MethodNote(
         blind_spot=(
             "this reports references Ghidra has recognised as such. A pointer "
-            "sitting in an unanalysed data region, a hand-rolled jump table or "
-            "a computed branch produces no xref at all."
+            "in an unanalysed data region, a hand-rolled jump table or a "
+            "computed branch produces no xref at all."
         ),
         alternative=(
-            "read the suspected table directly with 'read_words' and look for "
-            "the address word, or disassemble the caller with 'disassemble_at' "
-            "and check the branch target by hand."
+            "read the suspected table as data with read_words and look for the "
+            "address word yourself, or disassemble the caller with "
+            "disassemble_at and follow the branch target by hand. For a "
+            "suspected jump table, jt_scan checks a run of slots at once."
         ),
     ),
     "search_strings": MethodNote(
         blind_spot=(
             "this searches strings Ghidra has already defined as data. Bytes "
-            "that were never turned into a string -- unanalysed regions, "
-            "obfuscated or runtime-assembled text -- do not appear."
+            "never turned into a string -- unanalysed regions, obfuscated or "
+            "runtime-assembled text -- do not appear."
         ),
         alternative=(
-            "read the suspected region with 'read_bytes' and decode it, or "
-            "define the data in Ghidra first and search again."
+            "read the suspected region with read_bytes and decode it yourself, "
+            "or define the data in Ghidra first and search again."
         ),
+    ),
+}
+
+#: The one-line form quoted in the tool descriptions.  Kept short on purpose:
+#: the description is paid for in every session, the note only on an empty hit.
+SHORT_FORM: Mapping[str, str] = {
+    "search_scalars": (
+        "constants held in a constant pool -- this reads instruction operands "
+        "only. On zero hits the response carries a method_note with the way "
+        "around it."
+    ),
+    "search_scalars_with_context": (
+        "constants held in a constant pool -- this reads instruction operands "
+        "only. On zero hits the response carries a method_note with the way "
+        "around it."
+    ),
+    "search_functions": (
+        "finding functionality -- this matches names, and a stripped binary has "
+        "none. On zero hits the response carries a method_note with the way "
+        "around it."
+    ),
+    "search_xrefs_to": (
+        "references Ghidra never recognised, such as computed branches or "
+        "hand-rolled tables. On zero hits the response carries a method_note "
+        "with the way around it."
+    ),
+    "search_strings": (
+        "bytes Ghidra never defined as a string. On zero hits the response "
+        "carries a method_note with the way around it."
     ),
 }
 
@@ -110,5 +149,7 @@ def note_text(tool: str) -> str | None:
     return note.as_text() if note else None
 
 
-def _known_tools() -> Dict[str, MethodNote]:
-    return dict(METHOD_NOTES)
+def short_form(tool: str) -> str | None:
+    """Return the one-line form used in the tool description."""
+
+    return SHORT_FORM.get(tool)

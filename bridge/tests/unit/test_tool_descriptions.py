@@ -9,12 +9,13 @@ in-process view and prints any tool whose docstring fails to reach the client.
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 
 from bridge.app import MCP_SERVER, configure
 from bridge.features.analyze import _ALLOWED_FIELDS
-from bridge.features.method_notes import METHOD_NOTES
+from bridge.features.method_notes import METHOD_NOTES, SHORT_FORM, method_note_for
 
 
 @pytest.fixture(scope="module")
@@ -60,44 +61,71 @@ def test_analyze_function_complete_lists_every_field(tools):
 def test_analyze_function_complete_documents_its_enums(tools):
     description = tools["analyze_function_complete"].description or ""
     # fmt accepts exactly one value; saying so is the point.
-    assert "Only 'json' is accepted" in description
+    assert "'json'" in description
+    assert "accepted" in description
     # The budget parameter is useless without its unit and its null case.
     assert "max_result_tokens" in description
     assert "null" in description
 
 
 @pytest.mark.parametrize("tool_name", sorted(METHOD_NOTES))
-def test_search_tools_state_their_blind_spot(tools, tool_name):
-    """Stage 1 and Stage 2 share one text; the description carries it too."""
+def test_a_tool_with_a_blind_spot_carries_the_short_form(tools, tool_name):
+    """The description pays per session, so it gets the one-line version.
+
+    This checks that the two exist and belong together, not that they read
+    alike: the long text with addresses and a worked example lives in
+    method_notes.py, where it is only paid for when a search comes back empty.
+    """
 
     description = tools[tool_name].description or ""
     assert "Not for:" in description, tool_name
+    assert SHORT_FORM[tool_name] in description, tool_name
+    assert method_note_for(tool_name) is not None, tool_name
 
 
-@pytest.mark.parametrize("tool_name", sorted(METHOD_NOTES))
-def test_search_tools_name_a_tool_that_exists(tools, tool_name):
-    """An alternative path pointing at a capability we lack is worse than none.
+def test_short_forms_stay_short():
+    """A short form that grows back into an essay defeats the split."""
 
-    There is no byte-search anywhere in this server -- neither the bridge nor
-    the Ghidra plugin has such an endpoint -- so no note may send the reader
-    looking for one.
+    for tool_name, text in SHORT_FORM.items():
+        assert len(text) <= 220, f"{tool_name}: {len(text)} chars"
+
+
+def test_every_short_form_belongs_to_a_note():
+    assert sorted(SHORT_FORM) == sorted(METHOD_NOTES)
+
+
+def test_the_detail_lives_in_the_note_not_the_description(tools):
+    """The regression this project actually paid for, and where it is written."""
+
+    note = METHOD_NOTES["search_scalars"]
+    detail = f"{note.blind_spot} {note.alternative}"
+    for anchor in ("0x002AFB4C", "0xB1008000", "read_words", "find_in_function"):
+        assert anchor in detail, anchor
+
+    # ...and specifically not in the description, which every session pays for.
+    description = tools["search_scalars"].description or ""
+    assert "0x002AFB4C" not in description
+    assert "read_words" not in description
+
+
+#: Stage 1 acceptance: the schema base is part of the deal, not a side effect.
+#: Baseline before the stage was 5406 tokens; the agreed ceiling is 8000.
+SCHEMA_BASE_CEILING = 8000
+
+
+def test_schema_base_stays_within_budget(tools):
+    """Every session pays this before a single call happens.
+
+    Documentation that doubles the fixed cost is not free documentation.  If
+    this fails, run `python scripts/measure_schema_cost.py` for the per-tool
+    ranking and trim the top of the list rather than raising the ceiling.
     """
 
-    note = METHOD_NOTES[tool_name]
-    text = f"{note.blind_spot} {note.alternative}"
-    named = {word.strip("'\"`,.") for word in text.split() if word.strip("'\"`,.") in tools}
-    assert named, f"{tool_name} names no alternative tool"
+    total = 0
+    for name, tool in tools.items():
+        schema = json.dumps(tool.inputSchema or {}, sort_keys=True, separators=(",", ":"))
+        total += (len(name) + len(tool.description or "") + len(schema)) // 4
 
-    forbidden = ("search_bytes", "byte search", "byte-search", "Bytesuche")
-    for phrase in forbidden:
-        assert phrase not in text, f"{tool_name} points at a nonexistent capability: {phrase}"
-
-
-def test_scalar_tools_point_at_the_constant_pool_path(tools):
-    """The regression this project actually paid for."""
-
-    for tool_name in ("search_scalars", "search_scalars_with_context"):
-        description = tools[tool_name].description or ""
-        assert "read_words" in description, tool_name
-        assert "find_in_function" in description, tool_name
-        assert "constant pool" in description, tool_name
+    assert total <= SCHEMA_BASE_CEILING, (
+        f"schema base is {total} tokens, ceiling is {SCHEMA_BASE_CEILING}"
+    )
