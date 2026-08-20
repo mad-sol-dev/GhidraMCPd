@@ -8,12 +8,22 @@ search with xrefs, scalar search, disassembly of several addresses, two
 ``analyze_function_complete`` dossiers, literal-pool reads around
 ``0x002AFB34``).  Addresses are fixed on purpose -- no sampling, no randomness.
 
-Target program: ``ZK-INKJET-NANO-APP.bin`` (a copy of the ZK-Inkjet project,
-opened in a dedicated Ghidra instance).  The run performs reads only.
+Target program: ``ZK-INKJET-NANO-APP.bin`` (a frozen copy of the ZK-Inkjet
+project, opened in a dedicated Ghidra instance).  The run performs reads only.
+
+Before the first call the script records a **fingerprint of the database** it is
+talking to -- program name, binary checksum, function count and the number of
+non-default (user-named) functions.  The binary never changes; the ``.rep``
+does: renames, comments and applied data types move response sizes around with
+no relation to the rework.  If the fingerprint differs between the Stage 0 and
+Stage 7 runs, the comparison is void.  ``--expect-fingerprint`` turns that from
+an assumption into a check.
 
 Usage::
 
     python scripts/reference_run.py --usage-log baseline.jsonl
+    python scripts/reference_run.py --usage-log after.jsonl \
+        --expect-fingerprint baseline/fingerprint.json
 """
 from __future__ import annotations
 
@@ -21,11 +31,13 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
+import httpx
 import mcp.types as types
 from mcp import StdioServerParameters, stdio_client
 from mcp.client.session import ClientSession
@@ -142,6 +154,60 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
 )
 
 
+#: Ghidra's auto-generated symbol names.  Everything else counts as user work.
+_DEFAULT_SYMBOL = re.compile(
+    r"^(?:thunk_)?(?:FUN|SUB|LAB|DAT|UNK|EXT_FUN|SWITCH|caseD)_[0-9A-Fa-f]+$"
+)
+
+#: Fields that must match between two runs for their numbers to be comparable.
+FINGERPRINT_KEYS = (
+    "program_name",
+    "executable_sha256",
+    "function_count",
+    "user_named_functions",
+)
+
+
+def fingerprint_database(ghidra_url: str, *, timeout: float = 60.0) -> Dict[str, Any]:
+    """Identify the database this run is measuring.
+
+    Talks to the Ghidra plugin directly rather than through the bridge, so the
+    fingerprint costs nothing in the usage log it is about to annotate.
+    """
+
+    base = ghidra_url.rstrip("/") + "/"
+    with httpx.Client(base_url=base, timeout=timeout) as http:
+        info = http.get("project_info").json()
+        methods = http.get("methods", params={"offset": 0, "limit": 1_000_000}).text
+
+    names = [line.strip() for line in methods.splitlines() if line.strip()]
+    user_named = [name for name in names if not _DEFAULT_SYMBOL.match(name)]
+
+    return {
+        "kind": "fingerprint",
+        "program_name": info.get("program_name"),
+        "executable_sha256": info.get("executable_sha256"),
+        "executable_md5": info.get("executable_md5"),
+        "image_base": info.get("image_base"),
+        "language_id": info.get("language_id"),
+        "function_count": len(names),
+        "user_named_functions": len(user_named),
+    }
+
+
+def compare_fingerprints(
+    current: Mapping[str, Any], expected: Mapping[str, Any]
+) -> List[str]:
+    """Return one line per field that drifted, empty when the runs match."""
+
+    drift: List[str] = []
+    for key in FINGERPRINT_KEYS:
+        have, want = current.get(key), expected.get(key)
+        if have != want:
+            drift.append(f"{key}: expected {want!r}, got {have!r}")
+    return drift
+
+
 def _first_json(result: types.CallToolResult) -> Any:
     for content in result.content:
         if isinstance(content, types.TextContent):
@@ -152,7 +218,7 @@ def _first_json(result: types.CallToolResult) -> Any:
     return None
 
 
-async def _run(args: argparse.Namespace) -> int:
+async def _run(args: argparse.Namespace, fingerprint: Mapping[str, Any]) -> int:
     env = dict(os.environ)
     env["GHIDRA_SERVER_URL"] = args.ghidra_server_url
     env["GHIDRA_MCP_USAGE_LOG"] = str(args.usage_log)
@@ -175,7 +241,12 @@ async def _run(args: argparse.Namespace) -> int:
         ) as session:
             await session.initialize()
             tools = await session.list_tools()
-            print(f"tools advertised: {len(tools.tools)}")
+            print(
+                f"tools advertised: {len(tools.tools)}   "
+                f"program: {fingerprint.get('program_name')}   "
+                f"functions: {fingerprint.get('function_count')} "
+                f"({fingerprint.get('user_named_functions')} user-named)"
+            )
 
             for index, (name, arguments) in enumerate(CALLS, start=1):
                 try:
@@ -212,13 +283,52 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=ROOT / "baseline" / "reference_run.jsonl",
         help="JSONL usage log written by this run (truncated first)",
     )
+    parser.add_argument(
+        "--expect-fingerprint",
+        type=Path,
+        help="abort unless the database fingerprint matches this JSON file",
+    )
+    parser.add_argument(
+        "--write-fingerprint",
+        type=Path,
+        help="store this run's database fingerprint at this path",
+    )
     args = parser.parse_args(argv)
 
     args.usage_log = args.usage_log.expanduser().resolve()
     args.usage_log.parent.mkdir(parents=True, exist_ok=True)
-    args.usage_log.write_text("", encoding="utf-8")
 
-    return asyncio.run(_run(args))
+    fingerprint = fingerprint_database(args.ghidra_server_url)
+    print("database fingerprint:")
+    for key in FINGERPRINT_KEYS:
+        print(f"  {key:<24} {fingerprint.get(key)}")
+
+    if args.expect_fingerprint:
+        expected = json.loads(args.expect_fingerprint.read_text(encoding="utf-8"))
+        drift = compare_fingerprints(fingerprint, expected)
+        if drift:
+            print("\nFINGERPRINT MISMATCH -- this run is not comparable:")
+            for line in drift:
+                print(f"  ! {line}")
+            print(
+                "\nRefusing to run.  Restore the frozen project copy, or accept that\n"
+                "the numbers measure a different database and re-baseline."
+            )
+            return 2
+        print("  -> matches the expected fingerprint")
+
+    if args.write_fingerprint:
+        args.write_fingerprint.parent.mkdir(parents=True, exist_ok=True)
+        args.write_fingerprint.write_text(
+            json.dumps(fingerprint, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        print(f"  -> wrote {args.write_fingerprint}")
+
+    # The fingerprint is the first line of the log, so a log always carries the
+    # identity of what it measured.
+    args.usage_log.write_text(json.dumps(fingerprint, sort_keys=True) + "\n", encoding="utf-8")
+
+    return asyncio.run(_run(args, fingerprint))
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

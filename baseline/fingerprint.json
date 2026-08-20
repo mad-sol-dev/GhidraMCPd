@@ -1,0 +1,10 @@
+{
+  "executable_md5": "e74866f944ba54267033afade367cbf1",
+  "executable_sha256": "3be9028b01c0007aab9192877341918a0bc155beef55ac17e7e8f3bcc95151ea",
+  "function_count": 1266,
+  "image_base": "0x00000000",
+  "kind": "fingerprint",
+  "language_id": "ARM:LE:32:v5t",
+  "program_name": "ZK-INKJET-NANO-APP.bin.orig",
+  "user_named_functions": 24
+}

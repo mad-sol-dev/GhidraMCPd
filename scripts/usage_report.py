@@ -28,14 +28,21 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 
-def load_entries(path: Path) -> List[Dict[str, Any]]:
+def load_entries(path: Path) -> tuple[List[Dict[str, Any]], Dict[str, Any] | None]:
+    """Split a usage log into tool records and the leading fingerprint line."""
+
     entries: List[Dict[str, Any]] = []
+    fingerprint: Dict[str, Any] | None = None
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
-        entries.append(json.loads(line))
-    return entries
+        record = json.loads(line)
+        if record.get("kind") == "fingerprint":
+            fingerprint = record
+            continue
+        entries.append(record)
+    return entries, fingerprint
 
 
 def summarise(entries: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
@@ -84,8 +91,19 @@ def summarise(entries: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def render(report: Dict[str, Any]) -> str:
-    lines = [
+def render(report: Dict[str, Any], fingerprint: Dict[str, Any] | None = None) -> str:
+    lines = []
+    if fingerprint:
+        lines += [
+            f"database: {fingerprint.get('program_name')}  "
+            f"sha256={str(fingerprint.get('executable_sha256'))[:16]}…  "
+            f"functions={fingerprint.get('function_count')}  "
+            f"user-named={fingerprint.get('user_named_functions')}",
+            "",
+        ]
+    else:
+        lines += ["database: UNKNOWN (log has no fingerprint line)", ""]
+    lines += [
         f"calls: {report['calls']}   distinct tools: {report['tools']}",
         f"total est_tokens: {report['total_est_tokens']}   "
         f"total bytes: {report['total_bytes']} ({report['total_bytes_tokens']} tokens)",
@@ -110,8 +128,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, help="also write the summary as JSON")
     args = parser.parse_args(argv)
 
-    report = summarise(load_entries(args.log))
-    print(render(report))
+    entries, fingerprint = load_entries(args.log)
+    report = summarise(entries)
+    report["fingerprint"] = fingerprint
+    print(render(report, fingerprint))
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
