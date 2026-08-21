@@ -1013,6 +1013,45 @@ class GhidraClient:
             results.append({"address": address, "literal": literal})
         return results
 
+    def list_strings(
+        self, *, limit: int, offset: int = 0
+    ) -> Dict[str, Any]:
+        """Page through defined strings without a query.
+
+        The plugin's /strings endpoint pages natively, so this asks for one
+        window instead of pulling everything and slicing.  strings_compact
+        looked for exactly this method and, not finding it, returned an empty
+        list on every call -- a well-formed answer that said nothing.
+        """
+
+        increment_counter("ghidra.list_strings")
+        payload = self._request_json_payload(
+            "GET",
+            "strings",
+            key="SEARCH_STRINGS",
+            params={"limit": max(int(limit), 1), "offset": max(int(offset), 0)},
+            schema_key="strings",
+        )
+        if not payload:
+            return {"items": [], "has_more": False}
+        if payload.get("error"):
+            logger.warning(
+                "strings returned error", extra={"error": payload.get("error")}
+            )
+        results: List[Dict[str, Any]] = []
+        for raw in payload.get("items", []):
+            if not isinstance(raw, Mapping):
+                continue
+            results.append(
+                {
+                    "address": str(raw.get("address", "")).strip(),
+                    "literal": str(raw.get("literal", "")),
+                }
+            )
+        # The plugin knows whether more pages follow; it does not know the
+        # total, and neither do we.
+        return {"items": results, "has_more": bool(payload.get("has_more", False))}
+
     def search_imports(self, query: str) -> List[str]:
         """Search for imported symbols matching the provided filter."""
 

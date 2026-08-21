@@ -164,11 +164,13 @@ def render_lines(mutations: Sequence[Mutation]) -> List[str]:
 
 
 def _datatype_body(entry: Mutation) -> str:
+    """created / updated / deleted are three different claims; keep them apart."""
+
     if entry.new is None:
         return f"deleted {_render_value(entry.old)}"
     if entry.old is None:
         return f"created {entry.new}"
-    return f"{entry.old} -> {entry.new}"
+    return f"updated to {entry.new}"
 
 
 def summarise(mutations: Sequence[Mutation]) -> Dict[str, object]:

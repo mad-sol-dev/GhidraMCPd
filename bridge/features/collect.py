@@ -187,7 +187,9 @@ def _op_search_strings(client: GhidraClient, params: Mapping[str, object]) -> Ma
     )
 
 
-def _fetch_strings(client: GhidraClient, *, limit: int, offset: int) -> Iterable[Mapping[str, object]]:
+def _fetch_strings(client: GhidraClient, *, limit: int, offset: int):
+    """Returns (entries, has_more)."""
+
     return strings.fetch_strings_compact_entries(client, limit=limit, offset=offset)
 
 
@@ -200,8 +202,10 @@ def _op_strings_compact(client: GhidraClient, params: Mapping[str, object]) -> M
     if offset < 0:
         raise ValueError("offset must be a non-negative integer")
     enforce_batch_limit(limit, counter="strings.compact.limit")
-    entries = _fetch_strings(client, limit=limit, offset=offset)
-    return strings.strings_compact_view(entries, include_literals=include_literals)
+    entries, has_more = _fetch_strings(client, limit=limit, offset=offset)
+    return strings.strings_compact_view(
+        entries, include_literals=include_literals, has_more=has_more
+    )
 
 
 def _op_string_xrefs(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:

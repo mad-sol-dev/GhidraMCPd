@@ -27,7 +27,11 @@ def test_strings_compact_contract(app_client: TestClient) -> None:
     assert body["ok"] is True
     assert body["errors"] == []
     data = body["data"]
-    assert data["total"] == len(data["items"])
+    # "returned" is the page size.  There is no total: paging the string
+    # table never learns one, and the old key claimed otherwise.
+    assert data["returned"] == len(data["items"])
+    assert isinstance(data["has_more"], bool)
+    assert data["truncated"] == data["has_more"]
     items = data["items"]
     assert items
     assert [item["addr"] for item in items] == sorted(item["addr"] for item in items)
@@ -45,7 +49,6 @@ def test_strings_compact_falls_back_to_search(monkeypatch: pytest.MonkeyPatch) -
     class SearchOnlyStub(StubGhidraClient):
         def __init__(self) -> None:
             super().__init__()
-            self.list_strings_compact = None
             self.list_strings = None
 
     monkeypatch.setattr(bridge_app, "_client_factory", lambda: SearchOnlyStub())

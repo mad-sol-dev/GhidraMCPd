@@ -412,7 +412,7 @@ def update_datatype(
             "notes": list(envelope["notes"]),
         },
     )
-    _record_mutation(envelope, kind=normalized_kind)
+    _record_mutation(envelope, kind=normalized_kind, action="updated")
 
     return envelope
 
@@ -457,7 +457,7 @@ def delete_datatype(
             "notes": list(envelope["notes"]),
         },
     )
-    _record_mutation(envelope, kind=normalized_kind, deleted=True)
+    _record_mutation(envelope, kind=normalized_kind, action="deleted")
 
     return envelope
 
@@ -469,7 +469,7 @@ def _record_mutation(
     envelope: Mapping[str, object],
     *,
     kind: str,
-    deleted: bool = False,
+    action: str = "created",
 ) -> None:
     """Add a data type change to the session ledger.
 
@@ -488,11 +488,20 @@ def _record_mutation(
     fields = datatype.get("fields") if isinstance(datatype, Mapping) else None
     shape = f"{kind}({len(fields)} fields)" if isinstance(fields, Sequence) else kind
 
+    # created / updated / deleted are three different claims about the program;
+    # rendering an update as a creation reads like a type that did not exist.
+    if action == "deleted":
+        old, new = path, None
+    elif action == "updated":
+        old, new = path, shape
+    else:
+        old, new = None, shape
+
     mutations.record(
         kind="datatype",
         target=path,
-        old=path if deleted else None,
-        new=None if deleted else shape,
+        old=old,
+        new=new,
         applied=written,
         reason=reason,
     )

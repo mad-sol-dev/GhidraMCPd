@@ -1972,7 +1972,12 @@ def register_tools(
                 <= 256 (GHIDRA_MCP_MAX_ITEMS_PER_BATCH).
             offset: strings to skip, >= 0, default 0.
             include_literals: include the text, truncated to 120 chars, default
-                false."""
+                false.
+
+        Returns `returned` (entries on this page), `items`, `has_more` and
+        `truncated`. There is no total: paging through the string table never
+        learns one, and a page length under that name would be a made-up
+        figure."""
         request_payload = {
             "limit": limit,
             "offset": offset,
@@ -1993,22 +1998,14 @@ def register_tools(
             extra={"tool": "strings_compact"},
         ):
             increment_counter("strings.compact.calls")
-            raw_entries: list[dict[str, object]] = []
-            fetcher = getattr(client, "list_strings_compact", None)
-            if callable(fetcher):
-                result = fetcher(limit=limit, offset=offset)
-                raw_entries = [] if result is None else list(result)
-            else:
-                fallback = getattr(client, "list_strings", None)
-                if callable(fallback):
-                    try:
-                        result = fallback(limit=limit, offset=offset)
-                    except TypeError:
-                        result = fallback(limit=limit)
-                    raw_entries = [] if result is None else list(result)
+            raw_entries, has_more = strings.fetch_strings_compact_entries(
+                client, limit=limit, offset=offset
+            )
             try:
                 data = strings.strings_compact_view(
-                    raw_entries, include_literals=include_literals
+                    raw_entries,
+                    include_literals=include_literals,
+                    has_more=has_more,
                 )
             except (TypeError, ValueError) as exc:
                 return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
@@ -2679,9 +2676,10 @@ def register_tools(
     ) -> Dict[str, object]:
         """search_scalars plus a disassembly window per hit.
 
-        The most expensive call on this server: at the default limit of 100 with
-        4 context lines one call can return ~900 lines of disassembly. In the
-        reference run two calls were 61% of all response bytes. Set limit.
+        Historically the most expensive call here: at the old default of 100
+        with 4 context lines one call returned ~900 lines of disassembly, and
+        two such calls were 61% of the reference run. The default is now 20,
+        and the window comes back as text unless you ask for fmt='json'.
 
         Not for: constants held in a constant pool -- this reads instruction operands only. On zero hits the response carries a method_note with the way around it.
 

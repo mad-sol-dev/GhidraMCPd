@@ -263,34 +263,38 @@ def search_strings(
 
 def fetch_strings_compact_entries(
     client: object, *, limit: int, offset: int
-) -> List[Mapping[str, object]]:
-    """Collect raw string metadata for ``strings_compact`` responses.
+) -> Tuple[List[Mapping[str, object]], bool]:
+    """Collect one page of raw string metadata, plus whether more follow.
 
-    Attempts the most specific provider first (``list_strings_compact``),
-    followed by older ``list_strings`` implementations, and finally the
-    broad ``search_strings`` API when compact listings are unavailable.
+    Prefers ``list_strings``, which pages natively at the plugin and reports
+    ``has_more``.  The ``search_strings`` fallback pulls everything and slices,
+    so it can only say "more follow" by looking at what it sliced off.
+
+    Note for anyone extending this: the previous version probed a
+    ``list_strings_compact`` method that no client ever had, then a
+    ``list_strings`` that did not exist either, and returned an empty list.
+    strings_compact therefore answered "no strings" for every call, on every
+    program, without ever failing.  A provider chain must not have a silent
+    empty result as its floor.
     """
 
-    fetcher = getattr(client, "list_strings_compact", None)
-    if callable(fetcher):
-        result = fetcher(limit=limit, offset=offset)
-        return [] if result is None else list(result)
-
-    fallback = getattr(client, "list_strings", None)
-    if callable(fallback):
-        try:
-            result = fallback(limit=limit, offset=offset)
-        except TypeError:
-            result = fallback(limit=limit)
-        return [] if result is None else list(result)
+    lister = getattr(client, "list_strings", None)
+    if callable(lister):
+        result = lister(limit=limit, offset=offset)
+        if isinstance(result, Mapping):
+            return list(result.get("items", [])), bool(result.get("has_more", False))
+        # An older client that returned a bare list.
+        entries = [] if result is None else list(result)
+        return entries, len(entries) >= limit
 
     search_fallback = getattr(client, "search_strings", None)
     if callable(search_fallback):
         result = search_fallback("")
-        entries: Iterable[Mapping[str, object]] = [] if result is None else result
-        return list(entries)[offset : offset + limit]
+        entries = [] if result is None else list(result)
+        page = entries[offset : offset + limit]
+        return page, len(entries) > offset + limit
 
-    return []
+    return [], False
 
 
 _ELLIPSIS = "…"
@@ -313,8 +317,14 @@ def strings_compact_view(
     entries: Sequence[Mapping[str, object]],
     *,
     include_literals: bool = False,
+    has_more: bool = False,
 ) -> Dict[str, object]:
-    """Normalize raw string metadata into the compact response structure."""
+    """Normalize raw string metadata into the compact response structure.
+
+    Reports how many entries this page holds, never a total: paging through
+    /strings never learns how many strings exist, and printing the page length
+    under the name "total" claimed knowledge that was not there.
+    """
 
     normalized: List[Tuple[int, Dict[str, object]]] = []
     for raw in entries:
@@ -370,7 +380,12 @@ def strings_compact_view(
 
     normalized.sort(key=lambda item: item[0])
     items = [payload for _, payload in normalized]
-    return {"total": len(items), "items": items}
+    return {
+        "returned": len(items),
+        "items": items,
+        "has_more": bool(has_more),
+        "truncated": bool(has_more),
+    }
 
 
 __all__ = [

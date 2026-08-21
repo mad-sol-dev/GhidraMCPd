@@ -4238,6 +4238,9 @@
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "additionalProperties": false,
                   "properties": {
+                    "has_more": {
+                      "type": "boolean"
+                    },
                     "items": {
                       "items": {
                         "additionalProperties": false,
@@ -4267,14 +4270,21 @@
                       },
                       "type": "array"
                     },
-                    "total": {
+                    "returned": {
+                      "description": "Entries on this page. Not a total -- paging through /strings never learns one.",
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    "truncated": {
+                      "description": "True when further pages exist.",
+                      "type": "boolean"
                     }
                   },
                   "required": [
-                    "total",
-                    "items"
+                    "returned",
+                    "items",
+                    "has_more",
+                    "truncated"
                   ],
                   "type": "object"
                 }

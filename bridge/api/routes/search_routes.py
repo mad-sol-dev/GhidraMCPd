@@ -143,13 +143,15 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             increment_counter("strings.compact.calls")
 
-            raw_entries = strings.fetch_strings_compact_entries(
+            raw_entries, has_more = strings.fetch_strings_compact_entries(
                 client, limit=limit, offset=offset
             )
 
             try:
                 payload = strings.strings_compact_view(
-                    raw_entries, include_literals=include_literals
+                    raw_entries,
+                    include_literals=include_literals,
+                    has_more=has_more,
                 )
             except (TypeError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))

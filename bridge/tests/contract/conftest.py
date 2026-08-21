@@ -504,15 +504,19 @@ class StubGhidraClient:
         message = f"Rebased by {delta:+#x}" if delta else "Rebase applied"
         return True, [message]
 
-    def list_strings_compact(
-        self, *, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, object]]:
+    def list_strings(self, *, limit: int = 20, offset: int = 0) -> Dict[str, object]:
+        # Named after the method the real client has.  The stub used to define
+        # list_strings_compact, which no client ever implemented, so the tests
+        # exercised a provider that did not exist in production.
         self._clear_error()
         if limit < 0:
             limit = 0
         start = max(offset, 0)
         end = start + limit
-        return [dict(entry) for entry in self._strings[start:end]]
+        return {
+            "items": [dict(entry) for entry in self._strings[start:end]],
+            "has_more": end < len(self._strings),
+        }
 
     def search_strings(self, query: str) -> List[Dict[str, object]]:
         self._clear_error()
