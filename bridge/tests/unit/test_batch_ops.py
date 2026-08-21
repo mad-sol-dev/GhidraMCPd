@@ -104,7 +104,7 @@ def test_read_words_single():
     
     assert result["address"] == "0x00001000"
     assert result["count"] == 1
-    assert result["words"] == [0xB8002000]
+    assert result["words"] == ["0xb8002000"]
 
 
 def test_read_words_multiple():
@@ -126,7 +126,7 @@ def test_read_words_multiple():
     )
     
     assert result["count"] == 3
-    assert result["words"] == [1, 2, 3]
+    assert result["words"] == ["0x00000001", "0x00000002", "0x00000003"]
 
 
 def test_read_words_handles_none():
@@ -146,7 +146,7 @@ def test_read_words_handles_none():
         count=2,
     )
 
-    assert result["words"][0] == 1
+    assert result["words"][0] == "0x00000001"
     assert result["words"][1] is None
 
 
@@ -167,7 +167,7 @@ def test_read_words_optionally_includes_literals():
         include_literals=True,
     )
 
-    assert result["words"] == [1, None]
+    assert result["words"] == ["0x00000001", None]
     assert result.get("literals") == ["AQAAAA==", None]
 
 

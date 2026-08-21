@@ -2635,7 +2635,9 @@ def register_tools(
                 bytes base64-encoded, default false. Useful when a word may be
                 four ASCII characters.
 
-        Returns words as integers, null where the address could not be read."""
+        Returns words as hex strings ('0xb1008000'), null where the address
+        could not be read. Hex because these are register addresses and masks:
+        a transcription error is visible in hex and invisible in decimal."""
         request_payload = {
             "address": address,
             "count": count,

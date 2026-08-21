@@ -55,6 +55,7 @@ def test_the_schema_accepts_both_forms(schema):
         "limit": 20,
         "has_more": False,
         "truncated": False,
+        "returned": 2,
         "items": [
             {"name": "EXT_FUN_0006781e", "address": "EXTERNAL:00000001"},
             {"name": "Reset", "address": "0x00000000"},
@@ -77,6 +78,7 @@ def test_the_schema_still_rejects_the_malformed_form(schema):
         "limit": 20,
         "has_more": False,
         "truncated": False,
+        "returned": 1,
         "items": [{"name": "broken", "address": "0xEXTERNAL:00000001"}],
     }
     valid, _ = validate_payload(schema, payload)

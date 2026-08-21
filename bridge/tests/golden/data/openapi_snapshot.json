@@ -2482,6 +2482,11 @@
                     "query": {
                       "type": "string"
                     },
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "total": {
                       "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
                       "minimum": 0,
@@ -2498,7 +2503,8 @@
                     "limit",
                     "has_more",
                     "items",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -3320,6 +3326,11 @@
                     "query": {
                       "type": "string"
                     },
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "total": {
                       "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
                       "minimum": 0,
@@ -3336,7 +3347,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -3526,8 +3538,8 @@
                         "null"
                       ]
                     },
-                    "total": {
-                      "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
                       "minimum": 0,
                       "type": "integer"
                     },
@@ -3542,7 +3554,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -3634,6 +3647,11 @@
                     "query": {
                       "type": "string"
                     },
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "total": {
                       "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
                       "minimum": 0,
@@ -3650,7 +3668,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -3788,8 +3807,8 @@
                         "null"
                       ]
                     },
-                    "total": {
-                      "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
                       "minimum": 0,
                       "type": "integer"
                     },
@@ -3804,7 +3823,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -3886,6 +3906,11 @@
                     "query": {
                       "type": "string"
                     },
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "total": {
                       "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
                       "minimum": 0,
@@ -3902,7 +3927,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }
@@ -4009,6 +4035,11 @@
                     "query": {
                       "type": "string"
                     },
+                    "returned": {
+                      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
                     "total": {
                       "description": "Total number of matches. Absent when the search paged by cursor and the total is not known -- it is never estimated.",
                       "minimum": 0,
@@ -4025,7 +4056,8 @@
                     "limit",
                     "items",
                     "has_more",
-                    "truncated"
+                    "truncated",
+                    "returned"
                   ],
                   "type": "object"
                 }

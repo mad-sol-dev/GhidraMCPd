@@ -8,7 +8,8 @@
     "limit",
     "items",
     "has_more",
-    "truncated"
+    "truncated",
+    "returned"
   ],
   "properties": {
     "query": {
@@ -62,6 +63,11 @@
     "truncated": {
       "type": "boolean",
       "description": "True when results were left out. Separate from has_more/cursor, which say how to fetch the rest: a hard per-request cap truncates with nothing to page to."
+    },
+    "returned": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Entries on this page. Always present; unlike total it never depends on whether the search matched anything."
     }
   },
   "additionalProperties": false

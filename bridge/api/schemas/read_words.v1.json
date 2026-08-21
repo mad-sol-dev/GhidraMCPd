@@ -3,25 +3,40 @@
   "$id": "urn:schema:read-words.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["address", "count", "words"],
+  "required": [
+    "address",
+    "count",
+    "words"
+  ],
   "properties": {
-    "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "count": {"type": "integer"},
+    "address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$"
+    },
+    "count": {
+      "type": "integer"
+    },
     "words": {
       "type": "array",
       "items": {
-        "oneOf": [
-          {"type": "integer"},
-          {"type": "null"}
-        ]
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^0x[0-9a-fA-F]+$",
+        "description": "Little-endian 32-bit word as hex, or null where the address could not be read."
       }
     },
     "literals": {
       "type": "array",
       "items": {
         "oneOf": [
-          {"type": "string"},
-          {"type": "null"}
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
         ]
       }
     }

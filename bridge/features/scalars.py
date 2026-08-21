@@ -140,7 +140,9 @@ def search_scalars(
     }
 
     method_notes.attach("search_scalars", result)
-    finalize_page(result)
+    # Cursor pagination: the total is unknowable on most pages, so it is
+    # never reported rather than sometimes.
+    finalize_page(result, keeps_total=False)
 
     if cache_key is not None and not page_result.error:
         cache.set(cache_key, result)

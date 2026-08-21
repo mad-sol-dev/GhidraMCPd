@@ -20,7 +20,7 @@ def test_search_functions_normalizes_addresses(contract_client: TestClient) -> N
     assert payload["ok"] is True
 
     data = payload["data"]
-    total = data["total"]
+    total = data.get("total")
     if total is not None:
         assert total >= 1
     assert data["items"], "Expected at least one search result"

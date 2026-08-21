@@ -678,7 +678,10 @@ def _collect_strings(
     for entry in entries:
         if len(results) >= limit:
             break
-        text = entry.get("text", "")
+        text = str(entry.get("text", ""))
+        if _BRANCH_OPCODE.match(text):
+            # The operand is where control goes, not something to read.
+            continue
         for token in _HEX_ADDRESS.findall(text):
             addr = _parse_intish(token)
             if addr is None or addr in seen:
@@ -695,7 +698,9 @@ def _collect_strings(
                     "address": int_to_hex(addr),
                     "source": entry.get("address"),
                     "literal": cleaned,
-                    "length": len(cleaned),
+                    # Bytes, not the width of the escape text: "\\x1f" is one
+                    # byte written as four characters.
+                    "length": len(_decoded_view(cleaned)),
                 }
             )
             if len(results) >= limit:
@@ -703,11 +708,54 @@ def _collect_strings(
     return results
 
 
+#: The plugin escapes non-printable bytes as text: a word like 0xFF9F0F1F comes
+#: back as the sixteen ASCII characters "\\x1f\\x0f\\x9f\\xff".
+_ESCAPED_BYTE = re.compile(r"\\x[0-9a-fA-F]{2}")
+
+#: Shortest run of bytes reported as a string.
+_MIN_STRING_BYTES = 4
+
+#: Instructions whose operand is a code address, not data.  Reading a C string
+#: at a branch target yields the callee's first bytes -- "|@-\\xe9" is
+#: stmdb sp!,{...} -- which is printable often enough to pass any content test.
+_BRANCH_OPCODE = re.compile(
+    r"^\s*(?:BL|BLX|BX|B|BEQ|BNE|BCS|BHS|BCC|BLO|BMI|BPL|BVS|BVC|BHI|BLS|BGE|BLT|BGT|BLE|BAL"
+    r"|CALL|JMP|JAL|JALR)\b",
+    re.IGNORECASE,
+)
+
+
+def _decoded_view(value: str) -> str:
+    """Collapse each escaped byte to one placeholder that is not printable.
+
+    Counting the escape text itself was the bug: "\\x1f" is four printable
+    characters, so any binary data passed the printability test and a
+    constant-pool word was reported as a string.
+    """
+
+    return _ESCAPED_BYTE.sub("\x00", value)
+
+
 def _looks_like_string(value: str) -> bool:
+    """Whether ``value`` reads as text rather than as data rendered as text.
+
+    A constant pool sits in the same address space as the strings, and every
+    pool address appears as an operand, so this is the only thing separating
+    "the function references this text" from "the function loads this number".
+    """
+
     if not value:
         return False
-    printable = sum(1 for ch in value if 32 <= ord(ch) <= 126)
-    return printable >= max(1, len(value) * 3 // 4)
+    decoded = _decoded_view(value)
+    # A pool word whose low bytes happen to be printable ASCII -- 0x00006978
+    # reads as "xi" -- is indistinguishable from a two-character string by
+    # content alone. Requiring some length prefers a missed hint over a false
+    # claim: a dropped string costs a follow-up call, a pool word presented as
+    # text costs a wrong conclusion about the firmware.
+    if len(decoded) < _MIN_STRING_BYTES:
+        return False
+    printable = sum(1 for ch in decoded if 32 <= ord(ch) <= 126)
+    return printable >= max(1, len(decoded) * 3 // 4)
 
 
 def _summarize_features(

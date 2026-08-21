@@ -43,7 +43,8 @@ def test_search_functions_preserves_default_ordering() -> None:
 
     result = functions.search_functions(client, query="", limit=10, page=1)
 
-    assert result["total"] == 3
+    assert result["returned"] == len(result["items"])
+    assert "total" not in result
     assert [item["name"] for item in result["items"]] == [
         "alpha",
         "beta",
@@ -75,7 +76,7 @@ def test_simple_rank_applies_k_before_pagination() -> None:
         k=2,
     )
 
-    assert page1["total"] == 2
+    assert page1["returned"] == len(page1["items"])
     assert page1["items"][0]["name"] == "foo"
     assert page1["has_more"] is True
 
@@ -88,7 +89,7 @@ def test_simple_rank_applies_k_before_pagination() -> None:
         k=2,
     )
 
-    assert page2["total"] == 2
+    assert page2["returned"] == len(page2["items"])
     assert [item["name"] for item in page2["items"]] == ["foo_helper"]
     assert page2["has_more"] is False
 
@@ -109,7 +110,7 @@ def test_context_lines_attach_disassembly() -> None:
         context_lines=1,
     )
 
-    assert result["total"] == 2
+    assert result["returned"] == len(result["items"])
     for item in result["items"]:
         context = item.get("context")
         assert context is not None
@@ -141,7 +142,7 @@ def test_simple_rank_preserves_context_ordering() -> None:
         context_lines=2,
     )
 
-    assert ranked["total"] == 3
+    assert ranked["returned"] == len(ranked["items"])
     names = [item["name"] for item in ranked["items"]]
     assert names == ["match_main", "match_helper"]
     windows = [item["context"]["window"] for item in ranked["items"]]

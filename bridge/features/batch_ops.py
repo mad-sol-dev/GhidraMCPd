@@ -155,7 +155,12 @@ def read_words(
     payload: Dict[str, object] = {
         "address": int_to_hex(address),
         "count": count,
-        "words": words,
+        # Hex, not decimal.  These are register addresses and bit masks: 0xB1008000
+        # is recognisable at a glance, 2969600000 has to be converted in the reader's
+        # head, once per word, with nothing to check the result against.  It is not
+        # shorter -- "0xb1008000" costs two characters more than 2969600000 -- but a
+        # transcription error in hex is visible and in decimal is not.
+        "words": [None if word is None else int_to_hex(word) for word in words],
     }
     if include_literals:
         payload["literals"] = literals

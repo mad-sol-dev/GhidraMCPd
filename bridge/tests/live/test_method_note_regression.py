@@ -42,8 +42,11 @@ def empty_scalar_search(client):
 # --------------------------------------------------------------------- step 1
 
 def test_the_search_really_does_come_back_empty(empty_scalar_search):
-    assert empty_scalar_search["total"] == 0
+    # No total: search_scalars pages by cursor and never reports one, so an
+    # empty result is stated as returned == 0 rather than total == 0.
+    assert empty_scalar_search["returned"] == 0
     assert empty_scalar_search["items"] == []
+    assert "total" not in empty_scalar_search
 
 
 def test_the_empty_result_carries_a_method_note(empty_scalar_search):
@@ -109,7 +112,12 @@ def test_the_named_path_finds_the_value_the_search_missed(client):
     """
 
     words = batch_ops.read_words(client, address=POOL, count=10)["words"]
-    by_address = {POOL + 4 * index: value for index, value in enumerate(words)}
+    # Words come back as hex strings: these are register addresses, and a
+    # transcription error is visible in hex and invisible in decimal.
+    by_address = {
+        POOL + 4 * index: (None if value is None else int(value, 16))
+        for index, value in enumerate(words)
+    }
 
     assert by_address[USBD_BA] == int(MISSING_VALUE, 16), (
         f"{USBD_BA:#010x} should hold {MISSING_VALUE}, "
@@ -128,13 +136,13 @@ def test_step_two_is_not_optional(client, empty_scalar_search):
     together explicitly.
     """
 
-    assert empty_scalar_search["total"] == 0
+    assert empty_scalar_search["returned"] == 0
     alternative = METHOD_NOTES["search_scalars"].alternative
     assert "find_in_function" in alternative
     assert "read_words" in alternative
 
     words = batch_ops.read_words(client, address=POOL, count=10)["words"]
-    assert int(MISSING_VALUE, 16) in words
+    assert MISSING_VALUE.lower() in [w.lower() for w in words if w]
 
 
 # ------------------------------------------------------- the other search tools
@@ -161,7 +169,7 @@ def test_every_search_tool_with_a_note_emits_it_when_empty(client):
     }
 
     for tool, payload in empty_results.items():
-        assert payload["total"] == 0, tool
+        assert payload["returned"] == 0, tool
         assert payload.get("method_note"), f"{tool} returned nothing and said nothing"
         assert payload["method_note"] == METHOD_NOTES[tool].as_text(), tool
 

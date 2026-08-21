@@ -21,9 +21,11 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
     data = payload["data"]
 
     assert data["query"] == "func"
-    # Since Stage 3 an unknown total is absent rather than null: a caller must
-    # not be able to read a placeholder as a count.
-    assert "total" not in data or isinstance(data["total"], int)
+    # search_functions pages by cursor, so it never reports a total -- not even
+    # on an empty result, where the old shape happened to know it was 0 and so
+    # taught callers a key that vanished the moment a search matched something.
+    assert "total" not in data
+    assert data["returned"] == len(data["items"])
     assert isinstance(data["truncated"], bool)
     assert data["page"] == 1
     assert data["limit"] == 8
@@ -52,7 +54,13 @@ def test_search_functions_basic(contract_client: TestClient) -> None:
 
 
 def test_search_functions_page_mode_totals(contract_client: TestClient) -> None:
-    """Paging without cursors eventually reports a concrete total."""
+    """Paging without cursors covers every result exactly once.
+
+    It used to assert that the last page reports a concrete total.  It no
+    longer does: search_functions pages by cursor and never reports one, so
+    what is worth checking is that walking the pages sees everything and sees
+    nothing twice -- which is the property the total was standing in for.
+    """
 
     seen_addresses: list[str] = []
     page = 1
@@ -69,9 +77,9 @@ def test_search_functions_page_mode_totals(contract_client: TestClient) -> None:
         for item in data["items"]:
             seen_addresses.append(item["address"])
         if not data["has_more"]:
-            assert isinstance(data["total"], int)
+            assert "total" not in data
             assert data["truncated"] is False
-            total_reported = data["total"]
+            total_reported = len(seen_addresses)
             assert data["resume_cursor"] is None
             break
         page += 1
@@ -80,6 +88,7 @@ def test_search_functions_page_mode_totals(contract_client: TestClient) -> None:
 
     assert total_reported is not None
     assert total_reported == len(seen_addresses)
+    assert len(set(seen_addresses)) == len(seen_addresses), "a page repeated a result"
 
 
 def test_search_functions_cursor_resume(contract_client: TestClient) -> None:
@@ -258,7 +267,7 @@ def test_search_functions_page_beyond_results(contract_client: TestClient) -> No
     data = payload["data"]
     assert data["items"] == []
     assert data["has_more"] is False
-    assert isinstance(data["total"], int)
+    assert "total" not in data
     assert data["resume_cursor"] is None
 
 
@@ -297,8 +306,6 @@ def test_search_functions_simple_rank_trims_before_pagination(
     first_payload = first_page.json()["data"]
     second_payload = second_page.json()["data"]
 
-    assert first_payload["total"] == 3
-    assert second_payload["total"] == 3
     assert first_payload["items"]
     assert second_payload["items"]
     assert [item["name"] for item in first_payload["items"]] == [
