@@ -1263,3 +1263,101 @@ die offene Frage aus Stufe 6, und sie ist weiterhin offen.
     Schema-Sockel    5 406 -> 8 489
     Fehler im Lauf   1 -> 0
     Plugin           unverändert
+
+---
+
+# Sitzungsabschluss (2026-08-20)
+
+Der Rework selbst endet mit Stufe 7 (`d615764`). Danach lief eine Nacharbeitsphase
+aus fünf weiteren Commits, die nicht Teil des Plans war, sondern aus dem
+Abklopfen der laufenden Instanz entstand. Sie steht hier, weil sie denselben
+Befundtyp betrifft und die Stufe-7-Zahlen verschiebt.
+
+## Nach Stufe 7
+
+| Commit | Was |
+|---|---|
+| `a0c9076` | Plugin: `onProgramActivated` erzwingen, wenn `open_program` ein bereits offenes Programm trifft |
+| `a807184` | MMIO-Basisauflösung: `MOV`-Immediate, kein Offset-Raten, `skipped` ausgewiesen |
+| `a73a13b` | `apply_label` als R.12 geschärft, Ghidra-Skript ins Repo |
+| `b194726` | `strings_compact` überhaupt zum Laufen gebracht |
+| `973cab1` | Drei Feldtest-Befunde: `total`-Form, Hex-Worte, Poolwörter als Strings |
+
+**Der Fehlgriff dieser Sitzung, festgehalten:** bei Stufe 4 begann eines meiner
+Skripte mit `cd` ins Hauptrepo, das nachfolgende `git add -A && git commit` lief
+dadurch dort auf `main` und schluckte ein privates Chatprotokoll, das
+Plan-Dokument und eine fremde Java-Änderung. Zurückgenommen per
+`reset --mixed`, nichts verloren, nichts gepusht. Die Lehre steht in Rahmen 8
+nicht drin, gehört aber dazu: **ein `cd` am Anfang eines Skripts wirkt bis zum
+Ende des Befehls.**
+
+## Zahlen zum Schluss
+
+    Referenzlauf (Default)    184 441 -> 67 710 Bytes, 0 Fehler (Stufe 0: 1)
+    Referenzlauf (strukturell) 184 441 -> 133 977 Bytes
+    Schema-Sockel               5 406 -> 8 592 Token (Decke 8 700)
+    Tools                          35 -> 36
+    Tests                         314 -> 540 grün, 11 übersprungen
+    Fingerabdruck             unverändert, in beiden Läufen geprüft
+
+Die Byte-Zahl liegt über dem Stufe-7-Wert von 64 789, weil `strings_compact`
+seither überhaupt etwas liefert (+3 588) und `analyze` weniger Falschbefunde
+(−988). Beides sind Korrekturen, keine Regressionen.
+
+## Der rote Faden
+
+Jeder Befund dieser Sitzung hatte dieselbe Form: **kein Fehler, keine Warnung,
+nur eine Antwort, die aussah wie eine Aussage über die Firmware.**
+
+- `search_scalars` fand nichts und meinte nichts — sieben Monate blockiert.
+- `strings_compact` lieferte auf jedem Programm `{"total": 0, "items": []}`.
+- `mmio_annotate_compact` erfand Registeradressen aus Stack-Offsets.
+- `search_imports` scheiterte am eigenen Schema.
+- Die Live-Contract-Tests liefen nie und meldeten trotzdem grün.
+- `total` verschwand genau dann, wenn ein Konsument es zum ersten Mal brauchte.
+- `analyze` nannte Konstantenpool-Worte „Strings".
+- Der Skip-Grund log über die eigene Ursache.
+
+Deshalb die Rahmenregeln 5 bis 8, und deshalb ist die Abnahme jeder Stufe eine
+Messung und keine Behauptung.
+
+## Hand-off: was offen ist
+
+**Vor dem Push** (nichts davon ist meine Entscheidung):
+
+1. `origin/main` steht auf `c292fdc` (9. Januar). **22 Commits ungepusht**,
+   darunter der März-Commit mit den Datatype-Endpunkten, den außer dir niemand
+   gesehen hat.
+2. Zwei private Dateien liegen untracked im Wurzelverzeichnis und sind **nicht**
+   in `.gitignore`: das Chatprotokoll und `ghidramcpd-rework.md`.
+3. `baseline/` ist mitcommittet — rund 2 700 Zeilen JSON. Für Stufe 7 war es der
+   Maßstab; ob es dauerhaft ins Repo gehört, ist zu entscheiden.
+4. **Kein Plugin-Rebuild gelaufen.** `a0c9076` ist nicht compile-geprüft. Der
+   nächste `./scripts/build_docker.sh` erledigt das.
+
+**Offene Punkte im Werkzeug** (alle benannt, keiner behoben):
+
+- **R.12 `apply_label`** — die eigentliche Blockade. Braucht Plugin-Endpunkt,
+  Bridge-Tool und Rebuild. Skript und Ursachenanalyse liegen bereit.
+- **`jt.py` parst `pre_name`/`pre_comment` falsch** (`meta.get("name")` auf eine
+  Prosa-Antwort) und protokolliert seit jeher `None`. Gleiche Wurzel wie der in
+  Stufe 5 behobene Fall, in keiner Stufe.
+- **Poolwörter als eigener Abschnitt.** `analyze` verwirft sie jetzt korrekt,
+  aber sie sind wertvoll (`0x8190`/`0x82B0` aus finding-0005). Als
+  „Pool-Konstanten" ausgewiesen wären sie nützlicher als das Verwerfen. Feature,
+  kein Fix.
+- **Doppeltes `fmt`** — `analyze_function_complete.fmt` akzeptiert nur `json`
+  und ist ein anderer Parameter als das Listing-`fmt`.
+- **`find_in_function` ohne `fmt="text"`** — 20 013 Bytes, strukturell
+  unverändert seit Stufe 0, der offensichtlichste nächste Sparposten.
+- **`save_program` meldet `program_name: null`**, wenn nichts zu speichern war,
+  obwohl die Beschreibung das Feld ohne Einschränkung nennt.
+- **Testlücke:** kein Test gleicht Doku-Angaben gegen Signatur-Defaults ab. Genau
+  daran ist mir der „default limit of 100"-Widerspruch monatelang entgangen
+  wäre — gefunden hat ihn der Feldtest, nicht die Suite.
+- **Vierzehn von 36 Tools** kommen im Referenzlauf nicht vor und tragen 3 070
+  Sockel-Token ohne gemessenen Nutzen. Für `jt_*` (914) war das die offene Frage
+  aus Stufe 6.
+
+**Stufe 6 bleibt entschieden nicht gebaut.** Eine echte Fehlwahl wäre der Anlass,
+sie neu aufzurufen.

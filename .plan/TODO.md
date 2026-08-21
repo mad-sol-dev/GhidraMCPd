@@ -25,6 +25,10 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {DIAG.3} Force-refresh endpoint for manual state re-checking (allow users to trigger trackProgram() when state appears stale)
 - {DIAG.4} Analysis completion metadata in search results (add analysis_complete flag based on AutoAnalysisManager state)
 - {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
+- {JT-PRENAME-PARSE} jt.py parst pre_name/pre_comment falsch
+- {ANALYZE-POOL-CONSTANTS} Konstantenpool-Worte als eigener Abschnitt
+- {FIND-IN-FUNCTION-TEXT} fmt="text" fuer find_in_function
+- {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints

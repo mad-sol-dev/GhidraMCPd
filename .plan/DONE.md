@@ -39,3 +39,7 @@
 - 2025-11-12 **R.1** — Batch project analysis lanes (collector lanes span multiple programs with deterministic envelopes + docs/tests) _commit:pending_
 - 2025-11-12 **R.2** — Enhanced search ranking/context windows (function context windows with deterministic unit/contract/golden coverage) _commit:pending_
 - 2026-08-20 **MMIO-BASE-RESOLUTION** — MOV-Immediate als Basisregister; Offset wird nicht mehr als Adresse geraten; `skipped` wird ausgewiesen (ui_main_loop: 161/153 Phantom-Zugriffe → 51/2 bei 375 skipped) _commit:a807184_
+- 2026-08-20 **REWORK-STAGES-0-7** — Rework in Stufen: Messung, Beschreibungen, method_note, Schätzer, Defaults/truncated/fmt, Batch-Filter, list_mutations, Nachmessung (184441 -> 67710 Antwort-Bytes, 0 Fehler) _commit:d615764_
+- 2026-08-20 **PLUGIN-LOADING-REFRESH** — open_program erzwingt trackProgram, wenn das Programm bereits offen ist; nicht compile-geprüft _commit:a0c9076_
+- 2026-08-20 **STRINGS-COMPACT-REVIVE** — Tool lieferte auf jedem Programm nichts; list_strings ergänzt, kein erfundenes total mehr _commit:b194726_
+- 2026-08-20 **FIELDTEST-FIXES** — total-Form pro Tool statt pro Ergebnis, read_words in Hex, Konstantenpool-Worte nicht mehr als Strings _commit:973cab1_

@@ -505,6 +505,22 @@
     "R.29": {
       "commit": "pending",
       "status": "todo"
+    },
+    "JT-PRENAME-PARSE": {
+      "commit": "pending",
+      "status": "todo"
+    },
+    "ANALYZE-POOL-CONSTANTS": {
+      "commit": "pending",
+      "status": "todo"
+    },
+    "FIND-IN-FUNCTION-TEXT": {
+      "commit": "pending",
+      "status": "todo"
+    },
+    "DOC-DEFAULT-DRIFT": {
+      "commit": "pending",
+      "status": "todo"
     }
   }
 }

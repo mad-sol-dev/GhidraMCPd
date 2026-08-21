@@ -616,6 +616,65 @@
       "notes": [
         "Taken verbatim from .plan/TODO.md (NEXT); entry added so plan_check passes. Scope beyond the TODO line has not been decided."
       ]
+    },
+    {
+      "id": "JT-PRENAME-PARSE",
+      "title": "jt.py parst pre_name/pre_comment falsch",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "jt.py liest meta.get(\"name\"); der Plugin antwortet in Prosa (\"<name> at <hex>\"), das Feld existiert nicht",
+        "Seit jeher werden None-Werte in den Audit-Log geschrieben",
+        "Denselben verankerten Parser wie tools.py._current_function_name verwenden",
+        "Test gegen eine Prosa-Antwort"
+      ],
+      "status": "todo",
+      "notes": [
+        "Gleiche Wurzel wie der in Stufe 5 behobene Fall. In keiner Stufe gefunden, beim Bauen von list_mutations aufgefallen."
+      ]
+    },
+    {
+      "id": "ANALYZE-POOL-CONSTANTS",
+      "title": "Konstantenpool-Worte als eigener Abschnitt",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "analyze verwirft sie jetzt korrekt statt sie \"Strings\" zu nennen",
+        "Als pool_constants ausweisen: Adresse, Wort, ladende Instruktion",
+        "Nicht mit strings vermischen -- das war der behobene Fehler"
+      ],
+      "status": "todo",
+      "notes": [
+        "0x8190/0x82B0 aus finding-0005 sind genau solche Worte. Der Wert ist da, nur die Beschriftung war falsch. Feature, kein Fix."
+      ]
+    },
+    {
+      "id": "FIND-IN-FUNCTION-TEXT",
+      "title": "fmt=\"text\" fuer find_in_function",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "Kontextzeilen als gerenderte Zeilen statt Objekte, wie disassemble_at",
+        "json bleibt Default auf HTTP, text auf MCP -- wie in Stufe 3 entschieden"
+      ],
+      "status": "todo",
+      "notes": [
+        "20013 Bytes im Referenzlauf, strukturell unveraendert seit Stufe 0. Der groesste verbliebene Sparposten."
+      ]
+    },
+    {
+      "id": "DOC-DEFAULT-DRIFT",
+      "title": "Test: Doku gegen Signatur-Defaults",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "Fuer jedes Tool: jede im Docstring genannte Default-Zahl gegen den tatsaechlichen Signatur-Default pruefen",
+        "Faellt fehl bei Widerspruechen wie \"default limit of 100\" bei limit=20"
+      ],
+      "status": "todo",
+      "notes": [
+        "Genau dieser Widerspruch stand monatelang im Docstring und wurde vom Feldtest gefunden, nicht von der Suite. test_no_parameter_without_documentation prueft nur, DASS ein Parameter erwaehnt wird."
+      ]
     }
   ]
 }
