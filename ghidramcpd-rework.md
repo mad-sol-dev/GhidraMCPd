@@ -1287,9 +1287,20 @@ Befundtyp betrifft und die Stufe-7-Zahlen verschiebt.
 Skripte mit `cd` ins Hauptrepo, das nachfolgende `git add -A && git commit` lief
 dadurch dort auf `main` und schluckte ein privates Chatprotokoll, das
 Plan-Dokument und eine fremde Java-Änderung. Zurückgenommen per
-`reset --mixed`, nichts verloren, nichts gepusht. Die Lehre steht in Rahmen 8
-nicht drin, gehört aber dazu: **ein `cd` am Anfang eines Skripts wirkt bis zum
-Ende des Befehls.**
+`reset --mixed`, nichts verloren, nichts gepusht.
+
+**Und dann ein zweites Mal**, bei `a807184`, im selben Muster und unbemerkt —
+während ich den Absatz oben schrieb. Erst der `git status` beim Sitzungsabschluss
+hat es gezeigt: das Chatprotokoll steckte seit fünf Commits in der History. Per
+`filter-branch` über `a0c9076..HEAD` entfernt, `refs/original` gelöscht, Reflog
+abgelaufen, Datei im Arbeitsverzeichnis erhalten und jetzt in `.gitignore`. Das
+Plandokument bleibt bewusst getrackt.
+
+Die Lehre gehört in Rahmen 8, steht dort aber nicht: **ein `cd` am Anfang eines
+Skripts wirkt bis zum Ende des Befehls, und `git add -A` fasst alles, was dort
+liegt.** Dass ich sie beim ersten Mal formuliert und beim zweiten Mal trotzdem
+verletzt habe, ist der eigentliche Befund — eine notierte Lehre ersetzt keine
+Gewohnheit. Was hier getragen hätte: Pfad explizit angeben statt `-A`.
 
 ## Zahlen zum Schluss
 
