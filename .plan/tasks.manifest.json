@@ -728,8 +728,9 @@
         "Decision recorded: size keeps its name, span_bytes is the unambiguous one -- renaming would be breaking"
       ],
       "notes": [
-        "Compile-verified with javac against the installed Ghidra 11.4.2; not runtime-verified -- takes effect once target/GhidraMCP-1.3.0.zip is installed.",
-        "Backward compatibility verified live: the March-built plugin ignores fields=extended and the response is byte-identical to before.",
+        "Runtime-verified against the ZK-Inkjet program after the rebuild: boot_init at 0x00273ee4 reports thunk=0025b0c4, and FUN_0025b338 reports chunks 0025b338-0025b877 and 0025b89c-0025b9fb.",
+        "The numbers close: the chunks sum to 1696, which is size; the span is 1732; the 36-byte difference is the constant pool at 0x25b878-0x25b89b, which disassemble_at reports as a gap at the same addresses over a separate code path.",
+        "Backward compatibility verified in both directions: the old plugin ignored fields=extended, and the new plugin answers a request without it in the old format byte for byte.",
         "pom.xml had SoftwareModeling and Base under swapped directories, so the GHIDRA_DIR profile could not resolve them; fixed here.",
         "scripts/build_local.sh builds the extension with only a JDK, since this machine has neither Maven nor Docker."
       ]

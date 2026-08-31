@@ -39,7 +39,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
-- [x] {FUNC-CHUNKS-THUNKS} `/functionsInRange?fields=extended` liefert Body-Spanne, `thunk=` und `chunks=`; Bridge zeigt `is_thunk`/`thunk_to`/`span_bytes`/`chunks` nur, wo sie etwas aussagen. **Wirkt erst nach Installation von `target/GhidraMCP-1.3.0.zip`.**
+- [x] {FUNC-CHUNKS-THUNKS} `/functionsInRange?fields=extended` liefert Body-Spanne, `thunk=` und `chunks=`; Bridge zeigt `is_thunk`/`thunk_to`/`span_bytes`/`chunks` nur, wo sie etwas aussagen. Gegen das laufende Programm verifiziert (Thunk-Ziel, Chunks, Spanne).
 - [x] {DISASM-SILENT-SKIP} Undefinierte Bereiche werden nicht mehr verschwiegen — `coverage` + `method_note` in `disassemble_at`/`disassemble_batch`, `unreadable_words`/`method_note` in `read_words`/`read_bytes`.
 - [x] {FUNC-BOUNDS-DISAGREE} `size` und `range` sind definiert und gehen auf: `range.span_bytes` (Spanne, Innendaten eingeschlossen) gegen `size` (Rumpfbytes); Differenz ist das Pool-Loch, das `coverage` jetzt meldet.
 - [x] {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
