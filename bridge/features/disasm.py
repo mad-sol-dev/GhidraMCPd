@@ -4,7 +4,8 @@ from typing import Dict, List
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex
 from ..utils.logging import increment_counter
-from .listing import normalize_fmt, to_text
+from . import method_notes
+from .listing import coverage, coverage_fields, normalize_fmt, to_text
 
 
 def disassemble_at(
@@ -25,7 +26,9 @@ def disassemble_at(
             rendered strings (roughly half the bytes)
 
     Returns:
-        Dictionary with an items array (json) or a lines array (text)
+        Dictionary with an items array (json) or a lines array (text). When the
+        listing does not start at ``address`` or has holes, a ``coverage``
+        object and a ``method_note`` say so -- see ``attach_coverage``.
     """
     increment_counter("disasm.disassemble_at.calls")
     
@@ -47,9 +50,44 @@ def disassemble_at(
     increment_counter("disasm.disassemble_at.instructions", len(items))
     
     payload: Dict[str, object] = {"items": items}
+    attach_coverage(payload, items, requested=address)
     if normalize_fmt(fmt) == "text":
         to_text(payload)
     return payload
 
 
-__all__ = ["disassemble_at"]
+def attach_coverage(
+    payload: Dict[str, object],
+    items: List[Dict[str, str]],
+    *,
+    requested: int,
+) -> Dict[str, object]:
+    """Add ``coverage`` and ``method_note`` when the listing is not what it looks like.
+
+    Silent on the ordinary case -- a listing that starts at the requested
+    address and runs without holes carries neither key, so the common response
+    keeps its current size.
+    """
+
+    report = coverage(items, requested=requested)
+    start = report["start"]
+    skipped = int(report["skipped_bytes"])
+    gaps = report["gaps"]
+
+    note = method_notes.listing_coverage_note(
+        requested=int_to_hex(requested),
+        start=None if start is None else int_to_hex(int(start)),
+        skipped_bytes=skipped,
+        gap_bytes=int(report["gap_bytes"]),
+        gap_count=len(gaps),
+    )
+    if note is None:
+        return payload
+
+    increment_counter("disasm.disassemble_at.coverage_notes")
+    payload["coverage"] = coverage_fields(report, requested=requested)
+    payload["method_note"] = note
+    return payload
+
+
+__all__ = ["attach_coverage", "disassemble_at"]

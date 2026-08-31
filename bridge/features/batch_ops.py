@@ -18,6 +18,8 @@ from . import method_notes
 from .listing import (
     batch_to_text,
     compile_query,
+    coverage,
+    coverage_fields,
     filter_instructions,
     normalize_fmt,
     render_lines,
@@ -68,6 +70,7 @@ def disassemble_batch(
     )
 
     results: Dict[str, object] = {}
+    coverage_report: Dict[str, object] = {}
     scanned = matched = returned = 0
 
     for addr_str in addresses:
@@ -75,6 +78,10 @@ def disassemble_batch(
         instructions = client.disassemble_at(addr, count)
         entries = instructions if instructions is not None else []
         scanned += len(entries)
+
+        # Before the filter: what the filter removed is the caller's own doing,
+        # what Ghidra never defined is not, and only the second belongs here.
+        _record_coverage(coverage_report, entries, requested=addr, key=addr_str)
 
         if pattern is not None:
             entries, hits = filter_instructions(
@@ -94,6 +101,11 @@ def disassemble_batch(
         "results": results,
     }
 
+    # Only addresses whose listing lies about where it starts appear here.
+    if coverage_report:
+        payload["coverage"] = coverage_report
+        payload["method_note"] = _batch_coverage_note(coverage_report)
+
     # Without a query the response is byte-for-byte what it always was.
     if pattern is not None:
         payload["filter"] = {
@@ -111,6 +123,49 @@ def disassemble_batch(
         }
 
     return payload
+
+
+def _record_coverage(
+    report: Dict[str, object],
+    entries: List[Dict[str, object]],
+    *,
+    requested: int,
+    key: str,
+) -> None:
+    """Note one address's listing under ``key`` when it is not what it looks like."""
+
+    found = coverage(entries, requested=requested)
+    if found["start"] is not None and not found["skipped_bytes"] and not found["gaps"]:
+        return
+    report[key] = coverage_fields(found, requested=requested)
+
+
+def _batch_coverage_note(report: Dict[str, object]) -> str:
+    """One note for the batch, naming the addresses that need it."""
+
+    empty = [
+        key for key, entry in report.items()
+        if isinstance(entry, dict) and entry.get("start_address") is None
+    ]
+    moved = [key for key in report if key not in empty]
+    parts = []
+    if moved:
+        parts.append(
+            "the listing for " + ", ".join(moved) + " does not cover every byte "
+            "asked for: it starts past the address, has holes, or both"
+        )
+    if empty:
+        parts.append(
+            "no instructions are defined at or after " + ", ".join(empty)
+        )
+    return (
+        "Blind spot: "
+        + "; and ".join(parts)
+        + ". Ghidra lists only bytes it has defined as instructions and skips "
+        "the rest without a marker. See coverage for the addresses and byte "
+        "counts. Instead: read those bytes as data with read_bytes or "
+        "read_words, or define them as code in Ghidra and disassemble again."
+    )
 
 
 def read_words(
@@ -152,6 +207,8 @@ def read_words(
             if include_literals:
                 literals.append(None)
 
+    unreadable = sum(1 for word in words if word is None)
+
     payload: Dict[str, object] = {
         "address": int_to_hex(address),
         "count": count,
@@ -164,6 +221,16 @@ def read_words(
     }
     if include_literals:
         payload["literals"] = literals
+
+    # null is one character away from looking like zero, and a register that is
+    # not mapped says nothing about the firmware while a register reading 0 does.
+    if unreadable:
+        payload["unreadable_words"] = unreadable
+        payload["method_note"] = method_notes.unmapped_memory_note(
+            address=int_to_hex(address),
+            unreadable=unreadable,
+            total=count,
+        )
 
     return payload
 

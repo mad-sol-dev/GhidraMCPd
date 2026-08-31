@@ -675,6 +675,61 @@
       "notes": [
         "Genau dieser Widerspruch stand monatelang im Docstring und wurde vom Feldtest gefunden, nicht von der Suite. test_no_parameter_without_documentation prueft nur, DASS ein Parameter erwaehnt wird."
       ]
+    },
+    {
+      "id": "DISASM-SILENT-SKIP",
+      "title": "Undefined regions are reported, not skipped in silence",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "done",
+      "dod": [
+        "disassemble_at carries coverage{requested_address,start_address,skipped_bytes,gaps[]} and a method_note whenever the listing does not start at the requested address or has holes",
+        "A listing that starts where it was asked and runs without holes carries neither key",
+        "disassemble_batch reports the same per address, computed before the query filter so a filtered listing is not mistaken for a gap",
+        "read_words reports unreadable_words and a method_note; read_bytes reports a method_note on a short read -- null is not zero",
+        "Schemas, OpenAPI snapshot and docs/api.md updated; tool descriptions stay under the schema-base ceiling",
+        "Unit coverage on the addresses the defect was found on (0x002818b0 -> 0x00286d94, 21732 bytes; pool 0x25b878-0x25b89b, 36 bytes)"
+      ],
+      "notes": [
+        "Root cause: handleDisassembleAt uses Listing.getInstructions(addr, true), a forward iterator over defined instructions, which starts at the next defined one without a marker.",
+        "Fixed bridge-side: the plugin already returns the real addresses, so the skip is computed from the response rather than requiring a plugin rebuild.",
+        "Verified live against the ZK-Inkjet program with the patched code."
+      ]
+    },
+    {
+      "id": "FUNC-BOUNDS-DISAGREE",
+      "title": "size and range are defined and reconcile",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "done",
+      "dod": [
+        "analyze_function_complete reports range.span_bytes = end - start + 1, documented as the bound including interior data",
+        "list_functions_in_range documents size as body bytes with interior data excluded, and that a thunk carries its target's name",
+        "Both schemas cross-reference the other number so neither can be read as the other"
+      ],
+      "notes": [
+        "Verified on FUN_0025b338: size 1696, span_bytes 1732, difference 36 bytes -- exactly the constant pool at 0x25b878-0x25b89b that disassemble_at now reports as a gap.",
+        "The hypothesis in the original entry was half right: size sums the body ranges, but the pool is interior rather than trailing.",
+        "The boot_init duplicate is not a second chunk: 0x273ee4 is a 4-byte thunk (b 0x0025b0c4) and Ghidra names thunks after their target. Exposing that needs the plugin -- see FUNC-CHUNKS-THUNKS."
+      ]
+    },
+    {
+      "id": "FUNC-CHUNKS-THUNKS",
+      "title": "Expose thunks and non-contiguous bodies in functionsInRange",
+      "area": "plugin, bridge",
+      "depends_on": [
+        "FUNC-BOUNDS-DISAGREE"
+      ],
+      "status": "todo",
+      "dod": [
+        "/functionsInRange emits body span, is_thunk and, for multi-range bodies, the chunks",
+        "Bridge parser uses the fields when present and keeps today's behaviour when absent",
+        "list_functions_in_range surfaces is_thunk/thunk_to so two entries of the same name explain themselves",
+        "Decision recorded on whether size is renamed to body_bytes (breaking, minor bump)"
+      ],
+      "notes": [
+        "Needs a plugin rebuild; no Maven or Docker in the current environment, though javac against lib/*.jar compiles the plugin for a syntax check."
+      ]
     }
   ]
 }

@@ -39,6 +39,15 @@
           }
         ]
       }
+    },
+    "unreadable_words": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Words that could not be read. Present only when there are any; null in words means unreadable, not zero."
+    },
+    "method_note": {
+      "type": "string",
+      "description": "Present when a word could not be read: why null is not zero, and how to tell an unmapped address from one holding 0."
     }
   }
 }

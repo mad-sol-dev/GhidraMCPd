@@ -21,10 +21,15 @@
           "type": ["object", "null"],
           "additionalProperties": false,
           "properties": {
-            "start": {"type": "string"},
-            "end": {"type": "string"}
+            "start": {"type": "string", "description": "Lowest address of the function body."},
+            "end": {"type": "string", "description": "Highest address of the function body, inclusive -- the last byte of its last instruction."},
+            "span_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "end - start + 1. The span the body reaches across, interior data included, so it can exceed the body size reported by list_functions_in_range; that field counts the function's own bytes and excludes an interior constant pool. Neither number is wrong: span_bytes bounds the function, size measures it."
+            }
           },
-          "required": ["start", "end"]
+          "required": ["start", "end", "span_bytes"]
         }
       },
       "required": ["entry_point", "address", "range"]

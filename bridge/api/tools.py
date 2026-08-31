@@ -1191,8 +1191,9 @@ def register_tools(
 
         Args:
             address: function entry, hex, e.g. '0x002af9c0'.
-            fields: sections to include, any of 'function' (name, entry, size,
-                prototype), 'disasm', 'decompile', 'xrefs', 'callgraph',
+            fields: sections to include, any of 'function' (name, entry,
+                body range, prototype), 'disasm', 'decompile', 'xrefs',
+                'callgraph',
                 'strings', 'features' (derived counts). Default:
                 function, xrefs, strings, features. Naming any field replaces
                 the default set rather than adding to it, so pass
@@ -1209,7 +1210,9 @@ def register_tools(
                 xrefs.inbound_limit/outbound_limit 0-256 (40),
                 callgraph.limit 0-256 (24), strings.limit 0-64 (6),
                 strings.max_cstring_len 1-1024 (256),
-                decompile.enabled bool (true), decompile.max_lines 1-500 (120)."""
+                decompile.enabled bool (true), decompile.max_lines 1-500 (120).
+
+        range.span_bytes is end - start + 1, interior data included."""
         request_payload: Dict[str, object] = {"address": address}
         if fields is not None:
             request_payload["fields"] = list(fields)
@@ -2346,7 +2349,10 @@ def register_tools(
         Args:
             value: the constant, hex string '0xB1008000' or int.
             limit: results per page, >= 1, default 20.
-            page: 1-based, >= 1, default 1."""
+            page: 1-based, >= 1, default 1.
+
+        size counts body bytes, not end minus start; a thunk carries its
+        target's name."""
 
         request_payload = {"value": value, "limit": limit, "page": page}
         valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)
@@ -2457,7 +2463,9 @@ def register_tools(
             count: instructions, >= 1, default 16, clamped to 128.
             fmt: 'text' (default) returns lines as "address: bytes mnemonic"
                 strings; 'json' returns items as objects, at roughly twice the
-                bytes. Pass 'json' when you need the fields separately."""
+                bytes. Pass 'json' when you need the fields separately.
+
+        Undefined bytes are skipped; coverage and a method_note then say so."""
 
         request_payload = {"address": address, "count": count}
         valid, errors = validate_payload("disassemble_at.request.v1.json", request_payload)
@@ -2573,7 +2581,7 @@ def register_tools(
         Returns results keyed by address string. With a query it also returns
         `filter` (what was asked for) and `summary` with scanned, matched and
         returned counts, so a filtered listing cannot be read as a complete
-        one."""
+        one. Skipped bytes appear under `coverage`."""
         request_payload = {
             "addresses": addresses,
             "count": count,
@@ -2637,7 +2645,8 @@ def register_tools(
 
         Returns words as hex strings ('0xb1008000'), null where the address
         could not be read. Hex because these are register addresses and masks:
-        a transcription error is visible in hex and invisible in decimal."""
+        a transcription error is visible in hex and invisible in decimal. null
+        means unreadable, not zero."""
         request_payload = {
             "address": address,
             "count": count,

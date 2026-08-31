@@ -376,15 +376,23 @@
                           "additionalProperties": false,
                           "properties": {
                             "end": {
+                              "description": "Highest address of the function body, inclusive -- the last byte of its last instruction.",
                               "type": "string"
                             },
+                            "span_bytes": {
+                              "description": "end - start + 1. The span the body reaches across, interior data included, so it can exceed the body size reported by list_functions_in_range; that field counts the function's own bytes and excludes an interior constant pool. Neither number is wrong: span_bytes bounds the function, size measures it.",
+                              "minimum": 1,
+                              "type": "integer"
+                            },
                             "start": {
+                              "description": "Lowest address of the function body.",
                               "type": "string"
                             }
                           },
                           "required": [
                             "start",
-                            "end"
+                            "end",
+                            "span_bytes"
                           ],
                           "type": [
                             "object",
@@ -1830,6 +1838,62 @@
                     }
                   ],
                   "properties": {
+                    "coverage": {
+                      "additionalProperties": false,
+                      "description": "Present only when the listing does not start at the requested address or has holes. Its absence means the listing covers every byte from the requested address on.",
+                      "properties": {
+                        "gaps": {
+                          "description": "Holes inside the listing -- undefined bytes or interior data such as a constant pool. Present only when there are any.",
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "bytes": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "end": {
+                                "pattern": "^0x[0-9a-fA-F]+$",
+                                "type": "string"
+                              },
+                              "start": {
+                                "pattern": "^0x[0-9a-fA-F]+$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "start",
+                              "end",
+                              "bytes"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "requested_address": {
+                          "pattern": "^0x[0-9a-fA-F]+$",
+                          "type": "string"
+                        },
+                        "skipped_bytes": {
+                          "description": "Undefined bytes between the requested address and the first listed instruction.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "start_address": {
+                          "description": "First instruction actually listed; null when none is defined at or after the requested address.",
+                          "pattern": "^0x[0-9a-fA-F]+$",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "requested_address",
+                        "start_address",
+                        "skipped_bytes"
+                      ],
+                      "type": "object"
+                    },
                     "items": {
                       "items": {
                         "additionalProperties": false,
@@ -1860,6 +1924,10 @@
                         "type": "string"
                       },
                       "type": "array"
+                    },
+                    "method_note": {
+                      "description": "Present with coverage: what the listing leaves out and how to see those bytes instead.",
+                      "type": "string"
                     }
                   },
                   "required": [],
@@ -2453,9 +2521,11 @@
                             "type": "string"
                           },
                           "name": {
+                            "description": "Function name. A thunk carries the name of the function it jumps to, so the same name can appear twice in one range at different addresses -- one entry is the function, the other a branch veneer to it.",
                             "type": "string"
                           },
                           "size": {
+                            "description": "Bytes belonging to the function body. Interior data such as a constant pool is excluded, so this is not end minus start: analyze_function_complete reports range.span_bytes for that, and it can be larger. Null when Ghidra reports no body.",
                             "minimum": 0,
                             "type": [
                               "integer",
@@ -3227,6 +3297,10 @@
                       "type": "integer"
                     },
                     "literal": {
+                      "type": "string"
+                    },
+                    "method_note": {
+                      "description": "Present when fewer bytes were read than requested: the address range is not fully mapped, which is not the same as reading zeros.",
                       "type": "string"
                     }
                   },

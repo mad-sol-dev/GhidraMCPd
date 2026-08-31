@@ -25,9 +25,11 @@ __all__ = [
     "attach",
     "SHORT_FORM",
     "MethodNote",
+    "listing_coverage_note",
     "method_note_for",
     "note_text",
     "short_form",
+    "unmapped_memory_note",
 ]
 
 
@@ -154,6 +156,93 @@ def short_form(tool: str) -> str | None:
     """Return the one-line form used in the tool description."""
 
     return SHORT_FORM.get(tool)
+
+
+# --- Notes for results that are wrong rather than empty ---------------------
+#
+# The notes above answer "nothing came back".  These answer the more expensive
+# case: something came back, it looks complete, and it is not.  A listing that
+# silently begins 21 KiB past the requested address reads exactly like one that
+# begins at it, so the note has to carry the numbers, not just the warning.
+
+
+def listing_coverage_note(
+    *,
+    requested: str,
+    start: str | None,
+    skipped_bytes: int,
+    gap_bytes: int = 0,
+    gap_count: int = 0,
+) -> str | None:
+    """Describe where a disassembly listing really starts and what it left out.
+
+    Returns ``None`` for a listing that starts at the requested address and runs
+    without holes -- the ordinary case, which must not pay for this text.
+    """
+
+    if start is None:
+        return (
+            f"Blind spot: no instructions are defined at or after {requested}, "
+            "so this listing is empty for a reason that says nothing about the "
+            "bytes there. Instead: read them as data with read_bytes or "
+            "read_words, or define them as code in Ghidra and disassemble "
+            "again."
+        )
+
+    parts: list[str] = []
+    if skipped_bytes > 0:
+        parts.append(
+            f"this listing does not start at {requested}. Ghidra disassembles "
+            f"only bytes it has defined as instructions, and the "
+            f"{skipped_bytes} bytes from {requested} carry no definition, so "
+            f"the listing begins at {start} instead. Nothing in the "
+            f"instructions themselves says so."
+        )
+    if gap_bytes > 0:
+        if gap_count == 1:
+            where = f"1 hole of {gap_bytes} bytes lies"
+        else:
+            where = f"{gap_count} holes totalling {gap_bytes} bytes lie"
+        parts.append(
+            f"{where} inside the listing -- undefined bytes or data such as a "
+            "constant pool, skipped without a marker. They are listed under "
+            "coverage."
+        )
+    if not parts:
+        return None
+
+    return (
+        "Blind spot: "
+        + " Also: ".join(parts)
+        + " Instead: read the skipped bytes as data with read_bytes or "
+        "read_words, or define them as code in Ghidra and disassemble again."
+    )
+
+
+def unmapped_memory_note(
+    *, address: str, unreadable: int, total: int, unit: str = "words"
+) -> str:
+    """Explain a read that returned nothing because nothing is mapped there.
+
+    ``null`` is not zero, but it is one character away from looking like it.
+    An unmapped MMIO register and a register that reads as zero produce the
+    same shape of answer, and only one of them is a statement about the
+    firmware.
+    """
+
+    scope = (
+        "no memory is mapped"
+        if unreadable >= total
+        else f"{unreadable} of {total} {unit} fall outside any mapped block"
+    )
+    return (
+        f"Blind spot: {scope} at {address}, so the nulls here mean 'not "
+        "readable', not 'reads as zero'. A memory-mapped register that Ghidra "
+        "has no block for looks exactly like one holding 0. Instead: check "
+        "project_info for the mapped blocks and their ranges, and read at an "
+        "address inside one; a register only present at runtime cannot be read "
+        "from the image at all."
+    )
 
 
 #: Where each tool keeps its result list, for the empty-result check.

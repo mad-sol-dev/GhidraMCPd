@@ -19,9 +19,13 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Pattern, Sequence
 
+from ..utils.hex import int_to_hex
+
 __all__ = [
     "FORMATS",
     "compile_query",
+    "coverage",
+    "coverage_fields",
     "filter_instructions",
     "instruction_line",
     "normalize_fmt",
@@ -58,6 +62,93 @@ def instruction_line(entry: Mapping[str, Any]) -> str:
     head = f"{address}: " if address else ""
     body = " ".join(part for part in (raw_bytes, text) if part)
     return f"{head}{body}".rstrip()
+
+
+def _entry_address(entry: Mapping[str, Any]) -> int | None:
+    """Parse an entry address, tolerating both ``0x2818b0`` and ``2818b0``."""
+
+    raw = str(entry.get("address", "") or "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw, 16)
+    except ValueError:
+        return None
+
+
+def _entry_length(entry: Mapping[str, Any]) -> int | None:
+    """Instruction length in bytes, from its hex byte string."""
+
+    raw = str(entry.get("bytes", "") or "").strip()
+    if not raw or len(raw) % 2:
+        return None
+    return len(raw) // 2
+
+
+def coverage(entries: Sequence[Mapping[str, Any]], *, requested: int) -> Dict[str, Any]:
+    """Report where a listing actually starts and which bytes it skipped.
+
+    Ghidra iterates defined instructions, so a request inside an undefined
+    region answers with the next defined instruction and no marker.  The caller
+    cannot tell that from a listing that starts where it asked, which is why
+    this is computed rather than trusted: the addresses in the response are the
+    evidence, and they are already here.
+
+    Returns ``start`` (``None`` for an empty listing), ``skipped_bytes`` before
+    it, and the interior ``gaps``, each as ``{start, end, bytes}`` covering the
+    undefined bytes themselves.
+    """
+
+    start: int | None = None
+    gaps: List[Dict[str, Any]] = []
+    expected: int | None = None
+
+    for entry in entries:
+        address = _entry_address(entry)
+        if address is None:
+            continue
+        if start is None:
+            start = address
+        elif expected is not None and address > expected:
+            gaps.append({"start": expected, "end": address - 1, "bytes": address - expected})
+        length = _entry_length(entry)
+        # An unknown length breaks the chain rather than inventing a gap at the
+        # next instruction.
+        expected = address + length if length is not None else None
+
+    skipped = max(0, start - requested) if start is not None else 0
+    return {
+        "start": start,
+        "skipped_bytes": skipped,
+        "gaps": gaps,
+        "gap_bytes": sum(gap["bytes"] for gap in gaps),
+    }
+
+
+def coverage_fields(report: Mapping[str, Any], *, requested: int) -> Dict[str, Any]:
+    """Render a coverage report as the response fields, addresses in hex.
+
+    Both disassemble_at and disassemble_batch report this; formatting it once
+    keeps the two from drifting apart.
+    """
+
+    start = report["start"]
+    fields: Dict[str, Any] = {
+        "requested_address": int_to_hex(requested),
+        "start_address": None if start is None else int_to_hex(int(start)),
+        "skipped_bytes": int(report["skipped_bytes"]),
+    }
+    gaps = report["gaps"]
+    if gaps:
+        fields["gaps"] = [
+            {
+                "start": int_to_hex(int(gap["start"])),
+                "end": int_to_hex(int(gap["end"])),
+                "bytes": int(gap["bytes"]),
+            }
+            for gap in gaps
+        ]
+    return fields
 
 
 def render_lines(entries: Iterable[Mapping[str, Any]]) -> List[str]:

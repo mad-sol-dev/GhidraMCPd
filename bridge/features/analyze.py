@@ -333,9 +333,16 @@ def _normalize_function_meta(
         "comment": comment,
     }
     if range_start is not None and range_end is not None:
+        # start..end is the span the body reaches across, interior data
+        # included.  It is deliberately not called a size: the function's own
+        # bytes can be fewer, because a constant pool between two instructions
+        # sits inside this span without belonging to the body.  list_functions_
+        # in_range counts those body bytes and therefore reports the smaller
+        # number; naming both "size" is what made them look contradictory.
         info["range"] = {
             "start": int_to_hex(range_start),
             "end": int_to_hex(range_end),
+            "span_bytes": range_end - range_start + 1,
         }
     else:
         info["range"] = None

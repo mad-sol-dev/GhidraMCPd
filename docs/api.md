@@ -466,6 +466,7 @@ All three routes share the standard per-request write guard. Each successful wri
       "name": "string",
       "range": {
         "end": "string",
+        "span_bytes": 0,
         "start": "string"
       },
       "signature": "string"
@@ -1180,11 +1181,13 @@ All three routes share the standard per-request write guard. Each successful wri
 | --- | --- | --- | --- |
 | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
 | `count` | integer | No | default=16, min=1, max=128 |
+| `fmt` | string | No | enum=['json', 'text'] |
 
 ```json
 {
   "address": "0x0",
-  "count": 16
+  "count": 16,
+  "fmt": "json"
 }
 ```
 
@@ -1195,19 +1198,10 @@ All three routes share the standard per-request write guard. Each successful wri
 
   | Field | Type | Required | Notes |
   | --- | --- | --- | --- |
-  | `items` | array<object> | Yes |  |
-
-  ```json
-  {
-    "items": [
-      {
-        "address": "0x0",
-        "bytes": "string",
-        "text": "string"
-      }
-    ]
-  }
-  ```
+  | `coverage` | object | No |  |
+  | `items` | array<object> | No |  |
+  | `lines` | array<string> | No |  |
+  | `method_note` | string | No |  |
 
 ## `/api/health.json`
 
@@ -1497,7 +1491,9 @@ All three routes share the standard per-request write guard. Each successful wri
   | `limit` | integer | Yes | min=1 |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `total` | integer | No | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -1512,7 +1508,9 @@ All three routes share the standard per-request write guard. Each successful wri
     "limit": 0,
     "page": 0,
     "query": "string",
-    "total": 0
+    "returned": 0,
+    "total": 0,
+    "truncated": false
   }
   ```
 
@@ -1554,6 +1552,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `notes` | array<string> | No |  |
   | `reads` | integer | Yes | min=0 |
   | `samples` | array<object> | Yes |  |
+  | `skipped` | integer | Yes | min=0 |
   | `toggles` | integer | Yes | min=0 |
   | `writes` | integer | Yes | min=0 |
 
@@ -1575,6 +1574,7 @@ All three routes share the standard per-request write guard. Each successful wri
         "target": "0x0"
       }
     ],
+    "skipped": 0,
     "toggles": 0,
     "writes": 0
   }
@@ -1833,6 +1833,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `encoding` | string | Yes | enum=['base64'] |
   | `length` | integer | Yes | min=0 |
   | `literal` | string | No |  |
+  | `method_note` | string | No |  |
 
   ```json
   {
@@ -1840,7 +1841,8 @@ All three routes share the standard per-request write guard. Each successful wri
     "data": "string",
     "encoding": "base64",
     "length": 0,
-    "literal": "string"
+    "literal": "string",
+    "method_note": "string"
   }
   ```
 
@@ -1880,21 +1882,25 @@ All three routes share the standard per-request write guard. Each successful wri
   | `limit` | integer | Yes | min=1 |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `total` | integer | No | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
     "has_more": false,
     "items": [
       {
-        "address": "0x0",
+        "address": "string",
         "name": "string"
       }
     ],
     "limit": 0,
     "page": 0,
     "query": "string",
-    "total": 0
+    "returned": 0,
+    "total": 0,
+    "truncated": false
   }
   ```
 
@@ -1943,10 +1949,12 @@ All three routes share the standard per-request write guard. Each successful wri
   | `has_more` | boolean | Yes |  |
   | `items` | array<object> | Yes |  |
   | `limit` | integer | Yes | min=1 |
+  | `method_note` | string | No |  |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
   | `resume_cursor` | string | No |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -1973,10 +1981,12 @@ All three routes share the standard per-request write guard. Each successful wri
       }
     ],
     "limit": 0,
+    "method_note": "string",
     "page": 0,
     "query": "string",
     "resume_cursor": "string",
-    "total": 0
+    "returned": 0,
+    "truncated": false
   }
   ```
 
@@ -2016,21 +2026,25 @@ All three routes share the standard per-request write guard. Each successful wri
   | `limit` | integer | Yes | min=1 |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `total` | integer | No | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
     "has_more": false,
     "items": [
       {
-        "address": "0x0",
+        "address": "string",
         "name": "string"
       }
     ],
     "limit": 0,
     "page": 0,
     "query": "string",
-    "total": 0
+    "returned": 0,
+    "total": 0,
+    "truncated": false
   }
   ```
 
@@ -2073,10 +2087,12 @@ All three routes share the standard per-request write guard. Each successful wri
   | `has_more` | boolean | Yes |  |
   | `items` | array<object> | Yes |  |
   | `limit` | integer | Yes | min=1 |
+  | `method_note` | string | No |  |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
   | `resume_cursor` | string | No |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -2091,10 +2107,12 @@ All three routes share the standard per-request write guard. Each successful wri
       }
     ],
     "limit": 0,
+    "method_note": "string",
     "page": 0,
     "query": "string",
     "resume_cursor": "string",
-    "total": 0
+    "returned": 0,
+    "truncated": false
   }
   ```
 
@@ -2134,9 +2152,12 @@ All three routes share the standard per-request write guard. Each successful wri
   | `has_more` | boolean | Yes |  |
   | `items` | array<object> | Yes |  |
   | `limit` | integer | Yes | min=1 |
+  | `method_note` | string | No |  |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `total` | integer | No | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -2145,9 +2166,12 @@ All three routes share the standard per-request write guard. Each successful wri
       "\u2026"
     ],
     "limit": 0,
+    "method_note": "string",
     "page": 0,
     "query": "string",
-    "total": 0
+    "returned": 0,
+    "total": 0,
+    "truncated": false
   }
   ```
 
@@ -2187,9 +2211,12 @@ All three routes share the standard per-request write guard. Each successful wri
   | `has_more` | boolean | Yes |  |
   | `items` | array<object> | Yes |  |
   | `limit` | integer | Yes | min=1 |
+  | `method_note` | string | No |  |
   | `page` | integer | Yes | min=1 |
   | `query` | string | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `total` | integer | No | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -2202,9 +2229,12 @@ All three routes share the standard per-request write guard. Each successful wri
       }
     ],
     "limit": 0,
+    "method_note": "string",
     "page": 0,
     "query": "string",
-    "total": 0
+    "returned": 0,
+    "total": 0,
+    "truncated": false
   }
   ```
 
@@ -2328,11 +2358,14 @@ All three routes share the standard per-request write guard. Each successful wri
 
   | Field | Type | Required | Notes |
   | --- | --- | --- | --- |
+  | `has_more` | boolean | Yes |  |
   | `items` | array<object> | Yes |  |
-  | `total` | integer | Yes | min=0 |
+  | `returned` | integer | Yes | min=0 |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
+    "has_more": false,
     "items": [
       {
         "addr": "0x0",
@@ -2341,7 +2374,8 @@ All three routes share the standard per-request write guard. Each successful wri
         "s": "string"
       }
     ],
-    "total": 0
+    "returned": 0,
+    "truncated": false
   }
   ```
 

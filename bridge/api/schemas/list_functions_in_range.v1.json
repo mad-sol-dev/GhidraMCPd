@@ -43,7 +43,8 @@
         ],
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Function name. A thunk carries the name of the function it jumps to, so the same name can appear twice in one range at different addresses -- one entry is the function, the other a branch veneer to it."
           },
           "address": {
             "type": "string",
@@ -54,7 +55,8 @@
               "integer",
               "null"
             ],
-            "minimum": 0
+            "minimum": 0,
+            "description": "Bytes belonging to the function body. Interior data such as a constant pool is excluded, so this is not end minus start: analyze_function_complete reports range.span_bytes for that, and it can be larger. Null when Ghidra reports no body."
           }
         }
       }

@@ -35,6 +35,66 @@
         "type": "string"
       },
       "description": "Rendered listing, one \"address: bytes mnemonic\" per line. Present when fmt is \"text\"; items/disassembly are then absent."
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_address",
+        "start_address",
+        "skipped_bytes"
+      ],
+      "properties": {
+        "requested_address": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]+$"
+        },
+        "start_address": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^0x[0-9a-fA-F]+$",
+          "description": "First instruction actually listed; null when none is defined at or after the requested address."
+        },
+        "skipped_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Undefined bytes between the requested address and the first listed instruction."
+        },
+        "gaps": {
+          "type": "array",
+          "description": "Holes inside the listing -- undefined bytes or interior data such as a constant pool. Present only when there are any.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "start",
+              "end",
+              "bytes"
+            ],
+            "properties": {
+              "start": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]+$"
+              },
+              "end": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]+$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      },
+      "description": "Present only when the listing does not start at the requested address or has holes. Its absence means the listing covers every byte from the requested address on."
+    },
+    "method_note": {
+      "type": "string",
+      "description": "Present with coverage: what the listing leaves out and how to see those bytes instead."
     }
   },
   "anyOf": [

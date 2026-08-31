@@ -12,6 +12,7 @@
 Recommended next focus: land {R.22}/{R.23} to improve plugin performance and readiness gating before tackling remaining NEXT items.
 
 ## NEXT
+- {FUNC-CHUNKS-THUNKS} **Thunks und nicht-zusammenhängende Rümpfe sichtbar machen (Plugin).** `list_functions_in_range` liefert nur `name @ entry size`; ein Thunk trägt in Ghidra den Namen seiner Zielfunktion, weshalb `boot_init` zweimal erscheint (Rumpf 0x25B0C4, 4-Byte-Veneer `b 0x0025b0c4` bei 0x273EE4). Der Bridge fehlt die Information, um das zu kennzeichnen. Gewünscht: `/functionsInRange` gibt zusätzlich Body-Spanne, `is_thunk` und bei mehreren Body-Ranges eine `chunks[]`-Liste aus; Bridge reicht sie durch und der Parser bleibt abwärtskompatibel, wenn die Felder fehlen. Braucht Plugin-Rebuild. Offen ist außerdem, ob `size` in `body_bytes` umbenannt wird — das wäre breaking und damit ein Minor-Bump.
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
@@ -39,6 +40,8 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {DISASM-SILENT-SKIP} Undefinierte Bereiche werden nicht mehr verschwiegen — `coverage` + `method_note` in `disassemble_at`/`disassemble_batch`, `unreadable_words`/`method_note` in `read_words`/`read_bytes`.
+- [x] {FUNC-BOUNDS-DISAGREE} `size` und `range` sind definiert und gehen auf: `range.span_bytes` (Spanne, Innendaten eingeschlossen) gegen `size` (Rumpfbytes); Differenz ist das Pool-Loch, das `coverage` jetzt meldet.
 - [x] {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
 - [x] {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)
 - [x] {R.8} Program selection helpers (`select_program`, `get_current_program`) to anchor analysis tools on the active Ghidra program

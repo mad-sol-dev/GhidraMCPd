@@ -521,6 +521,18 @@
     "DOC-DEFAULT-DRIFT": {
       "commit": "pending",
       "status": "todo"
+    },
+    "DISASM-SILENT-SKIP": {
+      "commit": "pending",
+      "status": "done"
+    },
+    "FUNC-BOUNDS-DISAGREE": {
+      "commit": "pending",
+      "status": "done"
+    },
+    "FUNC-CHUNKS-THUNKS": {
+      "commit": "pending",
+      "status": "todo"
     }
   }
 }

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
+from . import method_notes
 from . import mutations
 from ..utils import audit
 from ..utils.hex import int_to_hex
@@ -60,6 +61,16 @@ def read_bytes(
     if include_literals:
         literal = "" if raw_bytes is None else raw_bytes.decode("latin1")
         payload["literal"] = literal
+
+    # An empty read and a run of zero bytes are different findings; base64 of
+    # nothing does not say which one this is.
+    if actual_length < length:
+        payload["method_note"] = method_notes.unmapped_memory_note(
+            address=int_to_hex(address),
+            unreadable=length - actual_length,
+            total=length,
+            unit="bytes",
+        )
 
     return payload
 
