@@ -235,13 +235,23 @@ def unmapped_memory_note(
         if unreadable >= total
         else f"{unreadable} of {total} {unit} fall outside any mapped block"
     )
+    # The shape of the answer differs by endpoint, and a note whose purpose is
+    # precision must not describe nulls to a caller who received none.
+    if unit == "bytes":
+        shape = (
+            "so this answer is short rather than zero-filled: those bytes "
+            "could not be read, which is not the same as reading 0"
+        )
+    else:
+        shape = (
+            "so the nulls here mean 'not readable', not 'reads as zero'"
+        )
     return (
-        f"Blind spot: {scope} at {address}, so the nulls here mean 'not "
-        "readable', not 'reads as zero'. A memory-mapped register that Ghidra "
-        "has no block for looks exactly like one holding 0. Instead: check "
-        "project_info for the mapped blocks and their ranges, and read at an "
-        "address inside one; a register only present at runtime cannot be read "
-        "from the image at all."
+        f"Blind spot: {scope} at {address}, {shape}. A memory-mapped register "
+        "that Ghidra has no block for looks exactly like one holding 0. "
+        "Instead: check project_info for the mapped blocks and their ranges, "
+        "and read at an address inside one; a register only present at runtime "
+        "cannot be read from the image at all."
     )
 
 

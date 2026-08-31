@@ -734,6 +734,55 @@
         "pom.xml had SoftwareModeling and Base under swapped directories, so the GHIDRA_DIR profile could not resolve them; fixed here.",
         "scripts/build_local.sh builds the extension with only a JDK, since this machine has neither Maven nor Docker."
       ]
+    },
+    {
+      "id": "COLLECT-METADATA-REJECTED",
+      "title": "collect echoes the metadata it documents",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "done",
+      "dod": [
+        "collect.v1.json permits metadata at the top level, described as the request's metadata echoed back",
+        "A collect call carrying metadata succeeds and returns it unchanged",
+        "A test drives the tool with the real validator rather than a stub, since a stub is what hid this"
+      ],
+      "notes": [
+        "The request was always valid: the request schema accepts metadata and the tool copies it into the response. The response schema listed only queries, meta and projects with additionalProperties false, so the server rejected its own answer and reported it as the caller's fault.",
+        "An existing test already called collect with metadata and passed, because it replaces validate_payload with a stub that approves everything.",
+        "Reproduced against the running server before and after."
+      ]
+    },
+    {
+      "id": "READ-BYTES-NOTE-WORDING",
+      "title": "The byte note describes bytes, not nulls",
+      "area": "bridge",
+      "depends_on": [
+        "DISASM-SILENT-SKIP"
+      ],
+      "status": "done",
+      "dod": [
+        "read_bytes' method_note describes a short answer; read_words' keeps describing nulls",
+        "A test asserts the byte note never says null"
+      ],
+      "notes": [
+        "Introduced with DISASM-SILENT-SKIP: one note text served both endpoints, and read_bytes answers with length 0 and empty data rather than nulls."
+      ]
+    },
+    {
+      "id": "RESPONSE-VALIDATION-MISLABELED",
+      "title": "A failed response validation is reported as INVALID_REQUEST",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "todo",
+      "dod": [
+        "A response that violates its own schema is reported with a code that names a server fault, not a bad request",
+        "All 29 sites in bridge/api/tools.py move together",
+        "Existing tests asserting INVALID_REQUEST for these paths are updated deliberately, not silently"
+      ],
+      "notes": [
+        "ErrorCode.INTERNAL already exists.",
+        "Found while fixing COLLECT-METADATA-REJECTED, which presented as a 400 blaming a request that was correct."
+      ]
     }
   ]
 }

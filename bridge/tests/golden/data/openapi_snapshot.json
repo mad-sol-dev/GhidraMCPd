@@ -1049,6 +1049,11 @@
                     "meta": {
                       "$ref": "#/$defs/meta"
                     },
+                    "metadata": {
+                      "additionalProperties": true,
+                      "description": "The metadata sent with the request, echoed back unchanged. Present only when the request carried it.",
+                      "type": "object"
+                    },
                     "projects": {
                       "items": {
                         "$ref": "#/$defs/project_result"

@@ -248,6 +248,25 @@ def test_readable_words_carry_no_note():
     assert "unreadable_words" not in payload
 
 
+def test_the_byte_note_does_not_speak_of_nulls():
+    """read_bytes answers with a short buffer, not with nulls -- so must the note.
+
+    It shared read_words' wording and told a caller who had received no nulls
+    what the nulls meant. The point of a method_note is precision.
+    """
+
+    client = StubClient(read_results={})
+    payload = memory.read_bytes(client, address=0x7D8, length=16)
+
+    assert payload["length"] == 0
+    note = payload["method_note"]
+    assert "null" not in note.lower()
+    assert "short rather than zero-filled" in note
+
+    words = batch_ops.read_words(StubClient(read_results={}), 0x7D8, 4)
+    assert "nulls here" in words["method_note"]
+
+
 def test_short_read_bytes_reports_the_unmapped_tail():
     client = StubClient(read_results={0x1000: b"\x01\x02"})
     payload = memory.read_bytes(client, address=0x1000, length=4)

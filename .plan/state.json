@@ -533,6 +533,18 @@
     "FUNC-CHUNKS-THUNKS": {
       "commit": "pending",
       "status": "done"
+    },
+    "COLLECT-METADATA-REJECTED": {
+      "commit": "pending",
+      "status": "done"
+    },
+    "READ-BYTES-NOTE-WORDING": {
+      "commit": "pending",
+      "status": "done"
+    },
+    "RESPONSE-VALIDATION-MISLABELED": {
+      "commit": "pending",
+      "status": "todo"
     }
   }
 }

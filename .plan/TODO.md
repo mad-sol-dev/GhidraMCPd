@@ -12,6 +12,7 @@
 Recommended next focus: land {R.22}/{R.23} to improve plugin performance and readiness gating before tackling remaining NEXT items.
 
 ## NEXT
+- {RESPONSE-VALIDATION-MISLABELED} **Eine fehlgeschlagene Antwort-Validierung wird dem Aufrufer als `INVALID_REQUEST` gemeldet.** An 29 Stellen in `bridge/api/tools.py` folgt auf `validate_payload("<tool>.v1.json", data)` ein `envelope_error(ErrorCode.INVALID_REQUEST, ...)`. Verletzt die Antwort ihr eigenes Schema, ist das ein Serverfehler, keine schlechte Anfrage — der Aufrufer sucht dann in seinen Parametern nach einem Fehler, den er nicht gemacht hat. Genau so trat {COLLECT-METADATA-REJECTED} in Erscheinung. `ErrorCode.INTERNAL` existiert bereits. Zu klären: einheitlich umstellen, und ob Bestandstests auf `INVALID_REQUEST` prüfen. Gefunden 2026-08-31 beim Beheben von {COLLECT-METADATA-REJECTED}.
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
@@ -39,8 +40,10 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {COLLECT-METADATA-REJECTED} `metadata` steht im Antwortschema von `collect`; der dokumentierte Parameter kommt unveraendert zurueck, statt die eigene Antwort ungueltig zu machen.
+- [x] {READ-BYTES-NOTE-WORDING} `read_bytes` beschreibt die kurze Antwort, nicht Nullen, die es dort nicht gibt.
 - [x] {FUNC-CHUNKS-THUNKS} `/functionsInRange?fields=extended` liefert Body-Spanne, `thunk=` und `chunks=`; Bridge zeigt `is_thunk`/`thunk_to`/`span_bytes`/`chunks` nur, wo sie etwas aussagen. Gegen das laufende Programm verifiziert (Thunk-Ziel, Chunks, Spanne).
-- [x] {DISASM-SILENT-SKIP} Undefinierte Bereiche werden nicht mehr verschwiegen — `coverage` + `method_note` in `disassemble_at`/`disassemble_batch`, `unreadable_words`/`method_note` in `read_words`/`read_bytes`.
+- [x] {DISASM-SILENT-SKIP} Undefinierte Bereiche werden nicht mehr verschwiegen — `coverage` + `method_note` in `disassemble_at`/`disassemble_batch`, `unreadable_words`/`method_note` in `read_words`/`read_bytes`. Verifiziert 2026-08-31 am ZK-Inkjet-Programm, alle vier Endpunkte mit Positivkontrolle: `disassemble_at`/`disassemble_batch` melden 21652 uebersprungene Bytes ab 0x281900 und 148 ab 0x280AE8, `read_words`/`read_bytes` melden 0x7D8 als nicht gemappt; definierter Code (0x25B0C4) und gemappte Pooladresse (0x2AFB4C) bleiben ohne Zusatzmeldung.
 - [x] {FUNC-BOUNDS-DISAGREE} `size` und `range` sind definiert und gehen auf: `range.span_bytes` (Spanne, Innendaten eingeschlossen) gegen `size` (Rumpfbytes); Differenz ist das Pool-Loch, das `coverage` jetzt meldet.
 - [x] {R.21} Single-port multi-context server (Java singleton, FrontEnd loading, dispatching, open_program)
 - [x] {R.10} Clarify `strings_compact` population and error contracts (incl. `search_xrefs_to` empty-query behavior)

@@ -599,12 +599,14 @@ All three routes share the standard per-request write guard. Each successful wri
   | Field | Type | Required | Notes |
   | --- | --- | --- | --- |
   | `meta` | object | No |  |
+  | `metadata` | object | No |  |
   | `projects` | array<object> | No |  |
   | `queries` | array<object> | Yes |  |
 
   ```json
   {
     "meta": "\u2026",
+    "metadata": {},
     "projects": [
       "\u2026"
     ],

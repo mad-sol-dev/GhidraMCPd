@@ -21,6 +21,11 @@
       "items": {
         "$ref": "#/$defs/project_result"
       }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "The metadata sent with the request, echoed back unchanged. Present only when the request carried it."
     }
   },
   "$defs": {
