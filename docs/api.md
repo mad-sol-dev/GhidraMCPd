@@ -1501,8 +1501,17 @@ All three routes share the standard per-request write guard. Each successful wri
     "items": [
       {
         "address": "0x0",
+        "chunks": [
+          {
+            "end": "0x0",
+            "start": "0x0"
+          }
+        ],
+        "is_thunk": false,
         "name": "string",
-        "size": 0
+        "size": 0,
+        "span_bytes": 0,
+        "thunk_to": "0x0"
       }
     ],
     "limit": 0,

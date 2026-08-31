@@ -2520,6 +2520,33 @@
                             "pattern": "^0x[0-9a-fA-F]+$",
                             "type": "string"
                           },
+                          "chunks": {
+                            "description": "The body's address ranges, present only when Ghidra holds it in more than one.",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "end": {
+                                  "pattern": "^0x[0-9a-fA-F]+$",
+                                  "type": "string"
+                                },
+                                "start": {
+                                  "pattern": "^0x[0-9a-fA-F]+$",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "start",
+                                "end"
+                              ],
+                              "type": "object"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "is_thunk": {
+                            "description": "Present and true when this entry is a thunk. Absent otherwise, and absent for every entry when the plugin is too old to report it.",
+                            "type": "boolean"
+                          },
                           "name": {
                             "description": "Function name. A thunk carries the name of the function it jumps to, so the same name can appear twice in one range at different addresses -- one entry is the function, the other a branch veneer to it.",
                             "type": "string"
@@ -2531,6 +2558,16 @@
                               "integer",
                               "null"
                             ]
+                          },
+                          "span_bytes": {
+                            "description": "end - start + 1 of the body. Present only where it differs from size, which is where the body holds interior data such as a constant pool.",
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "thunk_to": {
+                            "description": "Entry point of the function this thunk jumps to. Explains why its name repeats another entry's.",
+                            "pattern": "^0x[0-9a-fA-F]+$",
+                            "type": "string"
                           }
                         },
                         "required": [

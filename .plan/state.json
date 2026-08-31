@@ -532,7 +532,7 @@
     },
     "FUNC-CHUNKS-THUNKS": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     }
   }
 }

@@ -39,12 +39,12 @@
       <properties>
         <ghidra.dir>${env.GHIDRA_DIR}</ghidra.dir>
         <ghidra.generic.path>Ghidra/Framework/Generic/lib/Generic.jar</ghidra.generic.path>
-        <ghidra.softwareModeling.path>Ghidra/Features/SoftwareModeling/lib/SoftwareModeling.jar</ghidra.softwareModeling.path>
+        <ghidra.softwareModeling.path>Ghidra/Framework/SoftwareModeling/lib/SoftwareModeling.jar</ghidra.softwareModeling.path>
         <ghidra.project.path>Ghidra/Framework/Project/lib/Project.jar</ghidra.project.path>
         <ghidra.docking.path>Ghidra/Framework/Docking/lib/Docking.jar</ghidra.docking.path>
         <ghidra.decompiler.path>Ghidra/Features/Decompiler/lib/Decompiler.jar</ghidra.decompiler.path>
         <ghidra.utility.path>Ghidra/Framework/Utility/lib/Utility.jar</ghidra.utility.path>
-        <ghidra.base.path>Ghidra/Framework/Base/lib/Base.jar</ghidra.base.path>
+        <ghidra.base.path>Ghidra/Features/Base/lib/Base.jar</ghidra.base.path>
         <ghidra.gui.path>Ghidra/Framework/Gui/lib/Gui.jar</ghidra.gui.path>
       </properties>
     </profile>

@@ -720,15 +720,18 @@
       "depends_on": [
         "FUNC-BOUNDS-DISAGREE"
       ],
-      "status": "todo",
+      "status": "done",
       "dod": [
-        "/functionsInRange emits body span, is_thunk and, for multi-range bodies, the chunks",
-        "Bridge parser uses the fields when present and keeps today's behaviour when absent",
-        "list_functions_in_range surfaces is_thunk/thunk_to so two entries of the same name explain themselves",
-        "Decision recorded on whether size is renamed to body_bytes (breaking, minor bump)"
+        "/functionsInRange emits span, thunk target and chunks behind fields=extended, so an older bridge keeps the format it parses",
+        "Bridge requests the fields and tolerates their absence; the payload is unchanged against a plugin that does not send them",
+        "list_functions_in_range surfaces is_thunk/thunk_to/span_bytes/chunks only where they say something",
+        "Decision recorded: size keeps its name, span_bytes is the unambiguous one -- renaming would be breaking"
       ],
       "notes": [
-        "Needs a plugin rebuild; no Maven or Docker in the current environment, though javac against lib/*.jar compiles the plugin for a syntax check."
+        "Compile-verified with javac against the installed Ghidra 11.4.2; not runtime-verified -- takes effect once target/GhidraMCP-1.3.0.zip is installed.",
+        "Backward compatibility verified live: the March-built plugin ignores fields=extended and the response is byte-identical to before.",
+        "pom.xml had SoftwareModeling and Base under swapped directories, so the GHIDRA_DIR profile could not resolve them; fixed here.",
+        "scripts/build_local.sh builds the extension with only a JDK, since this machine has neither Maven nor Docker."
       ]
     }
   ]

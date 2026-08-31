@@ -2351,8 +2351,8 @@ def register_tools(
             limit: results per page, >= 1, default 20.
             page: 1-based, >= 1, default 1.
 
-        size counts body bytes, not end minus start; a thunk carries its
-        target's name."""
+        size counts body bytes, not end minus start; a thunk shares its
+        target's name and is flagged is_thunk."""
 
         request_payload = {"value": value, "limit": limit, "page": page}
         valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)

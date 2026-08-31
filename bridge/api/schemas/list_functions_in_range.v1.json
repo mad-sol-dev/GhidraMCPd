@@ -57,6 +57,43 @@
             ],
             "minimum": 0,
             "description": "Bytes belonging to the function body. Interior data such as a constant pool is excluded, so this is not end minus start: analyze_function_complete reports range.span_bytes for that, and it can be larger. Null when Ghidra reports no body."
+          },
+          "is_thunk": {
+            "type": "boolean",
+            "description": "Present and true when this entry is a thunk. Absent otherwise, and absent for every entry when the plugin is too old to report it."
+          },
+          "thunk_to": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "description": "Entry point of the function this thunk jumps to. Explains why its name repeats another entry's."
+          },
+          "span_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "end - start + 1 of the body. Present only where it differs from size, which is where the body holds interior data such as a constant pool."
+          },
+          "chunks": {
+            "type": "array",
+            "minItems": 2,
+            "description": "The body's address ranges, present only when Ghidra holds it in more than one.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]+$"
+                },
+                "end": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]+$"
+                }
+              }
+            }
           }
         }
       }

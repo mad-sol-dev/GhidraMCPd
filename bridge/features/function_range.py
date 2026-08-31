@@ -7,6 +7,43 @@ from ..utils.logging import increment_counter
 from .pagination import finalize_page
 
 
+def _hex(value: object) -> str:
+    text = str(value)
+    return text if text.startswith("0x") else f"0x{text}"
+
+
+def _add_body_shape(item: Dict[str, object], entry: Dict[str, object]) -> None:
+    """Add what distinguishes a function from its own thunk -- and only that.
+
+    Every field here is omitted when it would say nothing, so the ordinary
+    entry stays the three keys it has always been.  A plugin too old to report
+    any of it leaves them all absent, which is the same thing.
+    """
+
+    thunk_to = entry.get("thunk_to")
+    if thunk_to:
+        # Ghidra names a thunk after the function it jumps to, so without this
+        # two entries of the same name in one range look like a duplicate.
+        item["is_thunk"] = True
+        item["thunk_to"] = _hex(thunk_to)
+
+    span = entry.get("span")
+    size = entry.get("size")
+    if isinstance(span, dict):
+        span_bytes = parse_hex(_hex(span["end"])) - parse_hex(_hex(span["start"])) + 1
+        # Reported only where the two numbers differ, which is exactly where
+        # the body holds interior data and the difference has to be explained.
+        if span_bytes > 0 and span_bytes != size:
+            item["span_bytes"] = span_bytes
+
+    chunks = entry.get("chunks")
+    if isinstance(chunks, list) and len(chunks) > 1:
+        item["chunks"] = [
+            {"start": _hex(chunk["start"]), "end": _hex(chunk["end"])}
+            for chunk in chunks
+        ]
+
+
 def list_functions_in_range(
     client: GhidraClient,
     *,
@@ -49,12 +86,14 @@ def list_functions_in_range(
         addr_str = entry.get("address", "")
         if not addr_str.startswith("0x"):
             addr_str = f"0x{addr_str}"
-        
-        items.append({
+
+        item: Dict[str, object] = {
             "name": entry.get("name", ""),
             "address": addr_str,
             "size": entry.get("size"),
-        })
+        }
+        _add_body_shape(item, entry)
+        items.append(item)
     
     # Calculate pagination
     total = len(items)

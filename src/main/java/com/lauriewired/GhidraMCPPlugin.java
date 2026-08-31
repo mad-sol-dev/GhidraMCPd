@@ -11,6 +11,9 @@ import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressOutOfBoundsException;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressIterator;
+import ghidra.program.model.address.AddressRange;
+import ghidra.program.model.address.AddressRangeIterator;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryBlock;
@@ -776,7 +779,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String min = qparams.get("min");
             String max = qparams.get("max");
-            plugin.sendResponse(exchange, plugin.handleFunctionsInRange(min, max));
+            // Opt-in, so an older bridge that does not ask keeps the exact
+            // format it parses today.
+            boolean extended = "extended".equals(qparams.get("fields"));
+            plugin.sendResponse(exchange, plugin.handleFunctionsInRange(min, max, extended));
         });
 
         registerProgramHandler(server, "/disassembleAt", (plugin, exchange) -> {
@@ -3070,6 +3076,20 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * List functions in a given address range
      */
     private String handleFunctionsInRange(String minStr, String maxStr) {
+        return handleFunctionsInRange(minStr, maxStr, false);
+    }
+
+    /**
+     * List functions in a range.
+     *
+     * <p>With {@code extended} the line carries what the name alone cannot say:
+     * the span the body reaches across, whether the entry is a thunk -- Ghidra
+     * names a thunk after its target, so the same name legitimately appears
+     * twice in one range -- and the individual chunks of a body that is not
+     * contiguous. Without it the format is unchanged, because an older bridge
+     * parses the token after the address as the size and nothing else.
+     */
+    private String handleFunctionsInRange(String minStr, String maxStr, boolean extended) {
         Program program = getCurrentProgram();
         if (program == null) return "No program loaded";
         if (minStr == null || minStr.isEmpty()) return errorResponse("min parameter is required");
@@ -3095,15 +3115,22 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 ghidra.program.model.listing.Function func = functions.next();
                 String name = func.getName();
                 Address entryPoint = func.getEntryPoint();
-                
-                // Try to get body size
-                long size = func.getBody().getNumAddresses();
-                
+                AddressSetView body = func.getBody();
+
+                // Bytes belonging to the body. Interior data -- a constant pool
+                // between two instructions -- is not counted here, which is why
+                // this can be smaller than the span below.
+                long size = body.getNumAddresses();
+
+                StringBuilder line = new StringBuilder();
+                line.append(name).append(" @ ").append(entryPoint);
                 if (size > 0) {
-                    results.add(String.format("%s @ %s %d", name, entryPoint, size));
-                } else {
-                    results.add(String.format("%s @ %s", name, entryPoint));
+                    line.append(' ').append(size);
                 }
+                if (extended) {
+                    appendExtendedFields(line, func, body);
+                }
+                results.add(line.toString());
             }
 
             // Already sorted by address (forward iteration)
@@ -3111,6 +3138,41 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         } catch (Exception e) {
             return errorResponse(e.getMessage());
+        }
+    }
+
+    /**
+     * Append the fields that distinguish a function from its own thunk.
+     *
+     * <p>Each is emitted only when it says something: a span always, a thunk
+     * target only for a thunk, and chunks only for a body that Ghidra holds in
+     * more than one range.
+     */
+    private void appendExtendedFields(
+            StringBuilder line,
+            ghidra.program.model.listing.Function func,
+            AddressSetView body) {
+        Address bodyMin = body.getMinAddress();
+        Address bodyMax = body.getMaxAddress();
+        if (bodyMin != null && bodyMax != null) {
+            line.append(" span=").append(bodyMin).append('-').append(bodyMax);
+        }
+
+        if (func.isThunk()) {
+            ghidra.program.model.listing.Function thunked = func.getThunkedFunction(true);
+            if (thunked != null) {
+                line.append(" thunk=").append(thunked.getEntryPoint());
+            }
+        }
+
+        List<String> chunks = new ArrayList<>();
+        AddressRangeIterator ranges = body.getAddressRanges();
+        while (ranges.hasNext()) {
+            AddressRange range = ranges.next();
+            chunks.add(range.getMinAddress() + "-" + range.getMaxAddress());
+        }
+        if (chunks.size() > 1) {
+            line.append(" chunks=").append(String.join(",", chunks));
         }
     }
 

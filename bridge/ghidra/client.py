@@ -128,6 +128,15 @@ class EndpointRequester:
         raise ValueError(f"Unsupported method {self.method}")
 
 
+def _parse_range(value: str) -> Optional[Dict[str, str]]:
+    """Parse an ``a-b`` address range as emitted by the plugin."""
+
+    start, sep, end = value.partition("-")
+    if not sep or not start or not end:
+        return None
+    return {"start": start, "end": end}
+
+
 def _is_error(lines: object) -> bool:
     if isinstance(lines, RequestError):
         return True
@@ -1246,6 +1255,9 @@ class GhidraClient:
             params={
                 "min": f"0x{address_min:08x}",
                 "max": f"0x{address_max:08x}",
+                # A plugin that does not know this parameter ignores it and
+                # answers in the old format, which parses just the same.
+                "fields": "extended",
             },
         )
         if _is_error(lines):
@@ -1255,24 +1267,40 @@ class GhidraClient:
             stripped = line.strip()
             if not stripped:
                 continue
-            # Expected format: "name @ address [size]"
+            # "name @ address [size] [span=a-b] [thunk=addr] [chunks=a-b,c-d]"
             if " @ " not in stripped:
                 continue
             name_part, addr_part = stripped.split(" @ ", 1)
-            name = name_part.strip()
-            addr_and_size = addr_part.split(None, 1)
-            address = addr_and_size[0].strip()
-            size = None
-            if len(addr_and_size) > 1:
+            tokens = addr_part.split()
+            if not tokens:
+                continue
+            entry: Dict[str, Any] = {
+                "name": name_part.strip(),
+                "address": tokens[0],
+                "size": None,
+                "span": None,
+                "thunk_to": None,
+                "chunks": [],
+            }
+            for token in tokens[1:]:
+                if "=" in token:
+                    key, _, value = token.partition("=")
+                    if key == "span":
+                        entry["span"] = _parse_range(value)
+                    elif key == "thunk":
+                        entry["thunk_to"] = value
+                    elif key == "chunks":
+                        entry["chunks"] = [
+                            parsed
+                            for parsed in (_parse_range(part) for part in value.split(","))
+                            if parsed is not None
+                        ]
+                    continue
                 try:
-                    size = int(addr_and_size[1].strip())
+                    entry["size"] = int(token)
                 except ValueError:
                     pass
-            results.append({
-                "name": name,
-                "address": address,
-                "size": size,
-            })
+            results.append(entry)
         return results
 
     def disassemble_at(self, address: int, count: int) -> List[Dict[str, Any]]:
