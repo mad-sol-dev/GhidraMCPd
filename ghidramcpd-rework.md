@@ -381,6 +381,125 @@ benannt und nicht wegerklärt.
 
 ---
 
+## Stufe 8 — Die Naht zwischen Plugin und Bridge
+
+**Ziel:** die Bridge rekonstruiert nicht mehr per Regex, was Ghidra bereits weiß, und
+bietet nichts an, was das Plugin nicht kann. Aufgenommen nach dem Review vom 2026-10-08.
+
+**Befund, der diese Stufe trägt.** 32 der 51 Plugin-Routen antworten nur mit Text,
+17 mit JSON, eine gemischt, eine unklar (Zählung über die `register*Handler`-Aufrufe in
+`GhidraMCPPlugin.java`). Bei den meisten Textrouten zerlegt `client.py` ein, zwei
+Felder — harmlos. Teuer ist eine Stelle: `/disassembleAt` und `/disassemble_function`
+liefern `adresse: bytes instr.toString()`. Sieben Feature-Module verarbeiten diesen Text
+weiter (`disasm`, `batch_ops`, `mmio`, `analyze`, `search_function`, `strings`,
+`functions`); `mmio`, `analyze` und `strings` lesen daraus per Regex Mnemonic,
+Operanden, Calls, Call-Ziele, Branches, Pool-Worte und MMIO-Basen zurück. Das Commit-Log seit Stufe 5 ist überwiegend Reparatur an
+genau dieser Naht: `MOV`-Basen nicht aufgelöst, Pool-Worte als Strings, Prosa-Parse
+abgesichert, Thunks verschwiegen. Jede neue Befehlsform ist dort ein neuer Fehler.
+
+Die Teilstufen sind nach Risiko geordnet, nicht nach Nutzen. Jede ist einzeln
+abnehmbar und wird einzeln committet. Jede außer 8b braucht einen Plugin-Rebuild.
+
+### 8a — Plugin nur auf Loopback
+
+`HttpServer.create(new InetSocketAddress(port), 0)` bindet auf alle Interfaces, ohne
+Authentifizierung. Der Schreibschutz (`dry_run`, `GHIDRA_MCP_ENABLE_WRITES`) sitzt nur in
+der Bridge; `/renameFunction`, `/renameData`, `/set_function_prototype` und die
+Datentyp-Routen sind am Plugin direkt erreichbar. Auf dem Laptop in einem fremden Netz
+heißt das: jeder im Segment liest und ändert das Projekt.
+
+- Bind auf `InetAddress.getLoopbackAddress()`.
+- Eine Plugin-Option für die Bind-Adresse, Default Loopback. Wer sie ändert, tut es
+  bewusst; das Plugin loggt dann beim Start eine Warnung mit der Adresse.
+
+**Abnahme:** nach Rebuild zeigt `ss -ltnp` den Port nur auf `127.0.0.1`; ein Aufruf über
+die LAN-Adresse des Rechners wird abgewiesen, einer über `127.0.0.1` beantwortet. Beides
+als Skript, nicht als Augenschein.
+
+### 8b — Keine Tools ohne Gegenstück im Plugin
+
+`write_bytes` und `project_rebase` sind MCP-Tools und in `docs/api.md` dokumentiert. Die
+Bridge ruft dafür `startTransaction`, `commitTransaction`, `rollbackTransaction`,
+`writeBytes`, `rebuildCodeUnits` und `rebaseProgram` auf — **keiner dieser Endpunkte
+existiert im Java-Quellcode.** Beide Tools scheitern am ersten Schritt; die Tests sind
+grün, weil `bridge/tests/contract/conftest.py` und die Unit-Tests die Endpunkte als Stub
+nachbilden. Die Tests belegen das Verhalten des Stubs, nicht das des Plugins. Das ist
+derselbe Fehler wie die „Bytesuche" in Stufe 2, nur im Code statt im Hinweistext.
+
+- **Erst ein Geländer, dann die Entscheidung:** ein Unit-Test, der die registrierten
+  Routen aus `GhidraMCPPlugin.java` extrahiert und prüft, dass jeder Pfad und jeder Alias
+  in `ENDPOINT`-Tabellen von `client.py` dort vorkommt. Er muss vor jeder Änderung rot
+  werden — mit genau den sechs Namen oben. Wird er das nicht, taugt die Extraktion nicht
+  (Rahmen 5).
+- **Dann entscheiden: entfernen oder bauen.** Empfehlung: entfernen. Beide Tools haben
+  nie funktioniert; in keinem der beiden Projekte kann ein Aufruf brechen, der vorher
+  ging (Rahmen 1 trotzdem prüfen, Aufrufe dort suchen und benennen). Byte-Patches und
+  Rebase sind seltene, folgenreiche Eingriffe, die in der Ghidra-Oberfläche besser
+  aufgehoben sind. Wer bauen will, baut sie mit Plugin-seitiger Transaktion, nicht mit
+  einem Transaktionsprotokoll über HTTP.
+- Danach dieselbe Prüfung über alle übrigen Stub-Endpunkte: jeder Stub, der eine Route
+  nachbildet, die das Plugin nicht hat, fliegt raus oder bekommt einen Kommentar, warum
+  er bleibt.
+
+**Abnahme:** der Routen-Test ist grün und war vorher nachweislich rot; `tools/list` des
+laufenden Servers enthält kein Tool, dessen Plugin-Pfad fehlt.
+
+### 8c — Disassemblat als Struktur
+
+`/disassembleAt` und `/disassemble_function` bekommen `fmt=json`. Der Textmodus bleibt
+Default, bis die Bridge umgestellt ist — beide Projekte laufen gegen dasselbe Plugin
+(Rahmen 1), ein Plugin-Rebuild darf keinen Bridge-Stand brechen.
+
+Pro Instruktion, alles aus der Ghidra-API statt aus `toString()`:
+- `address`, `bytes`, `mnemonic`, `text` (die bisherige Darstellung, für `fmt="text"`
+  der Bridge),
+- `flow`: Call, bedingter/unbedingter Sprung, Return, Fallthrough,
+- `operands`: pro Operand Register, Skalare und Typ,
+- `refs`: Referenzen ab dieser Instruktion mit Zieladresse, Typ, und ob das Ziel im
+  Speicherbild liegt,
+- bei PC-relativen Loads: Pooladresse **und** das geladene Wort.
+
+Danach die Regex-Pfade in den sieben Modulen durch Feldzugriffe ersetzen, Modul für
+Modul, jeweils mit eigenem Commit.
+
+**Offene Frage, vor dem Umbau von `mmio.py` zu klären:** legt Ghidras
+Konstantenpropagation für ARM eine Referenz an, wenn das Ziel außerhalb des
+Speicherbilds liegt? Im ZK-Inkjet-Programm ist nur `flash` @0x00200000 gemappt; die
+MMIO-Bereiche nicht. Falls nein, liefert `refs` für MMIO nichts, und `mmio.py` behält
+die Basis-Auflösung aus `operands` — aber aus Skalaren, nicht aus Text. Eine
+Speicherkarte mit MMIO-Blöcken wäre die saubere Lösung, ändert aber die `.rep` und damit
+die eingefrorene Referenzkopie (Rahmen 2); falls gewünscht, als eigene Entscheidung mit
+neuer Baseline, nicht nebenbei. Die Antwort wird am laufenden Programm ermittelt, an
+einer Funktion mit bekanntem `mov rX,#0xb…`-Zugriff, nicht aus Dokumentation.
+
+**Abnahme:**
+1. Der Stufe-2-Regressionstest findet `0x002AFB4C` und `0x002AFB40` weiterhin.
+2. `mmio_annotate_compact` liefert an den Funktionen aus dem Referenzlauf dieselbe Menge
+   an (Instruktionsadresse, Registeradresse) wie vorher. Jede Abweichung ist entweder
+   eine belegte Korrektur oder ein Fehler — es gibt keine dritte Kategorie.
+3. In `mmio.py`, `analyze.py` und `strings.py` bleibt kein Regex, der Operandentext zerlegt. Was
+   bleibt, steht mit Begründung im Docstring.
+4. Referenzlauf: Antwort-Bytes werden ausgewiesen, aber nicht optimiert. Die Stufe zielt
+   auf Korrektheit; wächst das Volumen, wird es benannt (Stufe 7, Fortschreibung der
+   Baseline).
+
+### 8d — `/functionsInRange` als JSON
+
+Das Eigenformat `name @ addr size span=… thunk=… chunks=…` wird durch JSON ersetzt,
+gleiche Felder. Kleinkram nach 8c, aber dasselbe Prinzip: ein Format, das nur durch
+Zerlegen lesbar ist, hat beim nächsten Feld wieder einen Parserfehler.
+
+**Abnahme:** `list_functions_in_range` liefert am Referenzlauf identische Einträge;
+`FUNC-CHUNKS-THUNKS` bleibt verifiziert (Thunk-Ziel, Chunks, Spanne).
+
+**Nicht Teil dieser Stufe:** die übrigen Textrouten (`/decompile*`, `/read_cstring`,
+`/get_function_by_address` usw.). Dort zerlegt die Bridge kaum etwas; ein Umbau hätte
+kein belegtes Problem (Begründung wie Stufe 6). Ebenso nicht: ein Umstieg auf PyGhidra
+statt HTTP. Er würde die Naht ganz beseitigen, ist aber ein Neubau, kein Rework — als
+Option notiert, falls nach 8c weitere Klassen von Nahtfehlern auftreten.
+
+---
+
 # Ergebnisse
 
 ## Stufe 0 — Baseline (2026-08-20, Commit `cbca24d`)
