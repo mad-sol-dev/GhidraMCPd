@@ -1615,6 +1615,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `language_id` | string | Yes |  |
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
+  | `source_files` | array<object> | No |  |
 
   ```json
   {
@@ -1633,15 +1634,27 @@ All three routes share the standard per-request write guard. Each successful wri
     "memory_blocks": [
       {
         "end": "string",
+        "file_offset": 0,
         "initialized": false,
         "length": 0,
         "loaded": false,
         "name": "string",
         "rwx": "string",
+        "sha256": "string",
+        "source_file_index": 0,
         "start": "string"
       }
     ],
-    "program_name": "string"
+    "program_name": "string",
+    "source_files": [
+      {
+        "modified_sha256": "string",
+        "name": "string",
+        "original_sha256": "string",
+        "patched": false,
+        "size": 0
+      }
+    ]
   }
   ```
 
@@ -1667,6 +1680,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `language_id` | string | Yes |  |
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
+  | `source_files` | array<object> | No |  |
 
   ```json
   {
@@ -1685,15 +1699,27 @@ All three routes share the standard per-request write guard. Each successful wri
     "memory_blocks": [
       {
         "end": "string",
+        "file_offset": 0,
         "initialized": false,
         "length": 0,
         "loaded": false,
         "name": "string",
         "rwx": "string",
+        "sha256": "string",
+        "source_file_index": 0,
         "start": "string"
       }
     ],
-    "program_name": "string"
+    "program_name": "string",
+    "source_files": [
+      {
+        "modified_sha256": "string",
+        "name": "string",
+        "original_sha256": "string",
+        "patched": false,
+        "size": 0
+      }
+    ]
   }
   ```
 

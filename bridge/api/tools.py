@@ -467,8 +467,9 @@ def register_tools(
         """Identity and layout of the open program.
 
         Name, executable path, MD5/SHA-256, format, image base, language,
-        compiler spec, entry points, memory blocks (name, start, end, length,
-        rwx, loaded/initialized) and import/export counts.
+        compiler spec, entry points, memory blocks, import/export counts.
+        source_files: SHA-256 as imported vs. now (patched=true: bytes were
+        changed). Each block: file_offset and sha256 of its contents.
 
         Not for: locating anything -- it describes the container, not the
         contents. Takes no parameters."""

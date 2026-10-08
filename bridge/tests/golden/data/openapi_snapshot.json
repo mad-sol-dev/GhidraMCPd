@@ -2844,6 +2844,13 @@
                               "null"
                             ]
                           },
+                          "file_offset": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "initialized": {
                             "type": "boolean"
                           },
@@ -2863,6 +2870,20 @@
                           "rwx": {
                             "pattern": "^[r-][w-][x-]$",
                             "type": "string"
+                          },
+                          "sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "source_file_index": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           },
                           "start": {
                             "type": [
@@ -2886,6 +2907,52 @@
                     },
                     "program_name": {
                       "type": "string"
+                    },
+                    "source_files": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "modified_sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "original_sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "patched": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "size",
+                          "original_sha256",
+                          "modified_sha256",
+                          "patched"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [
@@ -2984,6 +3051,13 @@
                               "null"
                             ]
                           },
+                          "file_offset": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "initialized": {
                             "type": "boolean"
                           },
@@ -3003,6 +3077,20 @@
                           "rwx": {
                             "pattern": "^[r-][w-][x-]$",
                             "type": "string"
+                          },
+                          "sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "source_file_index": {
+                            "minimum": 0,
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           },
                           "start": {
                             "type": [
@@ -3026,6 +3114,52 @@
                     },
                     "program_name": {
                       "type": "string"
+                    },
+                    "source_files": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "modified_sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "original_sha256": {
+                            "pattern": "^[0-9a-f]{64}$",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "patched": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "size",
+                          "original_sha256",
+                          "modified_sha256",
+                          "patched"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [

@@ -111,6 +111,15 @@ class StubGhidraClient:
             "language_id": "ARM:LE:32:v7",
             "compiler_spec_id": "default",
             "entry_points": ["0x00100000"],
+            "source_files": [
+                {
+                    "name": "stub_program.bin",
+                    "size": 69632,
+                    "original_sha256": "a" * 64,
+                    "modified_sha256": "a" * 64,
+                    "patched": False,
+                }
+            ],
             "memory_blocks": [
                 {
                     "name": ".text",
@@ -120,6 +129,9 @@ class StubGhidraClient:
                     "rwx": "r-x",
                     "loaded": True,
                     "initialized": True,
+                    "source_file_index": 0,
+                    "file_offset": 0,
+                    "sha256": "b" * 64,
                 },
                 {
                     "name": ".data",
@@ -138,6 +150,9 @@ class StubGhidraClient:
                     "rwx": "rw-",
                     "loaded": True,
                     "initialized": False,
+                    "source_file_index": None,
+                    "file_offset": None,
+                    "sha256": None,
                 },
             ],
             "imports_count": len(self._imports),

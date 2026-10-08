@@ -17,6 +17,8 @@ import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.address.GlobalNamespace;
 import ghidra.program.model.listing.*;
 import ghidra.program.model.mem.MemoryBlock;
+import ghidra.program.model.mem.MemoryBlockSourceInfo;
+import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.scalar.Scalar;
 import ghidra.program.model.symbol.*;
@@ -81,6 +83,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -3748,7 +3751,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 : null);
 
             appendEntryPoints(sb, program);
-            appendMemoryBlocks(sb, program);
+            List<FileBytes> sourceFiles = program.getMemory().getAllFileBytes();
+            appendSourceFiles(sb, sourceFiles);
+            appendMemoryBlocks(sb, program, sourceFiles);
             appendCounts(sb, program);
             if (sb.charAt(sb.length() - 1) == ',') {
                 sb.setLength(sb.length() - 1);
@@ -3833,7 +3838,86 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         sb.append("],");
     }
 
-    private void appendMemoryBlocks(StringBuilder sb, Program program) {
+    /**
+     * Imported source files with two digests each: the bytes as imported and the
+     * bytes as they stand now. They differ as soon as anything in the database
+     * patched program bytes. Pattern taken from REA's Ghidra bridge (MIT).
+     */
+    private void appendSourceFiles(StringBuilder sb, List<FileBytes> files) {
+        sb.append("\"source_files\":[");
+        for (int i = 0; i < files.size(); i++) {
+            FileBytes file = files.get(i);
+            if (i > 0) {
+                sb.append(',');
+            }
+            String original = hashFileBytes(file, false);
+            String modified = hashFileBytes(file, true);
+            sb.append('{');
+            appendJsonField(sb, "name", file.getFilename());
+            sb.append("\"size\":").append(file.getSize()).append(',');
+            appendJsonField(sb, "original_sha256", original);
+            appendJsonField(sb, "modified_sha256", modified);
+            if (original == null || modified == null) {
+                sb.append("\"patched\":null");
+            }
+            else {
+                sb.append("\"patched\":").append(!original.equals(modified));
+            }
+            sb.append('}');
+        }
+        sb.append("],");
+    }
+
+    private String hashFileBytes(FileBytes source, boolean modified) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] chunk = new byte[65536];
+            long size = source.getSize();
+            for (long offset = 0; offset < size;) {
+                int length = (int) Math.min(chunk.length, size - offset);
+                int read = modified
+                    ? source.getModifiedBytes(offset, chunk, 0, length)
+                    : source.getOriginalBytes(offset, chunk, 0, length);
+                if (read != length) {
+                    return null;
+                }
+                digest.update(chunk, 0, read);
+                offset += read;
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        }
+        catch (Exception ex) {
+            Msg.warn(this, "Could not hash file bytes " + source.getFilename(), ex);
+            return null;
+        }
+    }
+
+    private String hashBlock(Program program, MemoryBlock block) {
+        if (!block.isInitialized()) {
+            return null;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] chunk = new byte[65536];
+            long size = block.getSize();
+            for (long offset = 0; offset < size;) {
+                int count = (int) Math.min(chunk.length, size - offset);
+                int read = program.getMemory().getBytes(block.getStart().add(offset), chunk, 0, count);
+                if (read != count) {
+                    return null;
+                }
+                digest.update(chunk, 0, read);
+                offset += read;
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        }
+        catch (Exception ex) {
+            Msg.warn(this, "Could not hash block " + block.getName(), ex);
+            return null;
+        }
+    }
+
+    private void appendMemoryBlocks(StringBuilder sb, Program program, List<FileBytes> sourceFiles) {
         List<MemoryBlock> blocks = new ArrayList<>();
         for (MemoryBlock block : program.getMemory().getBlocks()) {
             blocks.add(block);
@@ -3853,7 +3937,28 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             sb.append("\"length\":").append(block.getSize()).append(',');
             appendJsonField(sb, "rwx", buildPermissions(block));
             sb.append("\"loaded\":").append(block.isLoaded()).append(',');
-            sb.append("\"initialized\":").append(block.isInitialized());
+            sb.append("\"initialized\":").append(block.isInitialized()).append(',');
+            // A block backed by exactly one stretch of one source file gets that
+            // file and offset; anything else (no file, several pieces) gets null.
+            Integer sourceIndex = null;
+            Long fileOffset = null;
+            List<MemoryBlockSourceInfo> infos = block.getSourceInfos();
+            if (infos != null && infos.size() == 1) {
+                MemoryBlockSourceInfo info = infos.get(0);
+                FileBytes backing = info.getFileBytes().orElse(null);
+                if (backing != null && info.getFileBytesOffset() >= 0) {
+                    int index = sourceFiles.indexOf(backing);
+                    if (index >= 0) {
+                        sourceIndex = index;
+                        fileOffset = info.getFileBytesOffset();
+                    }
+                }
+            }
+            appendJsonField(sb, "source_file_index", sourceIndex);
+            appendJsonField(sb, "file_offset", fileOffset);
+            String blockHash = hashBlock(program, block);
+            sb.append("\"sha256\":");
+            sb.append(blockHash == null ? "null" : '"' + blockHash + '"');
             sb.append('}');
         }
         sb.append("],");

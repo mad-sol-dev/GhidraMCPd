@@ -30,6 +30,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {ANALYZE-POOL-CONSTANTS} Konstantenpool-Worte als eigener Abschnitt
 - {FIND-IN-FUNCTION-TEXT} fmt="text" fuer find_in_function
 - {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
+- {IMAGE-BASE-STALE} `image_base` meldet am ZK-Inkjet-Programm 0x00000000, der einzige Block liegt bei 0x00200000; 16 Einsprungpunkte bei 0x0/0xFFFF0000 zeigen auf nicht gemappten Speicher (ZK-Repo: Ghidra nimmt High Vectors an, CL-TOOL-REC-121). Die Linkbasis ist laut ZK-Repo 0x00058000 (CL-BOOT-REC-113), weder image_base noch Blockstart. Klaeren, ob das Programm korrigiert oder `project_info` die Abweichung melden soll. Gefunden 2026-10-08.
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints
@@ -40,6 +41,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {PROJECT-INFO-PROVENANCE} `project_info` belegt, welche Bytes antworten: `source_files` mit SHA-256 wie importiert und wie aktuell (`patched`), je Block `file_offset`, `source_file_index` und SHA-256 des Inhalts. Muster aus REAs Ghidra-Bridge (MIT). Verifiziert 2026-10-08 am ZK-Inkjet-Programm: alle vier Hashes = `3be9028b…` = `firmware/bin/ZK-INKJET-NANO-APP.bin`, `patched=false`, `flash` @0x00200000 = Dateioffset 0.
 - [x] {COLLECT-METADATA-REJECTED} `metadata` steht im Antwortschema von `collect`; der dokumentierte Parameter kommt unveraendert zurueck, statt die eigene Antwort ungueltig zu machen.
 - [x] {READ-BYTES-NOTE-WORDING} `read_bytes` beschreibt die kurze Antwort, nicht Nullen, die es dort nicht gibt.
 - [x] {FUNC-CHUNKS-THUNKS} `/functionsInRange?fields=extended` liefert Body-Spanne, `thunk=` und `chunks=`; Bridge zeigt `is_thunk`/`thunk_to`/`span_bytes`/`chunks` nur, wo sie etwas aussagen. Gegen das laufende Programm verifiziert (Thunk-Ziel, Chunks, Spanne).

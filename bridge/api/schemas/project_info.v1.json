@@ -28,6 +28,30 @@
         "type": "string"
       }
     },
+    "source_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "size",
+          "original_sha256",
+          "modified_sha256",
+          "patched"
+        ],
+        "properties": {
+          "name": {"type": ["string", "null"]},
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "original_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "modified_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "patched": {"type": ["boolean", "null"]}
+        }
+      }
+    },
     "memory_blocks": {
       "type": "array",
       "items": {
@@ -55,7 +79,10 @@
             "pattern": "^[r-][w-][x-]$"
           },
           "loaded": {"type": "boolean"},
-          "initialized": {"type": "boolean"}
+          "initialized": {"type": "boolean"},
+          "source_file_index": {"type": ["integer", "null"], "minimum": 0},
+          "file_offset": {"type": ["integer", "null"], "minimum": 0},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
         }
       }
     },
