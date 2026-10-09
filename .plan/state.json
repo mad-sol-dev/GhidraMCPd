@@ -545,6 +545,22 @@
     "RESPONSE-VALIDATION-MISLABELED": {
       "commit": "pending",
       "status": "todo"
+    },
+    "STAGE-8": {
+      "commit": "pending",
+      "status": "in-progress"
+    },
+    "IMAGE-BASE-STALE": {
+      "commit": "pending",
+      "status": "todo"
+    },
+    "DEAD-ALIAS-FIRST": {
+      "commit": "pending",
+      "status": "todo"
+    },
+    "PLAN-TESTS-RED": {
+      "commit": "pending",
+      "status": "done"
     }
   }
 }

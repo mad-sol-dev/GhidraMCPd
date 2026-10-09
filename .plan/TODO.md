@@ -15,7 +15,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 ## NEXT
 - {RESPONSE-VALIDATION-MISLABELED} **Eine fehlgeschlagene Antwort-Validierung wird dem Aufrufer als `INVALID_REQUEST` gemeldet.** An 29 Stellen in `bridge/api/tools.py` folgt auf `validate_payload("<tool>.v1.json", data)` ein `envelope_error(ErrorCode.INVALID_REQUEST, ...)`. Verletzt die Antwort ihr eigenes Schema, ist das ein Serverfehler, keine schlechte Anfrage — der Aufrufer sucht dann in seinen Parametern nach einem Fehler, den er nicht gemacht hat. Genau so trat {COLLECT-METADATA-REJECTED} in Erscheinung. `ErrorCode.INTERNAL` existiert bereits. Zu klären: einheitlich umstellen, und ob Bestandstests auf `INVALID_REQUEST` prüfen. Gefunden 2026-08-31 beim Beheben von {COLLECT-METADATA-REJECTED}.
 - {DEAD-ALIAS-FIRST} Tote Alias-Namen vorn in der Kandidatenliste kosten pro Aufruf eine 404: der Client wird pro Tool-Aufruf neu gebaut, der Resolver-Cache überlebt nichts. `FUNC_BY_ADDR` beginnt mit `function_by_addr`, `GET_XREFS_TO` mit `get_xrefs_to` — beide existieren im Plugin nicht. Lebenden Namen nach vorn oder tote streichen; `test_plugin_routes.py` kennt die Routen. Gefunden 2026-10-09 in Stufe 8b.
-- {PLAN-TESTS-RED} `bridge/tests/plan` ist rot, unabhängig von Stufe 8: abgelaufener Zeitstempel in den Agenten-Metadaten (seit vor `583ef6c`), und `STAGE-8`/`IMAGE-BASE-STALE` fehlen in `state.json`. Gefunden 2026-10-09.
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
@@ -44,6 +43,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {PLAN-TESTS-RED} `bridge/tests/plan` wieder grün: `STAGE-8`, `IMAGE-BASE-STALE`, `DEAD-ALIAS-FIRST` in `state.json` und Manifest nachgetragen, `AGENT_LOCK`-Lease auf `main` bis 2026-10-23 verlängert. Der Lease-Test schlägt nach Ablauf erneut an — so gebaut, kein Fehler.
 - [x] {PROJECT-INFO-PROVENANCE} `project_info` belegt, welche Bytes antworten: `source_files` mit SHA-256 wie importiert und wie aktuell (`patched`), je Block `file_offset`, `source_file_index` und SHA-256 des Inhalts. Muster aus REAs Ghidra-Bridge (MIT). Verifiziert 2026-10-08 am ZK-Inkjet-Programm: alle vier Hashes = `3be9028b…` = `firmware/bin/ZK-INKJET-NANO-APP.bin`, `patched=false`, `flash` @0x00200000 = Dateioffset 0.
 - [x] {COLLECT-METADATA-REJECTED} `metadata` steht im Antwortschema von `collect`; der dokumentierte Parameter kommt unveraendert zurueck, statt die eigene Antwort ungueltig zu machen.
 - [x] {READ-BYTES-NOTE-WORDING} `read_bytes` beschreibt die kurze Antwort, nicht Nullen, die es dort nicht gibt.

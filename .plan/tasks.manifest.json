@@ -783,6 +783,63 @@
         "ErrorCode.INTERNAL already exists.",
         "Found while fixing COLLECT-METADATA-REJECTED, which presented as a 400 blaming a request that was correct."
       ]
+    },
+    {
+      "id": "STAGE-8",
+      "title": "Die Naht zwischen Plugin und Bridge (Rework-Stufe 8)",
+      "area": "plugin, bridge",
+      "depends_on": [],
+      "status": "in-progress",
+      "dod": [
+        "8a: Plugin bindet nur auf Loopback, abgenommen per scripts/check_plugin_bind.sh",
+        "8b: kein Tool ohne Plugin-Route, abgesichert durch bridge/tests/unit/test_plugin_routes.py",
+        "8c: /disassembleAt und /disassemble_function liefern fmt=json; mmio/analyze/strings lesen Felder statt Operandentext",
+        "8d: /functionsInRange liefert JSON"
+      ],
+      "notes": [
+        "Plan und Ergebnisse in ghidramcpd-rework.md, Stufe 8.",
+        "8a abgenommen 2026-10-09 (62498c6), 8b 2026-10-09 (d2ae916)."
+      ]
+    },
+    {
+      "id": "IMAGE-BASE-STALE",
+      "title": "project_info meldet image_base 0x0, der einzige Block liegt bei 0x00200000",
+      "area": "plugin, bridge",
+      "depends_on": [],
+      "status": "todo",
+      "dod": [
+        "Klaeren, ob das ZK-Inkjet-Programm korrigiert oder project_info die Abweichung zwischen image_base und Blockstart melden soll"
+      ],
+      "notes": [
+        "Gefunden 2026-10-08. Linkbasis laut ZK-Repo 0x00058000 (CL-BOOT-REC-113, CL-TOOL-REC-121)."
+      ]
+    },
+    {
+      "id": "DEAD-ALIAS-FIRST",
+      "title": "Tote Alias-Namen vorn in der Kandidatenliste kosten pro Aufruf eine 404",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "todo",
+      "dod": [
+        "FUNC_BY_ADDR und GET_XREFS_TO beginnen mit einem Namen, den das Plugin bedient",
+        "Gemessen: ein Aufruf erzeugt keine 404 mehr vorweg"
+      ],
+      "notes": [
+        "Der Client wird pro Tool-Aufruf neu gebaut, der Resolver-Cache ueberlebt keinen Aufruf. Gefunden 2026-10-09 in Stufe 8b."
+      ]
+    },
+    {
+      "id": "PLAN-TESTS-RED",
+      "title": "bridge/tests/plan ist rot",
+      "area": "plan",
+      "depends_on": [],
+      "status": "done",
+      "dod": [
+        "scripts/run_tests.sh laeuft ohne Fehler in bridge/tests/plan"
+      ],
+      "notes": [
+        "Abgelaufener AGENT_LOCK-Lease und fehlende IDs in state.json/manifest. Gefunden 2026-10-09."
+      ]
     }
   ]
 }
