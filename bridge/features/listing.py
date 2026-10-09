@@ -23,6 +23,8 @@ from ..utils.hex import int_to_hex
 
 __all__ = [
     "FORMATS",
+    "ListingUnavailable",
+    "structured_listing",
     "compile_query",
     "coverage",
     "coverage_fields",
@@ -35,6 +37,25 @@ __all__ = [
 
 #: Accepted values for the ``fmt`` parameter.
 FORMATS = ("json", "text")
+
+
+class ListingUnavailable(RuntimeError):
+    """The plugin gave no structured listing; nothing can be classified."""
+
+
+def structured_listing(client: Any, address: int) -> Mapping[str, Any]:
+    """The function's structured listing, or ListingUnavailable with the reason.
+
+    A missing listing must not become an empty one: "no instructions" reads as
+    a statement about the function, when it is a statement about the plugin.
+    """
+
+    listing = client.disassemble_function_structured(address)
+    if listing is None:
+        error = getattr(client, "last_error", None)
+        reason = getattr(error, "reason", None) or "structured disassembly unavailable"
+        raise ListingUnavailable(f"cannot disassemble {int_to_hex(address)}: {reason}")
+    return listing
 
 
 def normalize_fmt(value: object) -> str:

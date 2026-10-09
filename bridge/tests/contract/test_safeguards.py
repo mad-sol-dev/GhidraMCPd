@@ -66,7 +66,9 @@ def test_string_xrefs_safeguard(contract_client: TestClient) -> None:
     assert len(callers) == 4
     first = callers[0]
     assert first["addr"] == "0x00100000"
-    assert "dispatch_handler" in first["context"]
+    # The plugin renders a call with its target address, not a name.
+    assert "bl 0x00101000" in first["context"]
+    assert first["hint"] == "0x00101000"
 
 
 def test_mmio_annotate_safeguard(contract_client: TestClient) -> None:

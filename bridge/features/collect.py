@@ -13,6 +13,7 @@ from ..utils.logging import (
     increment_counter,
 )
 from .analyze import _estimate_tokens
+from .listing import ListingUnavailable
 from . import batch_ops, disasm, exports, functions, imports, memory, scalars, strings, xrefs
 
 
@@ -436,6 +437,8 @@ def execute_collect(
             payload = handler(client, params_raw)
         except SafetyLimitExceeded as exc:
             envelope = _envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+        except ListingUnavailable as exc:
+            envelope = _envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         except (KeyError, TypeError, ValueError) as exc:
             envelope = _envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
         else:

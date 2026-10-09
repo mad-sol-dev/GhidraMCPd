@@ -11,6 +11,8 @@ def insn(
     registers: tuple[str, ...] = ("r0",),
     imm: Optional[int] = None,
     ref: Optional[tuple[int, str, bool]] = None,
+    text: Optional[str] = None,
+    flow: str = "fallthrough",
 ) -> Dict[str, object]:
     """One instruction record: a register operand, optionally a bare immediate
     and one reference ``(to, type, mapped)``."""
@@ -24,7 +26,10 @@ def insn(
         refs.append({"to": f"0x{to:08x}", "type": kind, "op": 1, "mapped": mapped})
     return {
         "address": f"0x{address:08x}",
+        "bytes": "",
         "mnemonic": mnemonic,
+        "text": text if text is not None else mnemonic,
+        "flow": flow,
         "operands": operands,
         "refs": refs,
     }

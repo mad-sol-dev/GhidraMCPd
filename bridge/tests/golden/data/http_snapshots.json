@@ -20,7 +20,7 @@
         "signature": null
       },
       "meta": {
-        "estimate_tokens": 223,
+        "estimate_tokens": 221,
         "fields": [
           "features",
           "function",
@@ -60,10 +60,10 @@
         ],
         "outbound": [
           {
-            "context": "BL jump_table_target",
+            "context": "bl 0x00102005",
             "from_address": "0x00102008",
-            "name": "jump_table_target",
-            "to_address": null,
+            "name": "thumb_stub",
+            "to_address": "0x00102005",
             "type": "BL"
           }
         ],
@@ -349,15 +349,15 @@
       "callers": [
         {
           "addr": "0x00005000",
-          "arg_index": 0,
-          "context": "00005000: BL log_debug | 00005004: MOV R0, R1 | 0000500C: BL helper_printf",
-          "hint": "log_debug"
+          "arg_index": 1,
+          "context": "00005000: adr r1,0x200000 | 00005004: bl 0x00102005",
+          "hint": "0x00102005"
         },
         {
           "addr": "0x00006000",
           "arg_index": 0,
-          "context": "00006000: LDR R0, =0x00200000 | 00006004: MOV R1, R4 | 00006008: BL printf",
-          "hint": "printf"
+          "context": "00006000: ldr r0,[0x6100] | 00006004: mov r1,r4 | 00006008: bl 0x00102004",
+          "hint": "0x00102004"
         }
       ],
       "count": 2,

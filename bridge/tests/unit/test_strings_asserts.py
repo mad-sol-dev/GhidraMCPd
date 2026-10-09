@@ -1,4 +1,5 @@
 from bridge.features.strings import xrefs_compact
+from bridge.tests.listing_records import insn, listing
 
 
 class RecordingClient:
@@ -7,14 +8,15 @@ class RecordingClient:
         self._disassembly_map = dict(disassembly_map)
         self.last_limit = None
         self.disasm_calls = []
+        self.last_error = None
 
     def get_xrefs_to(self, address, *, limit=50):
         self.last_limit = limit
         return list(self._xrefs)
 
-    def disassemble_function(self, address):
+    def disassemble_function_structured(self, address):
         self.disasm_calls.append(address)
-        return list(self._disassembly_map.get(address, []))
+        return listing(address, [insn(address, "mov")]) if address in self._disassembly_map else None
 
 
 def test_xrefs_compact_records_limit_and_disassembly_calls():

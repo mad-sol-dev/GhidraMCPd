@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from ...features import analyze
+from ...features.listing import ListingUnavailable
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
@@ -53,6 +54,8 @@ def create_analysis_routes(deps: RouteDependencies) -> List[Route]:
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except ListingUnavailable as exc:
+                return error_response(ErrorCode.UNAVAILABLE, str(exc))
             except ValueError as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
 

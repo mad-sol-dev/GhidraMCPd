@@ -424,6 +424,15 @@ class StubGhidraClient:
             ])
         if address == 0x00007000:
             return listing(address, list(UNPLACED_0x7000))
+        if address in self._functions:
+            call = insn(address + 4, "bl", text="bl 0x00101000", flow="call",
+                        ref=(0x00101000, "UNCONDITIONAL_CALL", True))
+            call["targets"] = ["0x00101000"]
+            return listing(address, [
+                insn(address, "push", text="push {lr}"),
+                call,
+                insn(address + 8, "adr", text="adr r0,0x200000", ref=(0x00200000, "PARAM", True)),
+            ])
         return listing(address, [])
 
     def disassemble_function(self, address: int):

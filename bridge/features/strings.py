@@ -1,10 +1,9 @@
 """Compact string cross reference helpers."""
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import STRUCTURED_LISTING_UNSUPPORTED, GhidraClient
 from ..utils.cache import (
     build_search_cache_key,
     get_program_digest,
@@ -12,6 +11,7 @@ from ..utils.cache import (
     normalize_search_query,
 )
 from ..utils.hex import int_to_hex, parse_hex
+from .listing import ListingUnavailable
 from ..utils.config import MAX_ITEMS_PER_BATCH
 from ..utils.logging import (
     SafetyLimitExceeded,
@@ -68,63 +68,92 @@ _REGISTER_ARG_ORDER = {
     "ecx": 3,
 }
 
-_CALL_PATTERN = re.compile(r"\b(?:call|bl|blx|jal|jalr)\b", re.IGNORECASE)
-_CALL_TARGET_PATTERN = re.compile(
-    r"\b(?:call|bl|blx|jal|jalr)\b\s+([A-Za-z0-9_.$@+-]+)", re.IGNORECASE
-)
-
-
 def _normalize_context(text: str, *, max_len: int = 140) -> str:
     normalized = " ".join(text.strip().split())
     return normalized[:max_len]
 
 
-def _find_instruction_index(lines: Sequence[str], address: int) -> Optional[int]:
-    if not lines:
-        return None
-    target_hex = f"{address:08X}"
-    alt_hex = target_hex.lstrip("0") or "0"
-    for idx, line in enumerate(lines):
-        head, _, _ = line.partition(":")
-        token = head.strip().upper()
-        if token.startswith("0X"):
-            token = token[2:]
-        if token in {target_hex, alt_hex}:
+def _line(insn: Mapping[str, Any]) -> str:
+    """The text route's line shape: ``002af9c4: adr r1,0x2afb10 ; comment``."""
+
+    address = str(insn.get("address", "")).lower().removeprefix("0x")
+    text = str(insn.get("text") or "")
+    comment = insn.get("comment")
+    return _normalize_context(f"{address}: {text} ; {comment}" if comment else f"{address}: {text}")
+
+
+def _refs_to(insn: Mapping[str, Any], target: int) -> List[Mapping[str, Any]]:
+    found = []
+    for ref in insn.get("refs") or ():
+        if isinstance(ref, Mapping) and "space" not in ref:
+            try:
+                if int(str(ref.get("to")), 16) == target:
+                    found.append(ref)
+            except ValueError:
+                continue
+    return found
+
+
+def _find_referencing_instruction(
+    instructions: Sequence[Mapping[str, Any]], *, ref_addr: int, string_addr: int
+) -> Optional[int]:
+    """Index of the instruction that brings the string into a register.
+
+    In order: the instruction at the reference itself; one that references the
+    string directly (``adr``); one that loads the pool slot the reference comes
+    from.  The last case is the usual one on ARM -- the xref belongs to the
+    pool word, not to the ``ldr`` -- and the text scan this replaces never
+    found it.
+    """
+
+    for idx, insn in enumerate(instructions):
+        if str(insn.get("address", "")).lower() == f"0x{ref_addr:08x}":
+            return idx
+    for idx, insn in enumerate(instructions):
+        if _refs_to(insn, string_addr):
+            return idx
+    for idx, insn in enumerate(instructions):
+        if any(ref.get("type") == "READ" for ref in _refs_to(insn, ref_addr)):
             return idx
     return None
 
 
-def _collect_snippet(lines: Sequence[str], start: int) -> List[str]:
-    snippet = [lines[start]]
+def _collect_snippet(instructions: Sequence[Mapping[str, Any]], start: int) -> List[Mapping[str, Any]]:
+    """The referencing instruction, then up to the next call within four."""
+
+    snippet = [instructions[start]]
     for offset in range(1, 5):
-        if start + offset >= len(lines):
+        if start + offset >= len(instructions):
             break
-        candidate = lines[start + offset]
-        if _CALL_PATTERN.search(candidate):
+        candidate = instructions[start + offset]
+        if candidate.get("flow") == "call":
             snippet.append(candidate)
             break
         if len(snippet) == 1:
             snippet.append(candidate)
-            # keep looking in case of call later but avoid long tails
     return snippet
 
 
-def _guess_arg_index(snippet: Iterable[str]) -> Optional[int]:
-    for line in snippet:
-        lower = line.lower()
-        for reg, index in _REGISTER_ARG_ORDER.items():
-            if re.search(rf"\b{re.escape(reg)}\b", lower):
-                return index
-    return None
+def _arg_index(insn: Mapping[str, Any]) -> Optional[int]:
+    """The argument slot of the register the string is loaded into."""
+
+    operands = insn.get("operands") or ()
+    if not operands or not isinstance(operands[0], Mapping):
+        return None
+    registers = operands[0].get("registers") or ()
+    if len(registers) != 1:
+        return None
+    return _REGISTER_ARG_ORDER.get(str(registers[0]).lower())
 
 
-def _guess_hint(snippet: Sequence[str]) -> Optional[str]:
-    for line in snippet:
-        match = _CALL_TARGET_PATTERN.search(line)
-        if match:
-            return match.group(1)
-    for line in snippet:
-        lower = line.lower()
+def _call_hint(snippet: Sequence[Mapping[str, Any]]) -> Optional[str]:
+    for insn in snippet:
+        if insn.get("flow") == "call":
+            targets = insn.get("targets") or ()
+            if targets:
+                return str(targets[0])
+    for insn in snippet:
+        lower = _line(insn).lower()
         for keyword in ("printf", "sprintf", "snprintf", "log", "error", "panic", "print"):
             if keyword in lower:
                 return keyword
@@ -138,27 +167,23 @@ def _extract_context(
     ref_addr: int,
     fallback: str,
 ) -> Tuple[str, Optional[int], Optional[str]]:
-    disasm = client.disassemble_function(ref_addr)
-    lines = [_normalize_context(line) for line in disasm if line.strip()]
-    if not lines:
+    listing = client.disassemble_function_structured(ref_addr)
+    if listing is None:
+        error = getattr(client, "last_error", None)
+        if getattr(error, "reason", None) == STRUCTURED_LISTING_UNSUPPORTED:
+            # Not "this reference has no function": the plugin cannot answer
+            # for any of them, and the fallback would hide that.
+            raise ListingUnavailable(f"cannot disassemble {int_to_hex(ref_addr)}: {error.reason}")
         return (_normalize_context(fallback) if fallback else "", None, None)
 
-    idx = _find_instruction_index(lines, ref_addr)
-    if idx is None:
-        string_hex = f"{string_addr:08X}"
-        for i, line in enumerate(lines):
-            if string_hex in line.replace("0x", "0X").upper():
-                idx = i
-                break
+    instructions = [insn for insn in listing.get("instructions") or () if isinstance(insn, Mapping)]
+    idx = _find_referencing_instruction(instructions, ref_addr=ref_addr, string_addr=string_addr)
     if idx is None:
         return (_normalize_context(fallback) if fallback else "", None, None)
 
-    snippet_lines = _collect_snippet(lines, idx)
-    snippet = " | ".join(snippet_lines)
-    snippet = _normalize_context(snippet)
-    arg_index = _guess_arg_index(snippet_lines)
-    hint = _guess_hint(snippet_lines)
-    return (snippet or _normalize_context(fallback), arg_index, hint)
+    snippet_insns = _collect_snippet(instructions, idx)
+    snippet = _normalize_context(" | ".join(_line(insn) for insn in snippet_insns))
+    return (snippet or _normalize_context(fallback), _arg_index(instructions[idx]), _call_hint(snippet_insns))
 
 
 def xrefs_compact(client: GhidraClient, *, string_addr: int, limit: int = 20) -> Dict[str, object]:

@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List, Mapping, Optional
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
 from ..utils.hex import int_to_hex
+from .listing import ListingUnavailable, structured_listing
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
 
 
@@ -138,10 +139,6 @@ _NOTE_WRITES_DISABLED = "writes disabled: annotations were not applied"
 _NOTE_DRY_RUN = "dry-run requested: annotations were not applied"
 
 
-class ListingUnavailable(RuntimeError):
-    """The plugin gave no structured listing; nothing can be classified."""
-
-
 class WritesDisabledError(RuntimeError):
     """Retained for backwards compatibility (no longer raised)."""
 
@@ -157,11 +154,7 @@ def annotate(
     increment_counter("mmio.annotate.calls")
 
     enforce_batch_limit(max_samples, counter="mmio.max_samples")
-    listing = client.disassemble_function_structured(function_addr)
-    if listing is None:
-        error = getattr(client, "last_error", None)
-        reason = getattr(error, "reason", None) or "structured disassembly unavailable"
-        raise ListingUnavailable(f"cannot classify {int_to_hex(function_addr)}: {reason}")
+    listing = structured_listing(client, function_addr)
     operations, skipped = _collect_operations(listing["instructions"])
 
     reads = sum(1 for op in operations if op.op == "READ")
@@ -227,4 +220,4 @@ def _format_comment(operation: _Operation) -> str:
     return f"MMIO {action} target {target}"
 
 
-__all__ = ["annotate", "ListingUnavailable", "WritesDisabledError"]
+__all__ = ["annotate", "WritesDisabledError"]

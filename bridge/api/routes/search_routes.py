@@ -16,6 +16,7 @@ from ...features import (
     xrefs,
 )
 from ...ghidra.client import GhidraClient
+from ...features.listing import ListingUnavailable
 from ...utils.errors import ErrorCode
 from ...utils.hex import int_to_hex, parse_hex
 from ...utils.logging import (
@@ -63,6 +64,8 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                     string_addr=parse_hex(str(data["string_addr"])),
                     limit=int(data.get("limit", 50)),
                 )
+            except ListingUnavailable as exc:
+                return error_response(ErrorCode.UNAVAILABLE, str(exc))
             except (KeyError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:

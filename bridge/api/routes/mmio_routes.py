@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from ...features import mmio
+from ...features.listing import ListingUnavailable
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
@@ -41,7 +42,7 @@ def create_mmio_routes(deps: RouteDependencies) -> List[Route]:
                     "Writes are disabled while dry_run is false.",
                     recovery=("Enable writes or run in dry_run mode.",),
                 )
-            except mmio.ListingUnavailable as exc:
+            except ListingUnavailable as exc:
                 return error_response(ErrorCode.UNAVAILABLE, str(exc))
             except (KeyError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from bridge.features import analyze
+from bridge.tests.listing_records import insn, listing
 
 
 class StubClient:
@@ -20,13 +21,18 @@ class StubClient:
             "signature": "int sub_1000(void)",
         }
 
-    def disassemble_function(self, address: int) -> List[str]:
-        return [
-            "00001000: AABB PUSH {lr}",
-            "00001004: 0011 BL callee_func",
-            "00001008: 2233 LDR R0, =0x00003000",
-            "0000100C: 4455 BL 0x00002000",
-        ]
+    def disassemble_function_structured(self, address: int) -> Dict[str, object]:
+        # The shapes the plugin returns on the reference program: a call
+        # carries an UNCONDITIONAL_CALL reference, and a string address is
+        # loaded with adr, which Ghidra references as PARAM (0x002af9c4).
+        return listing(address, [
+            insn(0x1000, "push", text="push {lr}"),
+            insn(0x1004, "bl", text="bl 0x00001500", flow="call",
+                 ref=(0x1500, "UNCONDITIONAL_CALL", True)),
+            insn(0x1008, "adr", text="adr r0,0x3000", ref=(0x3000, "PARAM", True)),
+            insn(0x100C, "bl", text="bl 0x00002000", flow="call",
+                 ref=(0x2000, "UNCONDITIONAL_CALL", True)),
+        ])
 
     def get_xrefs_to(self, address: int, *, limit: int = 50):
         return [

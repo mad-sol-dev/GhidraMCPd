@@ -1,6 +1,7 @@
 import pytest
 
 from bridge.features import mmio
+from bridge.features.listing import ListingUnavailable
 
 
 def _insn(address, mnemonic, *, ref=None, imm=None, registers=("r0",)):
@@ -158,5 +159,5 @@ def test_a_plugin_without_structured_listing_is_reported_not_emptied():
             self.last_error = type("E", (), {"reason": "the Ghidra plugin answered without JSON"})()
             return None
 
-    with pytest.raises(mmio.ListingUnavailable, match="without JSON"):
+    with pytest.raises(ListingUnavailable, match="without JSON"):
         mmio.annotate(OldPlugin([]), function_addr=0x400000)

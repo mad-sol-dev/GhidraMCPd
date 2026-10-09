@@ -33,6 +33,13 @@ logger = logging.getLogger("ghidra.bridge.client")
 
 T = TypeVar("T")
 
+#: ``last_error.reason`` when the plugin ignores ``fmt=json``.  Callers that may
+#: fall back for a missing *function* must still fail loudly on this.
+STRUCTURED_LISTING_UNSUPPORTED = (
+    "the Ghidra plugin answered without JSON; it predates structured "
+    "disassembly -- rebuild and reinstall the extension"
+)
+
 
 ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "DISASSEMBLE": ("disassemble", "disassemble_function", "disasmByAddr"),
@@ -792,12 +799,7 @@ class GhidraClient:
         if payload is None:
             if self._last_error is None:
                 self._last_error = RequestError(
-                    status=None,
-                    reason=(
-                        "the Ghidra plugin answered without JSON; it predates "
-                        "structured disassembly -- rebuild and reinstall the extension"
-                    ),
-                    retryable=False,
+                    status=None, reason=STRUCTURED_LISTING_UNSUPPORTED, retryable=False
                 )
             return None
         if not isinstance(payload.get("instructions"), list):
@@ -1470,4 +1472,5 @@ __all__ = [
     "GhidraClient",
     "POST_ENDPOINT_CANDIDATES",
     "RequestError",
+    "STRUCTURED_LISTING_UNSUPPORTED",
 ]

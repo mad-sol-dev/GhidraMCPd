@@ -1,4 +1,18 @@
-"""Function dossier aggregation helpers."""
+"""Function dossier aggregation helpers.
+
+Instructions, calls and string candidates come from the plugin's structured
+listing: call targets from Ghidra's CALL references, string candidates from
+references into the image (rework stage 8c).  No operand text is taken apart.
+
+Text that is still parsed, and why it is not operand text:
+
+* the prose of ``get_function_by_address`` (``name at addr``, ``a-b``) -- the
+  plugin's function-metadata route, outside stage 8c's scope;
+* the inbound xref context (``... in caller [CALL]``) -- the xref route's own
+  format, likewise;
+* escaped bytes in a C string (``_ESCAPED_BYTE``) -- string content, measured
+  for printability.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +21,7 @@ from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequ
 
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex
+from .listing import structured_listing
 from ..utils.logging import enforce_batch_limit, increment_counter
 from ..utils.tokens import estimate_tokens
 
@@ -37,17 +52,6 @@ _DEFAULT_FIELDS: Tuple[str, ...] = (
     "features",
 )
 
-_CALL_OPCODE = re.compile(r"\b(?:BL|BLX|CALL|JAL|JALR)\b", re.IGNORECASE)
-_HEX_ADDRESS = re.compile(r"0x[0-9A-Fa-f]{4,}")
-_REGISTER_TOKENS = {
-    *(f"r{i}" for i in range(16)),
-    *(f"x{i}" for i in range(31)),
-    *(f"w{i}" for i in range(31)),
-    "lr",
-    "pc",
-    "sp",
-    "ip",
-}
 
 
 class AnalyzeConfig:
@@ -131,7 +135,7 @@ def analyze_function_complete(
         requested.intersection({"disasm", "xrefs", "callgraph", "strings", "features"})
     )
     if needs_disasm:
-        disasm_entries = _parse_disasm(client.disassemble_function(entry_point))
+        disasm_entries = _listing_entries(client, entry_point)
         if "disasm" in requested:
             disasm_data, disasm_truncated = _build_disasm_window(
                 disasm_entries,
@@ -372,32 +376,37 @@ def _parse_intish(value: object) -> Optional[int]:
         return None
 
 
-def _parse_disasm(lines: Sequence[str]) -> List[Dict[str, object]]:
+def _listing_entries(client: GhidraClient, entry_point: int) -> List[Dict[str, object]]:
+    """The function's instructions from the plugin's structured listing.
+
+    ``text`` keeps the shape the text route gave -- instruction, then
+    ``; comment`` -- and ``refs``/``flow``/``mnemonic`` carry what used to be
+    read back out of that text.  Without a structured listing there is nothing
+    to analyse honestly, so this raises instead of returning an empty list
+    that would read as a function without instructions.
+    """
+
+    listing = structured_listing(client, entry_point)
     entries: List[Dict[str, object]] = []
-    for raw in lines:
-        line = raw.strip()
-        if not line or ":" not in line:
+    for insn in listing["instructions"]:
+        if not isinstance(insn, Mapping):
             continue
-        head, rest = line.split(":", 1)
-        addr = _parse_intish(head.strip())
+        addr = _parse_intish(insn.get("address"))
         if addr is None:
             continue
-        body = rest.strip()
-        bytes_part = ""
-        text_part = body
-        if body:
-            parts = body.split(None, 1)
-            if parts:
-                candidate = parts[0].strip()
-                if candidate and all(c in "0123456789ABCDEFabcdef" for c in candidate):
-                    bytes_part = candidate
-                    text_part = parts[1] if len(parts) > 1 else ""
+        text = str(insn.get("text") or "")
+        comment = insn.get("comment")
+        if comment:
+            text = f"{text} ; {comment}"
         entries.append(
             {
                 "address_int": addr,
                 "address": int_to_hex(addr),
-                "bytes": bytes_part,
-                "text": text_part.strip(),
+                "bytes": str(insn.get("bytes") or ""),
+                "text": text,
+                "mnemonic": str(insn.get("mnemonic") or ""),
+                "flow": str(insn.get("flow") or ""),
+                "refs": [ref for ref in insn.get("refs") or () if isinstance(ref, Mapping)],
             }
         )
     entries.sort(key=lambda item: item["address_int"])
@@ -583,35 +592,25 @@ def _extract_call_references(
     cache: MutableMapping[int, Optional[str]] = {}
     results: List[Dict[str, object]] = []
     for entry in entries:
-        text = entry.get("text", "")
-        match = _CALL_OPCODE.search(text)
-        if not match:
+        if entry.get("flow") != "call":
             continue
-        tail = text[match.end() :].strip()
-        if not tail:
+        # A computed call (blx r3) has no reference and no target to name.
+        call_refs = [ref for ref in entry.get("refs", ()) if "CALL" in str(ref.get("type", ""))]
+        if not call_refs:
             continue
-        target_token = tail.split()[0]
-        token = target_token.strip().lstrip("#=").rstrip(",;")
-        if not token or token.lower() in _REGISTER_TOKENS or token.endswith("]"):
+        target_address = _parse_intish(call_refs[0].get("to"))
+        if target_address is None:
             continue
-        target_address = _parse_intish(token)
-        target_hex = None
-        target_name = None
-        if target_address is not None:
-            if target_address not in cache:
-                meta = client.get_function_by_address(target_address)
-                cache[target_address] = (meta or {}).get("name") if isinstance(meta, Mapping) else None
-            target_name = cache[target_address]
-            target_hex = int_to_hex(target_address)
-        else:
-            target_name = token
+        if target_address not in cache:
+            meta = client.get_function_by_address(target_address)
+            cache[target_address] = (meta or {}).get("name") if isinstance(meta, Mapping) else None
         results.append(
             {
                 "from_address": entry.get("address", ""),
-                "to_address": target_hex,
-                "name": target_name,
-                "type": match.group(0).upper(),
-                "context": text,
+                "to_address": int_to_hex(target_address),
+                "name": cache[target_address],
+                "type": str(entry.get("mnemonic", "")).upper(),
+                "context": entry.get("text", ""),
             }
         )
         if len(results) >= limit:
@@ -685,12 +684,15 @@ def _collect_strings(
     for entry in entries:
         if len(results) >= limit:
             break
-        text = str(entry.get("text", ""))
-        if _BRANCH_OPCODE.match(text):
-            # The operand is where control goes, not something to read.
+        if entry.get("flow") != "fallthrough":
+            # A branch or call operand is where control goes, not something to
+            # read: a C string at a call target is the callee's first bytes.
             continue
-        for token in _HEX_ADDRESS.findall(text):
-            addr = _parse_intish(token)
+        for ref in entry.get("refs", ()):
+            # Only targets inside the image can hold text this program carries.
+            if not ref.get("mapped") or "space" in ref:
+                continue
+            addr = _parse_intish(ref.get("to"))
             if addr is None or addr in seen:
                 continue
             seen.add(addr)
@@ -721,16 +723,6 @@ _ESCAPED_BYTE = re.compile(r"\\x[0-9a-fA-F]{2}")
 
 #: Shortest run of bytes reported as a string.
 _MIN_STRING_BYTES = 4
-
-#: Instructions whose operand is a code address, not data.  Reading a C string
-#: at a branch target yields the callee's first bytes -- "|@-\\xe9" is
-#: stmdb sp!,{...} -- which is printable often enough to pass any content test.
-_BRANCH_OPCODE = re.compile(
-    r"^\s*(?:BL|BLX|BX|B|BEQ|BNE|BCS|BHS|BCC|BLO|BMI|BPL|BVS|BVC|BHI|BLS|BGE|BLT|BGT|BLE|BAL"
-    r"|CALL|JMP|JAL|JALR)\b",
-    re.IGNORECASE,
-)
-
 
 def _decoded_view(value: str) -> str:
     """Collapse each escaped byte to one placeholder that is not printable.

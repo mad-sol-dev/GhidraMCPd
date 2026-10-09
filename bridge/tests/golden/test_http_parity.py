@@ -11,7 +11,7 @@ from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
 from bridge.ghidra.client import DataTypeOperationResult
-from bridge.tests.listing_records import UNPLACED_0x7000, listing
+from bridge.tests.listing_records import UNPLACED_0x7000, insn, listing
 
 
 _DATA_DIR = Path(__file__).parent / "data"
@@ -210,6 +210,33 @@ class GoldenStubGhidraClient:
     def disassemble_function_structured(self, address: int) -> Dict[str, object]:
         if address == 0x00007000:
             return listing(address, list(UNPLACED_0x7000))
+        if address in (0x00005000, 0x00006000):
+            # The two shapes a string reaches a register in on ARM: adr with a
+            # PARAM reference, and a load from the pool slot holding its address.
+            def call(at: int, target: int) -> Dict[str, object]:
+                record = insn(at, "bl", text=f"bl 0x{target:08x}", flow="call",
+                              ref=(target, "UNCONDITIONAL_CALL", True))
+                record["targets"] = [f"0x{target:08x}"]
+                return record
+
+            if address == 0x00005000:
+                return listing(address, [
+                    insn(0x5000, "adr", registers=("r1",), text="adr r1,0x200000",
+                         ref=(0x200000, "PARAM", True)),
+                    call(0x5004, 0x00102005),
+                ])
+            return listing(address, [
+                insn(0x6000, "ldr", text="ldr r0,[0x6100]", ref=(0x6100, "READ", True)),
+                insn(0x6004, "mov", registers=("r1", "r4"), text="mov r1,r4"),
+                call(0x6008, 0x00102004),
+            ])
+        if address == 0x00102004:
+            return listing(address, [
+                insn(0x102004, "push", text="push {r4,lr}"),
+                insn(0x102008, "bl", text="bl 0x00102005", flow="call",
+                     ref=(0x102005, "UNCONDITIONAL_CALL", True)),
+                insn(0x10200C, "adr", text="adr r0,0x200000", ref=(0x200000, "PARAM", True)),
+            ])
         return listing(address, [])
 
     def decompile_function(self, address: int) -> Optional[str]:

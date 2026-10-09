@@ -28,6 +28,7 @@ from ..features import (
     xrefs,
 )
 from ..features import listing, mutations
+from ..features.listing import ListingUnavailable
 from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
@@ -1189,6 +1190,8 @@ def register_tools(
                 )
             except SafetyLimitExceeded as exc:
                 return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except ListingUnavailable as exc:
+                return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
             except ValueError as exc:
                 return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
 
@@ -1769,11 +1772,14 @@ def register_tools(
             logger=logger,
             extra={"tool": "string_xrefs_compact"},
         ):
-            data = strings.xrefs_compact(
-                client,
-                string_addr=parse_hex(string_addr),
-                limit=limit,
-            )
+            try:
+                data = strings.xrefs_compact(
+                    client,
+                    string_addr=parse_hex(string_addr),
+                    limit=limit,
+                )
+            except ListingUnavailable as exc:
+                return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("string_xrefs.v1.json", data)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
@@ -2208,7 +2214,7 @@ def register_tools(
                 ErrorCode.INVALID_REQUEST,
                 "Writes are disabled while dry_run is false.",
             )
-        except mmio.ListingUnavailable as exc:
+        except ListingUnavailable as exc:
             return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("mmio_annotate.v1.json", data)
         if not valid:
