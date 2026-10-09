@@ -840,6 +840,22 @@
       "notes": [
         "Abgelaufener AGENT_LOCK-Lease und fehlende IDs in state.json/manifest. Gefunden 2026-10-09."
       ]
+    },
+    {
+      "id": "MMIO-STALE-BASE",
+      "title": "mmio_annotate_compact meldet falsche Registeradressen nach Pool-Reload",
+      "area": "bridge",
+      "depends_on": [
+        "STAGE-8"
+      ],
+      "status": "todo",
+      "dod": [
+        "An 0x002AF9C0 stimmen alle aufgeloesten Zugriffe mit Ghidras Referenzen ueberein",
+        "Regressionstest mit den fuenf belegten Stellen"
+      ],
+      "notes": [
+        "Gefunden 2026-10-09 bei der 8c-Vorfrage."
+      ]
     }
   ]
 }

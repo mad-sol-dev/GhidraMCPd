@@ -1574,3 +1574,42 @@ zunächst genauso gemacht.
 Resolver-Cache überlebt also keinen Aufruf. Bei `FUNC_BY_ADDR` steht der tote Alias
 `function_by_addr` an erster Stelle; jeder Aufruf kostet damit eine 404 vorweg.
 `GET_XREFS_TO` iteriert seine Kandidaten direkt und beginnt ebenfalls mit dem toten.
+
+## Stufe 8c — Vorfrage beantwortet (2026-10-09)
+
+**Ja: Ghidra legt Referenzen in nicht gemapptes MMIO an.** Gemessen an
+`FN_USBD_INIT_PHY_CEP` (0x002AF9C0) über `/xrefs_from` für jede Instruktion. Einziger
+Block ist `flash` 0x00200000–0x0047522B; trotzdem trägt `ldr r0,[r0,#0x214]` die
+Referenz `b0000214 [READ]`, `str r0,[r1,#0x214]` `[WRITE]`. Die Referenz hängt an
+der Lade-/Speicherinstruktion, nicht am `mov`. Positivkontrolle: dieselbe Abfrage
+liefert an den Pool-Ladestellen die gewöhnlichen Datenreferenzen.
+
+Über die Funktion: 28 Referenzen außerhalb des Bilds — MMIO und die RAM-Zugriffe über
+Pool-Zeiger (0x8190+0x10e…, 0x82B0+4), die der Regexpfad gar nicht platziert.
+
+**Gegenprobe gegen `mmio._collect_operations` (heutiger Stand):** 11 Lade-/Speicher-
+befehle lösen beide auf. 6 stimmen überein, **5 widersprechen sich, und in allen 5
+liegt der Regex falsch.** Er hält die Basis aus dem letzten `mov rX,#0xb0000000`, auch
+wenn das Register danach aus dem Pool neu geladen wurde:
+
+    0x2afa3c  ldr r0,[r0,#0x0]   regex b0000000   ghidra b1008704   (ldr r0,[0x2afb40] = 0xb1008704)
+    0x2afa6c  str r0,[r1,#0x4]   regex b0000004   ghidra 000082b4   (ldr r1,[0x2afb48] = 0x000082b0)
+    0x2afa90  str r0,[r1,#0x4]   regex b0000004   ghidra 000082b4
+    0x2afad0  str r0,[r1,#0x0]   regex b0000000   ghidra b1008704   (ldr r1,[0x2afb40])
+    0x2afadc  str r0,[r1,#0x58]  regex b0000058   ghidra b1008058
+
+Ghidra deckt sich mit dem Kommentar im Programm („USBD_BA+0x704 (USB_PHY_CTL)",
+„USBD_BA+0x58 (CEP_END_ADDR)"). `mmio_annotate_compact` meldet an dieser Funktion also
+heute fünf erfundene Registeradressen — derselbe Befundtyp wie die Stack-Offsets vor
+`a807184`. Dazu 13 Zugriffe, die der Regex nicht platziert und Ghidra auflöst
+(darunter `0x2afae8` → `b1008058`, die Ladestelle über 0x002AFB4C aus Stufe 2).
+
+**Folge für den Plan:** `refs` reicht für MMIO-Adressen. Die im Plan erwogene
+Basis-Auflösung „aus Skalaren statt aus Text" ist nicht nötig, eine Speicherkarte mit
+MMIO-Blöcken auch nicht. Die `OR`/`AND`/`TOGGLE`-Zählung des Tools betrifft Werte,
+nicht Adressen, und kommt weiter aus Mnemonic und Operanden. Abnahmekriterium 2 („dieselbe Menge
+wie vorher") ist damit vorab beantwortet: es wird **nicht** dieselbe sein, und die
+fünf Abweichungen oben sind belegte Korrekturen.
+
+Offen: ob die geöffnete Instanz (`archive/…/zk-inkjet-1225`) die eingefrorene
+Referenzkopie ist. Die Sonde hat nur gelesen.

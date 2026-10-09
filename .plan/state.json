@@ -561,6 +561,10 @@
     "PLAN-TESTS-RED": {
       "commit": "pending",
       "status": "done"
+    },
+    "MMIO-STALE-BASE": {
+      "commit": "pending",
+      "status": "todo"
     }
   }
 }
