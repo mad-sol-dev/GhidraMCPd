@@ -2170,9 +2170,10 @@ def register_tools(
         toggle) that mark register manipulation, and returns sample lines
         rather than the whole function.
 
-        Not for: identifying which registers are touched when the base address
-        comes from a constant pool -- the classifier reads operands, so an 'ldr'
-        base counts as a load, not as the register behind it.
+        Addresses are Ghidra's own references: every load/store whose target
+        lies outside the loaded image -- peripherals, and RAM the image does
+        not map. Constant-pool loads and stack accesses are not counted;
+        'skipped' is what Ghidra could not place.
 
         Args:
             function_addr: function entry, hex.
@@ -2207,6 +2208,8 @@ def register_tools(
                 ErrorCode.INVALID_REQUEST,
                 "Writes are disabled while dry_run is false.",
             )
+        except mmio.ListingUnavailable as exc:
+            return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("mmio_annotate.v1.json", data)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))

@@ -2,6 +2,7 @@ import pytest
 
 from bridge.features import jt, mmio
 from bridge.utils.errors import DetailCode
+from bridge.tests.listing_records import insn, listing
 
 
 class DummyAdapter:
@@ -92,9 +93,9 @@ class DummyMMIOClient:
     def __init__(self):
         self.calls = []
 
-    def disassemble_function(self, address):
+    def disassemble_function_structured(self, address):
         self.calls.append(address)
-        return ["00500000: NOP"]
+        return listing(address, [insn(0x500000, "nop", registers=())])
 
     def set_disassembly_comment(self, address, comment):
         return True

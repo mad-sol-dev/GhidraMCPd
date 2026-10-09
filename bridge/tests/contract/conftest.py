@@ -11,6 +11,7 @@ from bridge.ghidra.client import CursorPageResult, DataTypeOperationResult, Requ
 from bridge.error_handlers import install_error_handlers
 from bridge.tests._env import env_flag, in_ci
 from bridge.utils.program_context import PROGRAM_SELECTIONS
+from bridge.tests.listing_records import UNPLACED_0x7000, insn, listing
 
 
 _RUN_CONTRACT_TESTS = env_flag("RUN_CONTRACT_TESTS", default=not in_ci())
@@ -410,6 +411,20 @@ class StubGhidraClient:
             for entry in self._xrefs
             if not normalized or normalized in str(entry["context"]).lower()
         ]
+
+    def disassemble_function_structured(self, address: int):
+        self._clear_error()
+        if address == 0x00006000:
+            return listing(address, [
+                insn(0x6000, "ldr", ref=(0xB0000010, "READ", False)),
+                insn(0x6004, "str", ref=(0xB0000010, "WRITE", False)),
+                insn(0x6008, "orr", imm=0x1),
+                insn(0x600C, "and", imm=0xFFFFFFFE),
+                insn(0x6010, "eor", imm=0x1),
+            ])
+        if address == 0x00007000:
+            return listing(address, list(UNPLACED_0x7000))
+        return listing(address, [])
 
     def disassemble_function(self, address: int):
         self._clear_error()

@@ -564,6 +564,10 @@
     },
     "MMIO-STALE-BASE": {
       "commit": "pending",
+      "status": "done"
+    },
+    "MMIO-ZERO-TARGET": {
+      "commit": "pending",
       "status": "todo"
     }
   }

@@ -274,7 +274,7 @@
       "function": "0x00007000",
       "notes": [
         "dry-run requested: annotations were not applied",
-        "2 load/store instruction(s) could not be placed: no immediate address and no resolvable base register. They are not counted above."
+        "2 load/store instruction(s) could not be placed: Ghidra holds no reference for them and they are not stack accesses. They are not counted above."
       ],
       "reads": 0,
       "samples": [

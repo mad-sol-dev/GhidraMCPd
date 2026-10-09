@@ -5,6 +5,7 @@ from starlette.testclient import TestClient
 from bridge.api import routes
 from bridge.api.routes import make_routes
 from bridge.features import jt, mmio
+from bridge.tests.listing_records import insn, listing
 
 
 class RecordingJTClient:
@@ -79,16 +80,15 @@ class RecordingMMIOClient:
     def __init__(self) -> None:
         self.comments: list[tuple[int, str]] = []
         self.calls: list[int] = []
-        self._disassembly = [
-            "0044fffc: MOV R1, #0xb0000000",
-            "00450000: LDR R0, [R1, #0x0]",
-            "00450004: STR R0, [R1, #0x4]",
-            "00450008: ORR R0, R0, #0x1",
+        self._instructions = [
+            insn(0x450000, "ldr", ref=(0xB0000000, "READ", False)),
+            insn(0x450004, "str", ref=(0xB0000004, "WRITE", False)),
+            insn(0x450008, "orr", imm=0x1),
         ]
 
-    def disassemble_function(self, address: int) -> list[str]:
+    def disassemble_function_structured(self, address: int) -> dict:
         self.calls.append(address)
-        return list(self._disassembly)
+        return listing(address, list(self._instructions))
 
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         self.comments.append((address, comment))

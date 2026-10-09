@@ -41,6 +41,8 @@ def create_mmio_routes(deps: RouteDependencies) -> List[Route]:
                     "Writes are disabled while dry_run is false.",
                     recovery=("Enable writes or run in dry_run mode.",),
                 )
+            except mmio.ListingUnavailable as exc:
+                return error_response(ErrorCode.UNAVAILABLE, str(exc))
             except (KeyError, ValueError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             except SafetyLimitExceeded as exc:

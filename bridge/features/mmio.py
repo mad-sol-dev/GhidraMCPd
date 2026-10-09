@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Mapping, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES
@@ -11,46 +11,11 @@ from ..utils.hex import int_to_hex
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
 
 
-_ADDRESS_RE = re.compile(r"^\s*([0-9A-Fa-f]+):\s*(.+?)\s*$")
-_LITERAL_IMMEDIATE_RE = re.compile(r"=\s*(-?0x[0-9a-fA-F]+)")
-_BRACKET_IMMEDIATE_RE = re.compile(r"\[[^\]]*#\s*(-?0x[0-9a-fA-F]+)")
-_HASH_IMMEDIATE_RE = re.compile(r"#\s*(-?0x[0-9a-fA-F]+)")
-_DATA_VALUE_RE = re.compile(r"^(?:\.word|DCD|DCW|DCB)?\s*(-?0x[0-9A-Fa-f]+)\s*$", re.IGNORECASE)
-_REGISTER_RE = re.compile(r"^(R\d+|SP|LR|PC)$", re.IGNORECASE)
-_BRACKET_BASE_RE = re.compile(
-    r"\[\s*(R\d+|SP|LR|PC)\s*(?:,\s*#\s*(-?0x[0-9A-Fa-f]+))?\s*\]",
-    re.IGNORECASE,
-)
-#: "mov r0,#0xb0000000" -- the firmware's usual way of loading a peripheral
-#: base.  Without this the base is unknown and the offset alone gets reported
-#: as if it were the register address.
-_MOV_IMMEDIATE_RE = re.compile(
-    r"^\s*(R\d+|SP|LR|PC)\s*,\s*#\s*(-?0x[0-9A-Fa-f]+)\s*$",
-    re.IGNORECASE,
-)
-_ADD_IMMEDIATE_RE = re.compile(
-    r"^\s*(R\d+|SP|LR|PC)\s*,\s*(R\d+|SP|LR|PC)\s*,\s*#\s*(-?0x[0-9A-Fa-f]+)\s*$",
-    re.IGNORECASE,
-)
-_ARM_CONDITION_CODES = {
-    "EQ",
-    "NE",
-    "CS",
-    "HS",
-    "CC",
-    "LO",
-    "MI",
-    "PL",
-    "VS",
-    "VC",
-    "HI",
-    "LS",
-    "GE",
-    "LT",
-    "GT",
-    "LE",
-    "AL",
-}
+#: Load/store mnemonics, conditional and width suffixes included (ldrb, strneh,
+#: ldrsb ...).  This reads the mnemonic, never the operand text.
+_LOAD_STORE_RE = re.compile(r"^(ldr|str)", re.IGNORECASE)
+_BITWISE_OPS = (("orr", "OR"), ("and", "AND"), ("bic", "AND"), ("eor", "TOGGLE"))
+_DATA_REF_TYPES = {"READ": "READ", "WRITE": "WRITE"}
 
 
 @dataclass(slots=True)
@@ -70,242 +35,111 @@ class _Operation:
         }
 
 
-def _parse_line(line: str) -> Optional[tuple[int, str, str]]:
-    match = _ADDRESS_RE.match(line)
-    if not match:
-        return None
-    try:
-        addr = int(match.group(1), 16)
-    except ValueError:
-        return None
-    instruction = match.group(2).strip()
-    if not instruction:
-        return None
-    parts = instruction.split(None, 1)
-    mnemonic = parts[0].upper()
-    operands = parts[1] if len(parts) > 1 else ""
-    if "." in mnemonic:
-        mnemonic = mnemonic.split(".", 1)[0]
-    return addr, mnemonic, operands
-
-
-def _parse_data_line(line: str) -> Optional[tuple[int, int]]:
-    match = _ADDRESS_RE.match(line)
-    if not match:
-        return None
-    try:
-        addr = int(match.group(1), 16)
-    except ValueError:
-        return None
-    body = match.group(2).strip()
-    if not body:
-        return None
-    data_match = _DATA_VALUE_RE.match(body)
-    if not data_match:
-        return None
-    try:
-        value = int(data_match.group(1), 16)
-    except ValueError:
-        return None
-    return addr, value
-
-
-def _is_base_load_store(mnemonic: str, base: str) -> bool:
-    if not mnemonic.startswith(base):
-        return False
-    suffix = mnemonic[len(base) :]
-    if not suffix:
-        return True
-    return suffix in _ARM_CONDITION_CODES
-
-
-def _classify(mnemonic: str) -> Optional[str]:
-    if _is_base_load_store(mnemonic, "LDR"):
-        return "READ"
-    if _is_base_load_store(mnemonic, "STR"):
-        return "WRITE"
-    if mnemonic.startswith("ORR") or mnemonic == "OR" or mnemonic.startswith("ORI"):
-        return "OR"
-    if mnemonic.startswith("AND") or mnemonic.startswith("BIC"):
-        return "AND"
-    if mnemonic.startswith("EOR") or mnemonic.startswith("XOR"):
-        return "TOGGLE"
+def _bitwise_op(mnemonic: str) -> Optional[str]:
+    for prefix, op in _BITWISE_OPS:
+        if mnemonic.startswith(prefix):
+            return op
     return None
 
 
-def _extract_target(operands: str) -> Optional[int]:
-    literal = _LITERAL_IMMEDIATE_RE.search(operands)
-    if literal:
-        try:
-            return int(literal.group(1), 16)
-        except ValueError:
-            return None
-    bracket = _BRACKET_IMMEDIATE_RE.search(operands)
-    if bracket:
-        try:
-            return int(bracket.group(1), 16)
-        except ValueError:
-            return None
-    hash_match = _HASH_IMMEDIATE_RE.search(operands)
-    if hash_match:
-        try:
-            return int(hash_match.group(1), 16)
-        except ValueError:
-            return None
-    return None
+def _immediate(instruction: Mapping[str, object]) -> Optional[int]:
+    """The value of an operand that is a bare immediate.
 
+    An operand that also names a register -- ``r6, lsl #0xc`` -- carries a
+    shift amount, not a value, and yields nothing.
+    """
 
-def _normalize_register(register: str) -> Optional[str]:
-    match = _REGISTER_RE.match(register.strip())
-    if not match:
-        return None
-    return match.group(1).upper()
-
-
-def _extract_dest_register(operands: str) -> Optional[str]:
-    if not operands:
-        return None
-    dest = operands.split(",", 1)[0]
-    return _normalize_register(dest)
-
-
-def _extract_literal_load_value(
-    operands: str, *, addr: int, memory_literals: Dict[int, int]
-) -> Optional[int]:
-    literal = _LITERAL_IMMEDIATE_RE.search(operands)
-    if literal:
-        try:
-            return int(literal.group(1), 16)
-        except ValueError:
-            return None
-    bracket = _BRACKET_BASE_RE.search(operands)
-    if bracket:
-        base = _normalize_register(bracket.group(1))
-        if base == "PC":
+    for operand in instruction.get("operands") or ():
+        if not isinstance(operand, Mapping) or operand.get("registers"):
+            continue
+        scalars = operand.get("scalars") or ()
+        if len(scalars) == 1:
             try:
-                offset = int(bracket.group(2), 16) if bracket.group(2) else 0
+                return int(str(scalars[0]), 16) & 0xFFFFFFFF
             except ValueError:
                 return None
-            literal_addr = addr + 8 + offset
-            return memory_literals.get(literal_addr)
     return None
 
 
-def _resolve_register_indirect_address(
-    operands: str, register_bases: Dict[str, int]
-) -> Optional[int]:
-    bracket = _BRACKET_BASE_RE.search(operands)
-    if not bracket:
-        return None
-    base = _normalize_register(bracket.group(1))
-    if base is None or base not in register_bases:
-        return None
-    try:
-        offset = int(bracket.group(2), 16) if bracket.group(2) else 0
-    except ValueError:
-        return None
-    return register_bases[base] + offset
+def _is_stack_access(instruction: Mapping[str, object]) -> bool:
+    return any(
+        "sp" in (operand.get("registers") or ())
+        for operand in instruction.get("operands") or ()
+        if isinstance(operand, Mapping)
+    )
 
 
-def _collect_operations(disassembly: Iterable[str]) -> tuple[List[_Operation], int]:
+def _collect_operations(
+    instructions: Iterable[Mapping[str, object]],
+) -> tuple[List[_Operation], int]:
+    """Classify a function's instructions from the plugin's structured listing.
+
+    Addresses come from Ghidra's references, not from reassembling operand
+    text.  Ghidra's constant propagation places a reference on the load or
+    store itself, also when the target lies outside every memory block --
+    measured on 0x002AF9C0, where it resolves ``ldr r0,[0x2afb40]`` /
+    ``ldr r0,[r0,#0x0]`` to 0xB1008704.  The text classifier this replaces
+    kept the base from an earlier ``mov r0,#0xb0000000`` and reported
+    0xB0000000, five times in that one function.
+
+    * A load/store with a READ or WRITE reference outside the image is an
+      operation, at that address: peripherals, and RAM the image does not map.
+    * One whose only reference points into the image -- a constant-pool or
+      global load -- is resolved and is not I/O; it is neither an operation
+      nor skipped.
+    * A stack access is neither.
+    * Anything else Ghidra could not place counts as skipped.
+    * OR/AND/TOGGLE come from the mnemonic, with the bare immediate if any.
+    """
+
     operations: List[_Operation] = []
     skipped = 0
-    lines = list(disassembly)
-    memory_literals: Dict[int, int] = {}
-    for line in lines:
-        data_line = _parse_data_line(line)
-        if data_line:
-            addr, value = data_line
-            memory_literals[addr] = value
-    register_bases: Dict[str, int] = {}
-    for line in lines:
-        if _parse_data_line(line):
+    for instruction in instructions:
+        if not isinstance(instruction, Mapping):
             continue
-        parsed = _parse_line(line)
-        if not parsed:
+        try:
+            addr = int(str(instruction.get("address")), 16)
+        except ValueError:
             continue
-        addr, mnemonic, operands = parsed
-        literal_load_value = None
-        if _is_base_load_store(mnemonic, "LDR"):
-            dest_register = _extract_dest_register(operands)
-            literal_load_value = _extract_literal_load_value(
-                operands, addr=addr, memory_literals=memory_literals
-            )
-            if dest_register and literal_load_value is not None:
-                register_bases[dest_register] = literal_load_value
-            elif dest_register:
-                indirect_address = _resolve_register_indirect_address(operands, register_bases)
-                if indirect_address is not None and indirect_address in memory_literals:
-                    register_bases[dest_register] = memory_literals[indirect_address]
-        if _is_base_load_store(mnemonic, "MOV") or _is_base_load_store(mnemonic, "MVN"):
-            mov_match = _MOV_IMMEDIATE_RE.match(operands)
-            if mov_match:
-                dest = _normalize_register(mov_match.group(1))
-                try:
-                    value = int(mov_match.group(2), 16)
-                except ValueError:
-                    value = None
-                if dest and value is not None:
-                    if _is_base_load_store(mnemonic, "MVN"):
-                        value = (~value) & 0xFFFFFFFF
-                    register_bases[dest] = value
-            else:
-                # A register-to-register move invalidates whatever base the
-                # destination held; keeping the stale value would resolve later
-                # accesses to a plausible wrong address.
-                dest = _extract_dest_register(operands)
-                if dest:
-                    register_bases.pop(dest, None)
+        mnemonic = str(instruction.get("mnemonic") or "").lower()
 
-        if mnemonic.startswith("ADD"):
-            add_match = _ADD_IMMEDIATE_RE.match(operands)
-            if add_match:
-                dest_register = _normalize_register(add_match.group(1))
-                src_register = _normalize_register(add_match.group(2))
-                if dest_register and src_register and src_register in register_bases:
-                    try:
-                        offset = int(add_match.group(3), 16)
-                    except ValueError:
-                        offset = None
-                    if offset is not None:
-                        register_bases[dest_register] = register_bases[src_register] + offset
-        op = _classify(mnemonic)
-        if not op:
-            continue
-        target = None
-        if op in {"READ", "WRITE"}:
-            if op == "READ" and literal_load_value is not None:
-                target = literal_load_value
+        if _LOAD_STORE_RE.match(mnemonic):
+            memory_refs = [
+                ref
+                for ref in instruction.get("refs") or ()
+                if isinstance(ref, Mapping)
+                and ref.get("type") in _DATA_REF_TYPES
+                and "space" not in ref  # stack and register refs live in other spaces
+            ]
+            outside = [ref for ref in memory_refs if not ref.get("mapped")]
+            if outside:
+                ref = outside[0]
+                operations.append(
+                    _Operation(
+                        addr=addr,
+                        op=_DATA_REF_TYPES[str(ref["type"])],
+                        target=int(str(ref["to"]), 16),
+                    )
+                )
+            elif memory_refs or _is_stack_access(instruction):
+                continue
             else:
-                resolved_address = _resolve_register_indirect_address(operands, register_bases)
-                if resolved_address is not None:
-                    if op == "READ" and resolved_address in memory_literals:
-                        target = memory_literals[resolved_address]
-                    else:
-                        target = resolved_address
-            if target is None and not _BRACKET_BASE_RE.search(operands):
-                # Only for a directly addressed operand.  For a register-indirect
-                # access the bracket holds an *offset*, and taking it as the
-                # address turns "ldr r0,[sp,#0x8]" into an MMIO register at 0x8 --
-                # a wrong answer that reads exactly like a right one.
-                target = _extract_target(operands)
-            if target is None:
-                # Skip load/store instructions that do not reference an immediate
-                # address or a known base register.
                 skipped += 1
                 increment_counter("mmio.operations.skipped_no_target")
-                continue
-        else:
-            target = _extract_target(operands)
-        operations.append(_Operation(addr=addr, op=op, target=target))
+            continue
+
+        op = _bitwise_op(mnemonic)
+        if op:
+            operations.append(_Operation(addr=addr, op=op, target=_immediate(instruction)))
     return operations, skipped
 
 
 _NOTE_WRITES_DISABLED = "writes disabled: annotations were not applied"
 _NOTE_DRY_RUN = "dry-run requested: annotations were not applied"
-_NOTE_SKIPPED_INDIRECT = (
-    "skipped register-indirect MMIO accesses; no immediate targets found."
-)
+
+
+class ListingUnavailable(RuntimeError):
+    """The plugin gave no structured listing; nothing can be classified."""
 
 
 class WritesDisabledError(RuntimeError):
@@ -323,8 +157,12 @@ def annotate(
     increment_counter("mmio.annotate.calls")
 
     enforce_batch_limit(max_samples, counter="mmio.max_samples")
-    disassembly = client.disassemble_function(function_addr)
-    operations, skipped = _collect_operations(disassembly)
+    listing = client.disassemble_function_structured(function_addr)
+    if listing is None:
+        error = getattr(client, "last_error", None)
+        reason = getattr(error, "reason", None) or "structured disassembly unavailable"
+        raise ListingUnavailable(f"cannot classify {int_to_hex(function_addr)}: {reason}")
+    operations, skipped = _collect_operations(listing["instructions"])
 
     reads = sum(1 for op in operations if op.op == "READ")
     writes = sum(1 for op in operations if op.op == "WRITE")
@@ -344,9 +182,9 @@ def annotate(
         notes.append(_NOTE_WRITES_DISABLED)
     if skipped > 0:
         notes.append(
-            f"{skipped} load/store instruction(s) could not be placed: no "
-            "immediate address and no resolvable base register. They are not "
-            "counted above."
+            f"{skipped} load/store instruction(s) could not be placed: Ghidra "
+            "holds no reference for them and they are not stack accesses. They "
+            "are not counted above."
         )
     if not dry_run and writes_enabled and samples:
         for op in operations[:max_samples]:
@@ -389,4 +227,4 @@ def _format_comment(operation: _Operation) -> str:
     return f"MMIO {action} target {target}"
 
 
-__all__ = ["annotate", "WritesDisabledError"]
+__all__ = ["annotate", "ListingUnavailable", "WritesDisabledError"]

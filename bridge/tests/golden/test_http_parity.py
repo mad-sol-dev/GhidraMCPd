@@ -11,6 +11,7 @@ from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
 from bridge.ghidra.client import DataTypeOperationResult
+from bridge.tests.listing_records import UNPLACED_0x7000, listing
 
 
 _DATA_DIR = Path(__file__).parent / "data"
@@ -205,6 +206,11 @@ class GoldenStubGhidraClient:
 
     def disassemble_function(self, address: int) -> List[str]:
         return list(self._disassembly.get(address, []))
+
+    def disassemble_function_structured(self, address: int) -> Dict[str, object]:
+        if address == 0x00007000:
+            return listing(address, list(UNPLACED_0x7000))
+        return listing(address, [])
 
     def decompile_function(self, address: int) -> Optional[str]:
         if address in self._functions:

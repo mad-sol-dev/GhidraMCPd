@@ -771,6 +771,42 @@ class GhidraClient:
         lines = self._get_resolver.resolve("DISASSEMBLE", requester)
         return [] if _is_error(lines) else lines
 
+    def disassemble_function_structured(self, address: int) -> Optional[Mapping[str, Any]]:
+        """The function's instructions as structured records (``fmt=json``).
+
+        Each record carries Ghidra's own operands, flow and references, so the
+        caller reads fields instead of taking ``toString()`` apart.  A plugin
+        built before rework stage 8c ignores ``fmt`` and answers in text; that
+        returns None with ``last_error`` saying so, rather than an empty
+        listing that would read like a function without instructions.
+        """
+
+        increment_counter("ghidra.disasm_structured")
+        self._last_error = None
+        payload = self._request_json_payload(
+            "GET",
+            "disassemble_function",
+            key="DISASSEMBLE",
+            params={"address": f"0x{address:08x}", "fmt": "json"},
+        )
+        if payload is None:
+            if self._last_error is None:
+                self._last_error = RequestError(
+                    status=None,
+                    reason=(
+                        "the Ghidra plugin answered without JSON; it predates "
+                        "structured disassembly -- rebuild and reinstall the extension"
+                    ),
+                    retryable=False,
+                )
+            return None
+        if not isinstance(payload.get("instructions"), list):
+            self._last_error = RequestError(
+                status=None, reason="structured disassembly without an instruction list", retryable=False
+            )
+            return None
+        return payload
+
     def decompile_function(self, address: int) -> Optional[str]:
         increment_counter("ghidra.decompile")
         requester = EndpointRequester(

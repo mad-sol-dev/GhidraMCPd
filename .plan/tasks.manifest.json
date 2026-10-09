@@ -848,13 +848,27 @@
       "depends_on": [
         "STAGE-8"
       ],
-      "status": "todo",
+      "status": "done",
       "dod": [
         "An 0x002AF9C0 stimmen alle aufgeloesten Zugriffe mit Ghidras Referenzen ueberein",
         "Regressionstest mit den fuenf belegten Stellen"
       ],
       "notes": [
         "Gefunden 2026-10-09 bei der 8c-Vorfrage."
+      ]
+    },
+    {
+      "id": "MMIO-ZERO-TARGET",
+      "title": "mmio meldet bitweise Operationen ohne Immediate als target 0x0",
+      "area": "bridge",
+      "depends_on": [],
+      "status": "todo",
+      "dod": [
+        "Eine Operation ohne Immediate traegt kein erfundenes target",
+        "Schemaaenderung bewusst, beide Projekte geprueft"
+      ],
+      "notes": [
+        "Sichtbar geworden in Stufe 8c, 2026-10-09."
       ]
     }
   ]

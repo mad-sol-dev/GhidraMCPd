@@ -21,6 +21,8 @@ import ghidra.program.model.mem.MemoryBlockSourceInfo;
 import ghidra.program.database.mem.FileBytes;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.scalar.Scalar;
+import ghidra.program.model.lang.OperandType;
+import ghidra.program.model.lang.Register;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.Reference;
@@ -677,13 +679,21 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         registerProgramHandler(server, "/disassemble_function", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            plugin.sendResponse(exchange, plugin.disassembleFunction(address));
+            if ("json".equals(qparams.get("fmt"))) {
+                plugin.sendJsonResponse(exchange, plugin.disassembleFunctionJson(address));
+            } else {
+                plugin.sendResponse(exchange, plugin.disassembleFunction(address));
+            }
         });
 
         registerProgramHandler(server, "/disassemble", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
-            plugin.sendResponse(exchange, plugin.disassembleFunction(address));
+            if ("json".equals(qparams.get("fmt"))) {
+                plugin.sendJsonResponse(exchange, plugin.disassembleFunctionJson(address));
+            } else {
+                plugin.sendResponse(exchange, plugin.disassembleFunction(address));
+            }
         });
 
         registerProgramHandler(server, "/set_decompiler_comment", (plugin, exchange) -> {
@@ -822,7 +832,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             String address = qparams.get("address");
             int count = plugin.parseIntOrDefault(qparams.get("count"), 16);
-            plugin.sendResponse(exchange, plugin.handleDisassembleAt(address, count));
+            if ("json".equals(qparams.get("fmt"))) {
+                plugin.sendJsonResponse(exchange, plugin.disassembleAtJson(address, count));
+            } else {
+                plugin.sendResponse(exchange, plugin.handleDisassembleAt(address, count));
+            }
         });
 
         registerProgramHandler(server, "/project_info", (plugin, exchange) -> {
@@ -3253,6 +3267,208 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         } catch (Exception e) {
             return errorResponse(e.getMessage());
         }
+    }
+
+    /**
+     * {@code /disassembleAt?fmt=json}: the same instructions as the text form,
+     * each as structured data (see {@link #instructionJson}).
+     */
+    private String disassembleAtJson(String addressStr, int count) {
+        Program program = getCurrentProgram();
+        if (program == null) return errorResponse("no program loaded");
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
+
+        int effectiveCount = Math.min(Math.max(count, 1), 128);
+        try {
+            Address addr = program.getAddressFactory().getAddress(addressStr);
+            if (addr == null) {
+                return errorResponse("invalid address");
+            }
+            StringBuilder sb = new StringBuilder("{\"instructions\":[");
+            InstructionIterator instructions = program.getListing().getInstructions(addr, true);
+            int collected = 0;
+            while (instructions.hasNext() && collected < effectiveCount) {
+                if (collected > 0) sb.append(',');
+                sb.append(instructionJson(program, instructions.next()));
+                collected++;
+            }
+            return sb.append("]}").toString();
+        } catch (Exception e) {
+            return errorResponse(e.getMessage());
+        }
+    }
+
+    /**
+     * {@code /disassemble_function?fmt=json}: walks exactly what the text form
+     * walks -- every instruction from the entry point up to the body's maximum
+     * address -- so a bridge switching formats sees the same instructions.
+     */
+    private String disassembleFunctionJson(String addressStr) {
+        Program program = getCurrentProgram();
+        if (program == null) return errorResponse("no program loaded");
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
+
+        try {
+            Address addr = program.getAddressFactory().getAddress(addressStr);
+            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
+            if (func == null) return errorResponse("no function found at or containing address " + addressStr);
+
+            Address end = func.getBody().getMaxAddress();
+            StringBuilder sb = new StringBuilder("{");
+            sb.append("\"function\":\"").append(hexAddress(func.getEntryPoint())).append("\",");
+            sb.append("\"name\":\"").append(jsonEscape(func.getName())).append("\",");
+            sb.append("\"instructions\":[");
+            InstructionIterator instructions = program.getListing().getInstructions(func.getEntryPoint(), true);
+            boolean first = true;
+            while (instructions.hasNext()) {
+                Instruction instr = instructions.next();
+                if (instr.getAddress().compareTo(end) > 0) {
+                    break;
+                }
+                if (!first) sb.append(',');
+                sb.append(instructionJson(program, instr));
+                first = false;
+            }
+            return sb.append("]}").toString();
+        } catch (Exception e) {
+            return errorResponse(e.getMessage());
+        }
+    }
+
+    /**
+     * One instruction as structured data, read from the Ghidra API instead of
+     * {@code toString()}, so the bridge stops reconstructing operands, flow and
+     * pool words by regex (rework stage 8c).
+     *
+     * <p>{@code refs} are Ghidra's own references from this instruction.  They
+     * include targets outside the memory map: constant propagation places
+     * MMIO accesses on the load or store even when no block covers them,
+     * measured on 0x002AF9C0.  {@code mapped} says which is which.  A READ
+     * reference into the image also carries the 32-bit word stored there,
+     * which for a PC-relative load is the value loaded.
+     */
+    private String instructionJson(Program program, Instruction instr) {
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"address\":\"").append(hexAddress(instr.getAddress())).append("\",");
+
+        StringBuilder hexBytes = new StringBuilder();
+        try {
+            for (byte b : instr.getBytes()) {
+                hexBytes.append(String.format("%02X", b & 0xFF));
+            }
+        } catch (MemoryAccessException e) {
+            hexBytes.setLength(0);
+        }
+        sb.append("\"bytes\":\"").append(hexBytes).append("\",");
+        sb.append("\"mnemonic\":\"").append(jsonEscape(instr.getMnemonicString().toLowerCase())).append("\",");
+        sb.append("\"text\":\"").append(jsonEscape(instr.toString())).append('"');
+
+        String comment = program.getListing().getComment(CodeUnit.EOL_COMMENT, instr.getAddress());
+        if (comment != null) {
+            sb.append(",\"comment\":\"").append(jsonEscape(comment)).append('"');
+        }
+
+        FlowType flowType = instr.getFlowType();
+        String flow;
+        if (flowType.isTerminal()) {
+            flow = "return";
+        } else if (flowType.isCall()) {
+            flow = "call";
+        } else if (flowType.isJump()) {
+            flow = "jump";
+        } else {
+            flow = "fallthrough";
+        }
+        sb.append(",\"flow\":\"").append(flow).append('"');
+        if (flowType.isConditional()) {
+            sb.append(",\"conditional\":true");
+        }
+        if (flowType.isComputed()) {
+            sb.append(",\"computed\":true");
+        }
+        Address[] flows = instr.getFlows();
+        if (flows != null && flows.length > 0) {
+            sb.append(",\"targets\":[");
+            for (int i = 0; i < flows.length; i++) {
+                if (i > 0) sb.append(',');
+                sb.append('"').append(hexAddress(flows[i])).append('"');
+            }
+            sb.append(']');
+        }
+
+        sb.append(",\"operands\":[");
+        for (int i = 0; i < instr.getNumOperands(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append("{\"text\":\"").append(jsonEscape(instr.getDefaultOperandRepresentation(i))).append('"');
+            sb.append(",\"type\":\"").append(jsonEscape(OperandType.toString(instr.getOperandType(i)).trim())).append('"');
+            List<String> registers = new ArrayList<>();
+            List<String> scalars = new ArrayList<>();
+            List<String> addresses = new ArrayList<>();
+            Object[] objects = instr.getOpObjects(i);
+            if (objects != null) {
+                for (Object obj : objects) {
+                    if (obj instanceof Register reg) {
+                        registers.add(reg.getName().toLowerCase());
+                    } else if (obj instanceof Scalar scalar) {
+                        // Ghidra's own signedness, the same that renders #0xb0000000
+                        // unsigned and [sp,#-0x4] signed in the listing text.
+                        long value = scalar.isSigned() ? scalar.getSignedValue() : scalar.getUnsignedValue();
+                        scalars.add(value < 0 ? "-0x" + Long.toHexString(-value) : "0x" + Long.toHexString(value));
+                    } else if (obj instanceof Address opAddr) {
+                        addresses.add(hexAddress(opAddr));
+                    }
+                }
+            }
+            appendStringArray(sb, "registers", registers);
+            appendStringArray(sb, "scalars", scalars);
+            appendStringArray(sb, "addresses", addresses);
+            sb.append('}');
+        }
+        sb.append(']');
+
+        Reference[] refs = instr.getReferencesFrom();
+        sb.append(",\"refs\":[");
+        for (int i = 0; i < refs.length; i++) {
+            Reference ref = refs[i];
+            Address to = ref.getToAddress();
+            RefType refType = ref.getReferenceType();
+            boolean mapped = to.isMemoryAddress() && program.getMemory().contains(to);
+            if (i > 0) sb.append(',');
+            sb.append("{\"to\":\"").append(hexAddress(to)).append('"');
+            if (!to.isMemoryAddress()) {
+                sb.append(",\"space\":\"").append(jsonEscape(to.getAddressSpace().getName())).append('"');
+            }
+            sb.append(",\"type\":\"").append(jsonEscape(refType.getName())).append('"');
+            sb.append(",\"op\":").append(ref.getOperandIndex());
+            sb.append(",\"mapped\":").append(mapped);
+            if (mapped && refType.isRead()) {
+                try {
+                    long word = program.getMemory().getInt(to) & 0xFFFFFFFFL;
+                    sb.append(",\"word\":\"").append(String.format("0x%08x", word)).append('"');
+                } catch (MemoryAccessException e) {
+                    sb.append(",\"word_unreadable\":true");
+                }
+            }
+            sb.append('}');
+        }
+        sb.append("]}");
+        return sb.toString();
+    }
+
+    private static String hexAddress(Address address) {
+        return String.format("0x%08x", address.getOffset());
+    }
+
+    private void appendStringArray(StringBuilder sb, String key, List<String> values) {
+        if (values.isEmpty()) {
+            return;
+        }
+        sb.append(",\"").append(key).append("\":[");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append('"').append(jsonEscape(values.get(i))).append('"');
+        }
+        sb.append(']');
     }
 
     /**
