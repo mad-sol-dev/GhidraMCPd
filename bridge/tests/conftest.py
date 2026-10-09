@@ -12,7 +12,6 @@ from pathlib import Path
 # test run that merely happens not to write is no protection, so the values are
 # forced here, before any bridge module reads them at import time.
 os.environ["GHIDRA_MCP_ENABLE_WRITES"] = "false"
-os.environ["GHIDRA_MCP_ENABLE_PROJECT_REBASE"] = "false"
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent

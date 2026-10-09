@@ -77,47 +77,11 @@ def test_project_tools_registered_and_envelopes(monkeypatch) -> None:
         return True, []
 
     monkeypatch.setattr(tools, "validate_payload", fake_validate)
-    monkeypatch.setattr(tools.config, "ENABLE_PROJECT_REBASE", True)
-
-    rebase_args: Dict[str, Any] = {}
-
-    def fake_rebase_project(
-        client,
-        *,
-        new_base: int,
-        dry_run: bool,
-        confirm: bool,
-        writes_enabled: bool,
-        rebases_enabled: bool,
-    ) -> Dict[str, Any]:
-        rebase_args.update(
-            {
-                "client": client,
-                "new_base": new_base,
-                "dry_run": dry_run,
-                "confirm": confirm,
-                "writes_enabled": writes_enabled,
-                "rebases_enabled": rebases_enabled,
-            }
-        )
-        return {
-            "dry_run": dry_run,
-            "rebased": not dry_run and confirm,
-            "notes": [],
-            "errors": [],
-            "requested_base": "0x2000",
-            "previous_base": "0x1000",
-            "offset": "0x1000",
-            "project_info": {"program_name": "demo"},
-        }
-
-    monkeypatch.setattr(tools.project, "rebase_project", fake_rebase_project)
-
     server = FastMCP("test")
     register_tools(server, client_factory=MockProjectClient, enable_writes=True)
 
     tool_names = {tool.name for tool in server._tool_manager._tools.values()}
-    assert {"project_info", "project_overview", "project_rebase"}.issubset(tool_names)
+    assert {"project_info", "project_overview"}.issubset(tool_names)
 
     info_tool = server._tool_manager._tools["project_info"]
     info_response = info_tool.fn()
@@ -146,17 +110,8 @@ def test_project_tools_registered_and_envelopes(monkeypatch) -> None:
         ]
     }
 
-    rebase_tool = server._tool_manager._tools["project_rebase"]
-    rebase_response = rebase_tool.fn(new_base="0x2000", dry_run=False, confirm=True)
-    assert rebase_response["ok"] is True
-    assert rebase_response["data"]["requested_base"] == "0x2000"
-    assert rebase_args["writes_enabled"] is True
-    assert rebase_args["rebases_enabled"] is True
-
     assert "project_info.v1.json" in validate_calls
     assert "project_overview.v1.json" in validate_calls
-    assert "project_rebase.request.v1.json" in validate_calls
-    assert "project_rebase.v1.json" in validate_calls
 
 
 class MockClient:
@@ -181,7 +136,7 @@ class MockClient:
         self.closed = True
 
 
-def test_analysis_collect_datatype_and_write_tools(monkeypatch) -> None:
+def test_analysis_collect_and_datatype_tools(monkeypatch) -> None:
     validate_calls: List[str] = []
 
     def fake_validate(name: str, payload: Dict[str, Any]) -> tuple[bool, list[str]]:
@@ -326,37 +281,6 @@ def test_analysis_collect_datatype_and_write_tools(monkeypatch) -> None:
     monkeypatch.setattr(tools.datatypes, "update_datatype", fake_update_datatype)
     monkeypatch.setattr(tools.datatypes, "delete_datatype", fake_delete_datatype)
 
-    write_calls: List[Dict[str, Any]] = []
-
-    def fake_write_bytes(
-        client,
-        *,
-        address: int,
-        data: str,
-        encoding: str,
-        dry_run: bool,
-        writes_enabled: bool,
-    ) -> Dict[str, Any]:
-        write_calls.append(
-            {
-                "address": address,
-                "data": data,
-                "encoding": encoding,
-                "dry_run": dry_run,
-                "writes_enabled": writes_enabled,
-            }
-        )
-        return {
-            "address": f"0x{address:x}",
-            "length": len(data),
-            "dry_run": dry_run,
-            "written": not dry_run and writes_enabled,
-            "notes": [],
-            "errors": [],
-        }
-
-    monkeypatch.setattr(tools.memory, "write_bytes", fake_write_bytes)
-
     MockClient.created.clear()
     server = FastMCP("test")
     register_tools(server, client_factory=MockClient, enable_writes=True)
@@ -368,7 +292,6 @@ def test_analysis_collect_datatype_and_write_tools(monkeypatch) -> None:
         "datatypes_create",
         "datatypes_update",
         "datatypes_delete",
-        "write_bytes",
     }
     assert expected_tools.issubset(tool_names)
 
@@ -430,16 +353,6 @@ def test_analysis_collect_datatype_and_write_tools(monkeypatch) -> None:
     )
     assert delete_response["ok"] is True
 
-    write_tool = server._tool_manager._tools["write_bytes"]
-    write_response = write_tool.fn(
-        address="0x1000",
-        data="AAAA",
-        encoding="base64",
-        dry_run=True,
-    )
-    assert write_response["ok"] is True
-    assert write_calls[0]["address"] == 0x1000
-
     for schema_name in [
         "analyze_function_complete.request.v1.json",
         "analyze_function_complete.v1.json",
@@ -451,7 +364,5 @@ def test_analysis_collect_datatype_and_write_tools(monkeypatch) -> None:
         "datatypes_update.v1.json",
         "datatypes_delete.request.v1.json",
         "datatypes_delete.v1.json",
-        "write_bytes.request.v1.json",
-        "write_bytes.v1.json",
     ]:
         assert schema_name in validate_calls

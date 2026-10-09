@@ -431,7 +431,6 @@ CURATED_SECTIONS = dedent(
     - `POST /api/list_functions_in_range.json`
     - `POST /api/disassemble_at.json`
     - `POST /api/read_bytes.json`
-    - `POST /api/write_bytes.json`
     - `POST /api/jt_slot_check.json`
     - `POST /api/jt_scan.json`
     - `POST /api/strings_compact.json`
@@ -617,7 +616,7 @@ CURATED_SECTIONS = dedent(
     - Items contain `addr`, `s`, and `refs` counts with optional full `literal` text.
     - Results are bounded by `limit` and always include `total` metadata.
     - Empty strings are omitted; ASCII/UTF-16 variants are normalized to UTF-8 output.
-    - When Ghidra bindings do not implement `list_strings_compact`, the bridge falls back to `list_strings` or a wildcard `search_strings("")` call before applying `offset`/`limit`. Some environments may still return an empty catalog if upstream discovery is unavailable.
+    - The bridge pages through the plugin's `/strings` endpoint (`list_strings`). A client without it falls back to a wildcard `search_strings("")` call and slices by `offset`/`limit`.
     - Set `include_literals: true` to include the full normalized literal (without truncation) alongside the compact `s` preview.
 
     ### `search_strings`

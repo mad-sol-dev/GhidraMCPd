@@ -25,8 +25,9 @@ def tools():
 
 
 def test_the_full_surface_is_present(tools):
-    # 35 through Stage 4; list_mutations is Stage 5.
-    assert len(tools) == 36
+    # 35 through Stage 4; list_mutations is Stage 5.  Stage 8b removed
+    # write_bytes and project_rebase, whose plugin endpoints never existed.
+    assert len(tools) == 34
 
 
 def test_no_tool_without_a_description(tools):
@@ -124,7 +125,11 @@ def test_the_detail_lives_in_the_note_not_the_description(tools):
 #: Raised again in Stage 5, to 8700: list_mutations is a 36th tool and costs 274
 #: tokens.  It is the only way a session's renames and comments leave Ghidra as
 #: anything other than a memory, which is worth a tool.
-SCHEMA_BASE_CEILING = 8700
+#:
+#: Lowered in Stage 8b, to 8400: removing write_bytes and project_rebase took
+#: the base from 8691 to 8307.  The ceiling follows it down so the 384 tokens
+#: do not stay behind as headroom nobody had to argue for.
+SCHEMA_BASE_CEILING = 8400
 
 
 def test_schema_base_stays_within_budget(tools):

@@ -35,7 +35,7 @@ __all__ = [
     "summarise",
 ]
 
-Kind = Literal["rename", "comment", "datatype", "bytes"]
+Kind = Literal["rename", "comment", "datatype"]
 
 #: Longest old/new value kept verbatim; the rest is elided.
 _VALUE_CHARS = 60
@@ -150,8 +150,6 @@ def render_lines(mutations: Sequence[Mutation]) -> List[str]:
         marker = "" if entry.applied else "[proposed] "
         if entry.kind == "datatype":
             body = f"{entry.target}  datatype  {_datatype_body(entry)}"
-        elif entry.kind == "bytes":
-            body = f"{entry.target}  bytes     {_render_value(entry.new)}"
         else:
             body = (
                 f"{entry.target}  {entry.kind:<8}  "

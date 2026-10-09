@@ -6,11 +6,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from ...features import project
 from ...ghidra.client import GhidraClient
-from ...utils import config
 from ...utils.errors import ErrorCode
-from ...utils.hex import parse_hex
 from ...utils.logging import request_scope
 from .._shared import envelope_ok, envelope_response, error_response, envelope_error
 from ..validators import validate_payload
@@ -43,35 +40,6 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
                 )
             normalized = _normalise_project_info(payload)
             return envelope_response(envelope_ok(normalized))
-
-    @deps.with_client
-    async def project_rebase_route(request: Request, client: GhidraClient) -> JSONResponse:
-        with request_scope(
-            "project_rebase",
-            logger=deps.logger,
-            extra={"path": "/api/project_rebase.json"},
-            max_writes=1,
-        ):
-            data = await deps.validated_json_body(
-                request, "project_rebase.request.v1.json"
-            )
-            try:
-                payload = project.rebase_project(
-                    client,
-                    new_base=parse_hex(str(data["new_base"])),
-                    dry_run=bool(data.get("dry_run", True)),
-                    confirm=bool(data.get("confirm", False)),
-                    writes_enabled=deps.enable_writes,
-                    rebases_enabled=config.ENABLE_PROJECT_REBASE,
-                )
-            except (KeyError, ValueError) as exc:
-                return error_response(ErrorCode.INVALID_REQUEST, str(exc))
-            valid, errors = validate_payload("project_rebase.v1.json", payload)
-            if valid:
-                return envelope_response(envelope_ok(payload))
-            return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-            )
 
     @deps.with_client
     async def project_overview_route(
@@ -113,12 +81,6 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
             project_info_route,
             methods=["GET", "HEAD"],
             name="project_info",
-        ),
-        Route(
-            "/api/project_rebase.json",
-            project_rebase_route,
-            methods=["POST"],
-            name="project_rebase",
         ),
         Route(
             "/api/project_overview.json",

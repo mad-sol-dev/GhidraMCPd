@@ -48,7 +48,6 @@ def _capability_definitions(enable_writes: bool) -> Iterable[CapabilityEntry]:
         ("/api/list_functions_in_range.json", "POST", "detail", "medium", "List functions within an address range."),
         ("/api/mmio_annotate.json", "POST", "write", budget_write, "Annotate MMIO access patterns."),
         ("/api/project_info.json", "GET", "overview", "small", "Summarize the current project."),
-        ("/api/project_rebase.json", "POST", "write", "large", "Rebase the open project."),
         ("/api/read_bytes.json", "POST", "detail", "medium", "Read a window of bytes."),
         ("/api/search_exports.json", "POST", "detail", "small", "Search exported symbols."),
         ("/api/search_functions.json", "POST", "detail", "medium", "Search functions by metadata."),
@@ -59,7 +58,6 @@ def _capability_definitions(enable_writes: bool) -> Iterable[CapabilityEntry]:
         ("/api/select_program.json", "POST", "overview", "small", "Select the active program for this session."),
         ("/api/string_xrefs.json", "POST", "detail", "small", "List references to a string literal."),
         ("/api/strings_compact.json", "POST", "overview", "small", "List compact string summaries."),
-        ("/api/write_bytes.json", "POST", "write", budget_write, "Write bytes to memory."),
     )
 
 

@@ -4,7 +4,7 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {STAGE-8} Naht Plugin↔Bridge (`ghidramcpd-rework.md`, Stufe 8): ~~8a Loopback-Bind~~ (abgenommen 2026-10-09), 8b Phantom-Tools `write_bytes`/`project_rebase` + Routen-Test, 8c `/disassembleAt` als JSON, 8d `/functionsInRange` als JSON. Als Nächstes 8b.
+- {STAGE-8} Naht Plugin↔Bridge (`ghidramcpd-rework.md`, Stufe 8): ~~8a Loopback-Bind~~ (abgenommen 2026-10-09), ~~8b Phantom-Tools `write_bytes`/`project_rebase` + Routen-Test~~ (entfernt 2026-10-09), 8c `/disassembleAt` als JSON, 8d `/functionsInRange` als JSON. Als Nächstes 8c.
 - {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
 - {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance
@@ -14,6 +14,8 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 
 ## NEXT
 - {RESPONSE-VALIDATION-MISLABELED} **Eine fehlgeschlagene Antwort-Validierung wird dem Aufrufer als `INVALID_REQUEST` gemeldet.** An 29 Stellen in `bridge/api/tools.py` folgt auf `validate_payload("<tool>.v1.json", data)` ein `envelope_error(ErrorCode.INVALID_REQUEST, ...)`. Verletzt die Antwort ihr eigenes Schema, ist das ein Serverfehler, keine schlechte Anfrage — der Aufrufer sucht dann in seinen Parametern nach einem Fehler, den er nicht gemacht hat. Genau so trat {COLLECT-METADATA-REJECTED} in Erscheinung. `ErrorCode.INTERNAL` existiert bereits. Zu klären: einheitlich umstellen, und ob Bestandstests auf `INVALID_REQUEST` prüfen. Gefunden 2026-08-31 beim Beheben von {COLLECT-METADATA-REJECTED}.
+- {DEAD-ALIAS-FIRST} Tote Alias-Namen vorn in der Kandidatenliste kosten pro Aufruf eine 404: der Client wird pro Tool-Aufruf neu gebaut, der Resolver-Cache überlebt nichts. `FUNC_BY_ADDR` beginnt mit `function_by_addr`, `GET_XREFS_TO` mit `get_xrefs_to` — beide existieren im Plugin nicht. Lebenden Namen nach vorn oder tote streichen; `test_plugin_routes.py` kennt die Routen. Gefunden 2026-10-09 in Stufe 8b.
+- {PLAN-TESTS-RED} `bridge/tests/plan` ist rot, unabhängig von Stufe 8: abgelaufener Zeitstempel in den Agenten-Metadaten (seit vor `583ef6c`), und `STAGE-8`/`IMAGE-BASE-STALE` fehlen in `state.json`. Gefunden 2026-10-09.
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)

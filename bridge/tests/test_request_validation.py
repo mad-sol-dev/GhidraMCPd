@@ -195,32 +195,6 @@ def test_read_bytes_rejects_zero_length(client: TestClient) -> None:
     _assert_generic_400(response.json(), summary="value_error")
 
 
-def test_project_rebase_rejects_invalid_base(client: TestClient) -> None:
-    """Project rebases must validate the new_base parameter before execution."""
-
-    response = client.post(
-        "/api/project_rebase.json",
-        json={"new_base": "not-a-hex", "dry_run": True},
-    )
-    assert response.status_code == 400
-    _assert_generic_400(response.json(), summary="value_error")
-
-
-def test_write_bytes_rejects_non_hex_address(client: TestClient) -> None:
-    """Invalid hex input should surface deterministic INVALID_REQUEST envelopes."""
-
-    response = client.post(
-        "/api/write_bytes.json",
-        json={
-            "address": "0xnot-hex",
-            "data": "AAE=",
-            "dry_run": True,
-        },
-    )
-    assert response.status_code == 400
-    _assert_generic_400(response.json(), summary="value_error")
-
-
 def test_mmio_annotate_rejects_oversized_max_samples(monkeypatch) -> None:
     """Oversized MMIO annotation requests should emit RESULT_TOO_LARGE envelopes."""
 

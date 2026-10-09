@@ -1520,3 +1520,57 @@ Befundtyp wie die Stubs in 8b, diesmal im eigenen Prüfskript.
 
 Nicht geprüft: der alte Plugin-Stand gegen das korrigierte Skript. Er band auf den
 Wildcard, den `ss` als `*` zeigt; das Muster lässt ihn nicht durch.
+
+## Stufe 8b — Tools ohne Gegenstück (2026-10-09)
+
+**Geländer zuerst.** `bridge/tests/unit/test_plugin_routes.py` liest die Routen aus
+`GhidraMCPPlugin.java` (51, als Zahl festgehalten, damit eine kaputte Extraktion
+auffällt) und prüft sie gegen `DEFAULT_WHITELIST`, die `_request_lines` bei jedem
+Aufruf erzwingt. Vor jeder Änderung rot, mit genau den sechs Schlüsseln
+`START/COMMIT/ROLLBACK_TRANSACTION`, `WRITE_BYTES`, `REBUILD_CODE_UNITS`,
+`REBASE_PROGRAM`.
+
+**Korrektur an der Regel im Plan:** „jeder Pfad und jeder Alias" hätte nicht mit
+sechs, sondern mit 19 Namen rot geschlagen. Elf Schlüssel tragen tote Alias-Namen für
+ältere Plugin-Stände (`disasmByAddr`, `functionMeta`, `decompileFunction` …). Ein toter
+Alias kostet eine 404, ein Schlüssel ohne lebenden Alias ist ein Tool, das nicht
+funktionieren kann. Geprüft wird deshalb pro Schlüssel.
+
+**Entfernt, nicht gebaut.** Entscheidung des Nutzers, mit der Begründung, dass ein
+Tool, das nie ging, nur ein Baustellenschild ist. Rahmen 1: Starfish ruft keines der
+beiden auf. zk-inkjet hat genau einen dokumentierten Aufruf (TRUTH.csv,
+CL-TOOL-REC-121): `project_rebase` mit `dry_run=true`, der an der Bridge-Sperre endete
+und das Plugin nie erreichte; die Analyse dort kam ohnehin zu dem Schluss, dass ein
+Rebase das Basisproblem nicht löst (Move Block in der GUI).
+
+Mit raus: Client-Methoden samt Transaktionshelfern, Whitelist- und Kandidaten-
+einträge, HTTP-Routen, vier Schemata, `features/project.py`,
+`GHIDRA_MCP_ENABLE_PROJECT_REBASE`, die Mutationsart `bytes` in `list_mutations`
+(konnte nicht mehr auftreten, die Beschreibung versprach sie trotzdem), Stubs, Tests,
+Doku. `docs/api.md` und der OpenAPI-Snapshot sind neu erzeugt und verlieren nur die
+beiden Endpunkte.
+
+**Stub-Durchgang:** ein weiterer Stub bildete eine Methode nach, die kein Client hat —
+`list_strings_compact` im Golden-Stub, derselbe Fall wie der in `b194726` behobene im
+Contract-Stub. Umbenannt auf `list_strings`. Dabei stand in `docs/api.md` noch der
+Fallback über `list_strings_compact`, den es seit `b194726` nicht mehr gibt.
+
+**Abnahme:**
+
+    Routen-Test           vorher rot (6 Schlüssel), jetzt grün
+    tools/list (stdio)    34 Tools, kein write_bytes, kein project_rebase
+    Schema-Sockel         8 691 -> 8 307 Token, Decke 8 700 -> 8 400
+    Suite                 562 grün, 11 übersprungen, 3 rot (s. u.)
+
+**Drei rote Plan-Tests, nicht aus 8b.** Am unveränderten `HEAD` ebenso rot.
+`test_agent_metadata_files_exist_and_valid` prüft einen Ablaufzeitstempel und ist
+seit vor `583ef6c` rot; die beiden anderen, weil `STAGE-8` und `IMAGE-BASE-STALE` in
+der TODO stehen, aber nicht in `state.json`. Der Stand-Eintrag nach Stufe 7 nannte
+540 grüne Tests — gezählt über Unterverzeichnisse, die `bridge/tests/plan` nicht
+enthielten. Genau davor warnt `scripts/run_tests.sh`; ich habe es in dieser Stufe
+zunächst genauso gemacht.
+
+**Nebenbefund, nicht behoben:** der Client wird pro Tool-Aufruf neu gebaut, der
+Resolver-Cache überlebt also keinen Aufruf. Bei `FUNC_BY_ADDR` steht der tote Alias
+`function_by_addr` an erster Stelle; jeder Aufruf kostet damit eine 404 vorweg.
+`GET_XREFS_TO` iteriert seine Kandidaten direkt und beginnt ebenfalls mit dem toten.

@@ -204,7 +204,7 @@ Key categories:
 * **Search & analysis** – `search_*`, `string_xrefs`, `list_functions_in_range`, etc.
 * **Memory & disassembly** – `read_*`, `disassemble_*`
 * **Advanced analysis** – `analyze_function_complete`, jump-table helpers
-* **Data & utilities** – `strings_compact`, `project_*`, `write_bytes`, `health`
+* **Data & utilities** – `strings_compact`, `project_*`, `health`
 
 ---
 

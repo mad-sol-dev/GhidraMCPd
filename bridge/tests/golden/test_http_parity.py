@@ -214,14 +214,17 @@ class GoldenStubGhidraClient:
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         return address in self._instruction_addresses
 
-    def list_strings_compact(
-        self, *, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, object]]:
+    def list_strings(self, *, limit: int = 50, offset: int = 0) -> Dict[str, object]:
+        # Named after the method the real client has.  This stub used to define
+        # list_strings_compact, which no client ever had and nothing here called.
         if limit < 0:
             limit = 0
         start = max(offset, 0)
         end = start + limit
-        return [dict(entry) for entry in self._strings[start:end]]
+        return {
+            "items": [dict(entry) for entry in self._strings[start:end]],
+            "has_more": end < len(self._strings),
+        }
 
     def search_strings(self, query: str) -> List[Dict[str, object]]:
         normalized = query.lower()

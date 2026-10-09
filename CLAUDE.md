@@ -135,7 +135,6 @@ AI Client ← SSE events ← FastMCP ← envelope{ok, data, errors} ← JSON res
 Copy `.env.sample` to `.env` and adjust:
 - `GHIDRA_SERVER_URL`: Ghidra plugin HTTP endpoint (default: `http://127.0.0.1:8080/`)
 - `GHIDRA_MCP_ENABLE_WRITES`: Enable write operations (rename, comment) - keep disabled unless auditing
-- `GHIDRA_MCP_ENABLE_PROJECT_REBASE`: Enable program rebasing operations
 - `GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY`: `strict` or `soft` for mid-session program switching
 
 ## Testing Strategy

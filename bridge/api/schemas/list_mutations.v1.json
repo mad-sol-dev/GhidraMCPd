@@ -66,8 +66,7 @@
             "enum": [
               "rename",
               "comment",
-              "datatype",
-              "bytes"
+              "datatype"
             ]
           },
           "target": {

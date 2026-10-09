@@ -22,7 +22,6 @@ from ..features import (
     jt,
     memory,
     mmio,
-    project,
     scalars,
     search_function,
     strings,
@@ -31,7 +30,6 @@ from ..features import (
 from ..features import listing, mutations
 from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient
-from ..utils import config
 from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
 from ..utils.errors import ErrorCode
 from ..utils.logging import (
@@ -767,8 +765,8 @@ def register_tools(
     def list_mutations(client, fmt: str = "text") -> Dict[str, object]:
         """Everything this session changed since the last save_program.
 
-        Renames, comments, data types and byte patches, with address, old value
-        and new value, rendered so the block drops straight into a commit
+        Renames, comments and data types, with address, old value and new
+        value, rendered so the block drops straight into a commit
         message or a TRUTH line. It is the answer check_dirty_state cannot give:
         that tool knows *that* something is unsaved, this one knows *what*.
 
@@ -1107,66 +1105,6 @@ def register_tools(
                 "comment_type": comment_type,
                 "message": f"{comment_type.capitalize()} comment set at {address}"
             })
-
-    @server.tool()
-    @tracked_tool()
-    def project_rebase(
-        client,
-        new_base: str,
-        *,
-        dry_run: bool = True,
-        confirm: bool = False,
-    ) -> Dict[str, object]:
-        """Move the program's image base, shifting every address in the database.
-
-        For a raw binary loaded at the wrong base, where the vector table or
-        literal pools do not line up.
-
-        Not for: routine work -- every address you have already noted now points
-        somewhere else. Disabled unless
-        GHIDRA_MCP_ENABLE_PROJECT_REBASE=true.
-
-        Args:
-            new_base: new image base, hex, e.g. '0x00200000'.
-            dry_run: default true; report without touching the program.
-            confirm: must be true for a real rebase. dry_run=false alone is
-                deliberately not enough."""
-        request_payload: Dict[str, object] = {
-            "new_base": new_base,
-            "dry_run": dry_run,
-            "confirm": confirm,
-        }
-        valid, errors = validate_payload("project_rebase.request.v1.json", request_payload)
-        if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-
-        try:
-            parsed_new_base = parse_hex(new_base)
-        except ValueError as exc:
-            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
-
-        with request_scope(
-            "project_rebase",
-            logger=logger,
-            extra={"tool": "project_rebase"},
-            max_writes=1,
-        ):
-            try:
-                payload = project.rebase_project(
-                    client,
-                    new_base=parsed_new_base,
-                    dry_run=dry_run,
-                    confirm=confirm,
-                    writes_enabled=enable_writes,
-                    rebases_enabled=config.ENABLE_PROJECT_REBASE,
-                )
-            except ValueError as exc:
-                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
-
-        valid, errors = validate_payload("project_rebase.v1.json", payload)
-        if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-        return envelope_ok(payload)
 
     @server.tool()
     @tracked_tool()
@@ -1607,67 +1545,6 @@ def register_tools(
                 return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
 
         valid, errors = validate_payload("datatypes_delete.v1.json", payload)
-        if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-        return envelope_ok(payload)
-
-    @server.tool()
-    @tracked_tool()
-    def write_bytes(
-        client,
-        address: str,
-        data: str,
-        *,
-        encoding: str = "base64",
-        dry_run: bool = True,
-    ) -> Dict[str, object]:
-        """Patch raw bytes into the program's memory.
-
-        Not for: anything you cannot undo by hand. Edits the database, not the
-        file, and there is no undo through this API. Needs
-        GHIDRA_MCP_ENABLE_WRITES=true.
-
-        Args:
-            address: start, hex, in a writable initialized block.
-            data: the bytes, base64-encoded.
-            encoding: only 'base64' is accepted.
-            dry_run: default true; validate and report without writing."""
-        request_payload: Dict[str, object] = {
-            "address": address,
-            "data": data,
-            "encoding": encoding,
-            "dry_run": dry_run,
-        }
-        valid, errors = validate_payload("write_bytes.request.v1.json", request_payload)
-        if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
-
-        try:
-            parsed_address = parse_hex(address)
-        except ValueError as exc:
-            return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
-
-        with request_scope(
-            "write_bytes",
-            logger=logger,
-            extra={"tool": "write_bytes"},
-            max_writes=MAX_WRITES_PER_REQUEST,
-        ):
-            try:
-                payload = memory.write_bytes(
-                    client,
-                    address=parsed_address,
-                    data=data,
-                    encoding=encoding,
-                    dry_run=dry_run,
-                    writes_enabled=enable_writes,
-                )
-            except SafetyLimitExceeded as exc:
-                return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
-            except (KeyError, ValueError) as exc:
-                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
-
-        valid, errors = validate_payload("write_bytes.v1.json", payload)
         if not valid:
             return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
         return envelope_ok(payload)

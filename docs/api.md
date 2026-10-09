@@ -15,7 +15,6 @@ All endpoints use the envelope `{ok, data|null, errors[]}` with error entries sh
 - `POST /api/list_functions_in_range.json`
 - `POST /api/disassemble_at.json`
 - `POST /api/read_bytes.json`
-- `POST /api/write_bytes.json`
 - `POST /api/jt_slot_check.json`
 - `POST /api/jt_scan.json`
 - `POST /api/strings_compact.json`
@@ -201,7 +200,7 @@ Returns a compact listing of program strings with deterministic ordering:
 - Items contain `addr`, `s`, and `refs` counts with optional full `literal` text.
 - Results are bounded by `limit` and always include `total` metadata.
 - Empty strings are omitted; ASCII/UTF-16 variants are normalized to UTF-8 output.
-- When Ghidra bindings do not implement `list_strings_compact`, the bridge falls back to `list_strings` or a wildcard `search_strings("")` call before applying `offset`/`limit`. Some environments may still return an empty catalog if upstream discovery is unavailable.
+- The bridge pages through the plugin's `/strings` endpoint (`list_strings`). A client without it falls back to a wildcard `search_strings("")` call and slices by `offset`/`limit`.
 - Set `include_literals: true` to include the full normalized literal (without truncation) alongside the compact `s` preview.
 
 ### `search_strings`
@@ -1777,63 +1776,6 @@ All three routes share the standard per-request write guard. Each successful wri
   }
   ```
 
-## `/api/project_rebase.json`
-
-### POST
-
-**Summary:** project_rebase
-
-#### Request body
-- Schema ID: `urn:schema:project-rebase.request.v1`
-- Declares: `https://json-schema.org/draft/2020-12/schema`
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `confirm` | boolean | No | default=False |
-| `dry_run` | boolean | No | default=True |
-| `new_base` | string | Yes | pattern=^(0x)?[0-9a-fA-F]+$ |
-
-```json
-{
-  "confirm": false,
-  "dry_run": true,
-  "new_base": "string"
-}
-```
-
-#### Responses
-- `200` — Successful Response
-  - Schema ID: `urn:schema:project-rebase.v1`
-  - Declares: `https://json-schema.org/draft/2020-12/schema`
-
-  | Field | Type | Required | Notes |
-  | --- | --- | --- | --- |
-  | `dry_run` | boolean | Yes |  |
-  | `errors` | array<string> | Yes |  |
-  | `notes` | array<string> | Yes |  |
-  | `offset` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
-  | `previous_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
-  | `project_info` | object | Yes |  |
-  | `rebased` | boolean | Yes |  |
-  | `requested_base` | string | Yes | pattern=^-?0x[0-9a-fA-F]+$ |
-
-  ```json
-  {
-    "dry_run": false,
-    "errors": [
-      "string"
-    ],
-    "notes": [
-      "string"
-    ],
-    "offset": "string",
-    "previous_base": "string",
-    "project_info": {},
-    "rebased": false,
-    "requested_base": "string"
-  }
-  ```
-
 ## `/api/read_bytes.json`
 
 ### POST
@@ -2413,61 +2355,6 @@ All three routes share the standard per-request write guard. Each successful wri
     ],
     "returned": 0,
     "truncated": false
-  }
-  ```
-
-## `/api/write_bytes.json`
-
-### POST
-
-**Summary:** write_bytes_route
-
-#### Request body
-- Schema ID: `urn:schema:write-bytes.request.v1`
-- Declares: `https://json-schema.org/draft/2020-12/schema`
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-| `data` | string | Yes |  |
-| `dry_run` | boolean | No | default=True |
-| `encoding` | string | No | default='base64', enum=['base64'] |
-
-```json
-{
-  "address": "0x0",
-  "data": "string",
-  "dry_run": true,
-  "encoding": "base64"
-}
-```
-
-#### Responses
-- `200` — Successful Response
-  - Schema ID: `urn:schema:write-bytes.v1`
-  - Declares: `https://json-schema.org/draft/2020-12/schema`
-
-  | Field | Type | Required | Notes |
-  | --- | --- | --- | --- |
-  | `address` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
-  | `dry_run` | boolean | Yes |  |
-  | `errors` | array<string> | Yes |  |
-  | `length` | integer | Yes | min=0 |
-  | `notes` | array<string> | Yes |  |
-  | `written` | boolean | Yes |  |
-
-  ```json
-  {
-    "address": "0x0",
-    "dry_run": false,
-    "errors": [
-      "string"
-    ],
-    "length": 0,
-    "notes": [
-      "string"
-    ],
-    "written": false
   }
   ```
 

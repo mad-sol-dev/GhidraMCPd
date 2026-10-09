@@ -63,8 +63,6 @@ Set environment variables before starting the server to adjust safety limits, au
   - The plugin binds to `127.0.0.1` only. Its port and bind address are Ghidra tool options (Edit → Tool Options → *GhidraMCP HTTP Server*: `Server Port`, `Bind Address`). The plugin has no authentication and the write guard lives in the bridge, so a non-loopback bind address exposes rename, comment and data-type routes to everyone who can reach it; the plugin logs a warning when started that way. `scripts/check_plugin_bind.sh [port]` checks that the running plugin answers on loopback and refuses the LAN address.
 - `GHIDRA_MCP_ENABLE_WRITES` (default `false`)
   - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations.
-- `GHIDRA_MCP_ENABLE_PROJECT_REBASE` (default `false`)
-  - Enables `/api/project_rebase.json` to mutate the program image base when `dry_run=false` and the request includes `confirm=true`. Without the flag, the endpoint only reports what would change.
 - `GHIDRA_MCP_AUDIT_LOG`
   - Optional filesystem path for JSONL write audits. When unset, successful writes are not logged.
 - `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (default `2`)

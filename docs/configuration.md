@@ -9,10 +9,6 @@ Set via environment variables:
   Enables deterministic write tools (rename/comment). When `false` or when requests pass
   `dry_run=true`, no writes occur.
 
-- `GHIDRA_MCP_ENABLE_PROJECT_REBASE` (default: `false`)
-  Gates the project rebase tools that modify checked-out workspaces. Keep disabled unless
-  you understand the workflow impact.
-
 - `GHIDRA_MCP_AUDIT_LOG` (default: unset)
   Optional filesystem path for JSONL write audits. When set, deterministic write endpoints
   append structured entries (including dry-run and disabled attempts) that capture caller
