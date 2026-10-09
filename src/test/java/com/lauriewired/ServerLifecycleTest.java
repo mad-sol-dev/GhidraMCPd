@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import org.junit.Test;
@@ -72,5 +73,20 @@ public class ServerLifecycleTest {
         assertSame(first.server(), second.server());
 
         state.stopIfIdle(true);
+    }
+
+    @Test
+    public void bindAddressDefaultsToLoopbackWhenBlank() throws Exception {
+        assertTrue(GhidraMCPPlugin.resolveBindAddress(null).isLoopbackAddress());
+        assertTrue(GhidraMCPPlugin.resolveBindAddress("").isLoopbackAddress());
+        assertTrue(GhidraMCPPlugin.resolveBindAddress("   ").isLoopbackAddress());
+        assertTrue(GhidraMCPPlugin.resolveBindAddress("127.0.0.1").isLoopbackAddress());
+    }
+
+    @Test
+    public void bindAddressHonoursExplicitWildcard() throws Exception {
+        InetAddress any = GhidraMCPPlugin.resolveBindAddress("0.0.0.0");
+        assertTrue(any.isAnyLocalAddress());
+        assertFalse(any.isLoopbackAddress());
     }
 }

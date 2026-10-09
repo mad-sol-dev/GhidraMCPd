@@ -59,7 +59,8 @@ between modes so you can keep a single `.env`/script and only toggle
 
 Set environment variables before starting the server to adjust safety limits, auditing and endpoint targets:
 - `GHIDRA_SERVER_URL` (default `http://127.0.0.1:8080/`)
-  - Base URL (including trailing slash) for the Ghidra Java plugin.  The Python bridge uses this to communicate with Ghidra.  Override this if your plugin is running on a different host or port.
+  - Base URL (including trailing slash) for the Ghidra Java plugin.  The Python bridge uses this to communicate with Ghidra.  Override this if your plugin is running on a different port.
+  - The plugin binds to `127.0.0.1` only. Its port and bind address are Ghidra tool options (Edit → Tool Options → *GhidraMCP HTTP Server*: `Server Port`, `Bind Address`). The plugin has no authentication and the write guard lives in the bridge, so a non-loopback bind address exposes rename, comment and data-type routes to everyone who can reach it; the plugin logs a warning when started that way. `scripts/check_plugin_bind.sh [port]` checks that the running plugin answers on loopback and refuses the LAN address.
 - `GHIDRA_MCP_ENABLE_WRITES` (default `false`)
   - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations.
 - `GHIDRA_MCP_ENABLE_PROJECT_REBASE` (default `false`)

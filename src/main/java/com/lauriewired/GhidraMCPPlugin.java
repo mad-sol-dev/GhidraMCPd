@@ -80,7 +80,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -105,6 +107,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private final ProgramStatusTracker statusTracker = new ProgramStatusTracker();
     private static final String OPTION_CATEGORY_NAME = "GhidraMCP HTTP Server";
     private static final String PORT_OPTION_NAME = "Server Port";
+    private static final String BIND_OPTION_NAME = "Bind Address";
+    private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
     private static final int DEFAULT_PORT = 8080;
     private static final int DEFAULT_HEXDUMP_WIDTH = 16;
     private static final int MAX_BYTE_READ = 0x200;      // 512 bytes
@@ -412,6 +416,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             null, // No help location for now
             "The network port number the embedded HTTP server will listen on. " +
             "Requires Ghidra restart or plugin reload to take effect after changing.");
+        options.registerOption(BIND_OPTION_NAME, DEFAULT_BIND_ADDRESS,
+            null,
+            "The interface address the embedded HTTP server binds to. The server has no " +
+            "authentication, and the write guard lives in the bridge, not here: any address " +
+            "other than loopback exposes read and write routes to everyone who can reach it. " +
+            "Requires Ghidra restart or plugin reload to take effect after changing.");
 
         try {
             startServer();
@@ -422,14 +432,27 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         Msg.info(this, "GhidraMCPPlugin loaded!");
     }
 
+    /**
+     * Resolves the bind address option. Blank means loopback, so a cleared option field
+     * cannot silently widen the server to all interfaces; "0.0.0.0" has to be typed.
+     */
+    static InetAddress resolveBindAddress(String configured) throws UnknownHostException {
+        if (configured == null || configured.isBlank()) {
+            return InetAddress.getLoopbackAddress();
+        }
+        return InetAddress.getByName(configured.trim());
+    }
+
     private void startServer() throws IOException {
         Options options = tool.getOptions(OPTION_CATEGORY_NAME);
         int port = options.getInt(PORT_OPTION_NAME, DEFAULT_PORT);
+        InetAddress bindAddress =
+            resolveBindAddress(options.getString(BIND_OPTION_NAME, DEFAULT_BIND_ADDRESS));
 
         CONTEXT_REGISTRY.register(this);
 
-        SharedHttpServerState.ServerHandle handle =
-            SERVER_STATE.ensureServer(port, () -> HttpServer.create(new InetSocketAddress(port), 0));
+        SharedHttpServerState.ServerHandle handle = SERVER_STATE.ensureServer(port,
+            () -> HttpServer.create(new InetSocketAddress(bindAddress, port), 0));
         server = handle.server();
 
         if (!ROUTES_REGISTERED.get()) {
@@ -442,7 +465,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             new Thread(() -> {
                 try {
                     handle.server().start();
-                    Msg.info(this, "GhidraMCP HTTP server started on port " + handle.boundPort());
+                    Msg.info(this, "GhidraMCP HTTP server started on "
+                        + bindAddress.getHostAddress() + ":" + handle.boundPort());
+                    if (!bindAddress.isLoopbackAddress()) {
+                        Msg.warn(this, "GhidraMCP HTTP server is bound to "
+                            + bindAddress.getHostAddress()
+                            + ", not loopback. It has no authentication; anyone who can reach "
+                            + "this address can read and modify the open programs.");
+                    }
                 } catch (Exception e) {
                     Msg.error(this, "Failed to start HTTP server on port " + handle.boundPort() + ". Port might be in use.", e);
                     SERVER_STATE.stopIfIdle(true);
