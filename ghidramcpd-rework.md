@@ -1613,3 +1613,55 @@ fünf Abweichungen oben sind belegte Korrekturen.
 
 Offen: ob die geöffnete Instanz (`archive/…/zk-inkjet-1225`) die eingefrorene
 Referenzkopie ist. Die Sonde hat nur gelesen.
+
+## Stufe 8c — Disassemblat als Struktur (Commits `2b74f7c`, `f870d55`)
+
+Plugin: `/disassembleAt`, `/disassemble_function` und `/disassemble` nehmen
+`fmt=json`; ohne bleibt es Text (Rahmen 1). `/disassemble` musste mit, weil die
+Bridge `DISASSEMBLE` zuerst dorthin auflöst. Pro Instruktion `address`, `bytes`,
+`mnemonic`, `text`, `comment`, `flow` (+`conditional`/`computed`/`targets`),
+`operands` (Register, Skalare, Adressen aus Ghidras Operandenobjekten) und `refs`
+(Ziel, Typ, Operand, `mapped`; bei READ ins Bild das Wort dort).
+
+**Am laufenden Programm geprüft:** Pool-Load `0x2afa38` trägt `word 0xb1008704`, der
+folgende Zugriff `refs → 0xb1008704, mapped false`; über 0x002AF9C0 4 Calls, 3
+bedingte und 1 unbedingter Sprung, 1 Return über `ldmia …,pc` — alle richtig.
+**Zwei Fehler gefunden und behoben, aber noch nicht live bestätigt:** jeder Skalar
+wurde mit Vorzeichen gelesen (`#0xb0000000` → `-0x50000000`); jetzt Ghidras eigenes
+`isSigned()`, das auch die Listing-Darstellung trägt (`[sp,#-0x4]` bleibt negativ).
+Operandentypen hatten ein Leerzeichen am Ende. Die laufende Instanz hat noch den
+Build davor; die Bridge hängt an keinem der beiden Felder für Adressen.
+
+**Abnahme:**
+
+1. Stufe-2-Regressionstest: grün, live, mit 33 weiteren Live-Tests.
+2. `mmio_annotate_compact` an den Funktionen des Referenzlaufs: **nicht** dieselbe
+   Menge, und so angekündigt (Vorfrage). Alle 28 Zugriffe an 0x002AF9C0 = Ghidras
+   Referenzen außerhalb des Bilds; fünf Fehladressen korrigiert, 13 RAM-Zugriffe
+   über Pool-Zeiger neu, `skipped` 12 → 0 (Pool-Loads waren als „nicht platzierbar"
+   gezählt). Live-Test `test_mmio_stale_base_live.py`, gegen den alten Stand rot.
+3. In `mmio.py`, `analyze.py`, `strings.py` kein Regex mehr auf Operandentext.
+   Übrig, mit Begründung im Docstring: ein Muster auf dem Mnemonic (`mmio`), die
+   Prosa von Funktions-Metadaten und Xref-Kontext sowie Escape-Bytes im
+   String-Inhalt (`analyze`).
+4. Referenzlauf, Bridge vor 8c (`b7f192b`) gegen nach 8c, dasselbe Plugin, beide
+   mit Fingerabdruck: **68 260 → 68 109 Bytes (−151)**, 40 Aufrufe, 0 Fehler. Nur
+   `string_xrefs_compact` (−16) und `mmio_annotate_compact` (−135) ändern sich.
+
+**Abweichungen außerhalb von MMIO, live alt gegen neu, alle Korrekturen:**
+`analyze` an 0x0025B0C4 findet drei bedingte Calls (`BLLT`, `BLEQ`), die der
+`BL`-Regex nicht traf, und meldet keinen „String" mehr, der die ersten Bytes eines
+`BLLT`-Ziels war (`\x10@-\xe9_`). Die drei übrigen Dossiers sind in Calls, Strings und
+Zählungen identisch; das Fenster wächst um 72 Bytes, weil `bytes` jetzt gefüllt ist.
+`string_xrefs_compact` 0x00400000: 19 von 20 gleich, beim 20. fällt ein `arg_index`
+weg, der aus dem Basisregister einer späteren Instruktion geraten war.
+
+**Testbestand, der Falsches festschrieb:** Ein Literal-Load zählte als READ am
+geladenen Wert, `ldrb`/`strh` wurden ignoriert, Stubs lieferten Call-Ziele als Namen
+und String-Adressen im Text — Formen, die das Plugin nie erzeugt. Umgeschrieben auf
+die gemessenen Formen, `test_mmio_heuristics.py` und
+`test_mmio_base_resolution.py` ersetzt.
+
+**Nicht in 8c:** `disasm`, `batch_ops`, `search_function`, `functions` lesen
+weiterhin Textzeilen, zerlegen aber keine Operanden. `MMIO-ZERO-TARGET` (bitweise
+Operation ohne Immediate als `target 0x0`) ist alt und notiert.
