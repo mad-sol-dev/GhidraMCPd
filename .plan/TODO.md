@@ -4,7 +4,7 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {STAGE-8} Naht Plugin↔Bridge (`ghidramcpd-rework.md`, Stufe 8): 8a Loopback-Bind, 8b Phantom-Tools `write_bytes`/`project_rebase` + Routen-Test, 8c `/disassembleAt` als JSON, 8d `/functionsInRange` als JSON. 8a zuerst.
+- {STAGE-8} Naht Plugin↔Bridge (`ghidramcpd-rework.md`, Stufe 8): ~~8a Loopback-Bind~~ (abgenommen 2026-10-09), 8b Phantom-Tools `write_bytes`/`project_rebase` + Routen-Test, 8c `/disassembleAt` als JSON, 8d `/functionsInRange` als JSON. Als Nächstes 8b.
 - {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
 - {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance

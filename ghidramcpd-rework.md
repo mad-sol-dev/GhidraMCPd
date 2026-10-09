@@ -1491,3 +1491,32 @@ Messung und keine Behauptung.
 
 **Stufe 6 bleibt entschieden nicht gebaut.** Eine echte Fehlwahl wäre der Anlass,
 sie neu aufzurufen.
+
+---
+
+## Stufe 8a — Loopback (Commit `db7d982`, Abnahme 2026-10-09)
+
+Tool-Option `Bind Address`, Default `127.0.0.1`; ein leeres Feld heißt ebenfalls
+Loopback, alle Interfaces gibt es nur mit ausgeschriebenem `0.0.0.0`, und dann mit
+Warnung im Log. Java-Test (JUnit 4.13.2, 8 grün) wird rot, wenn ein leeres Feld zum
+Wildcard aufgelöst wird — geprüft durch Einbau genau dieses Fehlers.
+
+**Abnahme** nach Rebuild (`scripts/build_local.sh`) und Neustart von Ghidra,
+`scripts/check_plugin_bind.sh`:
+
+    ok: listening on [::ffff:127.0.0.1]:8080
+    ok: 127.0.0.1:8080 answered (HTTP 404)
+    ok: positive control reached <LAN-IP>:34715
+    ok: <LAN-IP>:8080 refused
+    PASS: port 8080 is reachable on loopback only
+
+**Der erste Lauf meldete FAIL — gegen ein korrekt gebundenes Plugin.** Java öffnet
+auch für eine IPv4-Bindung einen IPv6-Socket; `ss` zeigt `127.0.0.1` deshalb als
+`[::ffff:127.0.0.1]`, und das Muster im Skript kannte nur `127.*` und `[::1]`. Das
+Skript war vorher gegen Python-Dummies validiert (Loopback → PASS, `0.0.0.0` → FAIL,
+kein Listener → CANNOT CHECK) — reine IPv4-Sockets, die diese Form nie zeigen. Eine
+Validierung gegen ein Stellvertreterobjekt belegt das Stellvertreterobjekt: derselbe
+Befundtyp wie die Stubs in 8b, diesmal im eigenen Prüfskript.
+
+Nicht geprüft: der alte Plugin-Stand gegen das korrigierte Skript. Er band auf den
+Wildcard, den `ss` als `*` zeigt; das Muster lässt ihn nicht durch.

@@ -34,8 +34,10 @@ if [ "${#LISTEN[@]}" -eq 0 ]; then
 fi
 for addr in "${LISTEN[@]}"; do
   host="${addr%:*}"
+  # Java opens an IPv6 socket even for an IPv4 bind, so ss shows 127.0.0.1 as
+  # the IPv4-mapped [::ffff:127.0.0.1].  It is the same address.
   case "$host" in
-    127.*|"[::1]") echo "ok: listening on $addr" ;;
+    127.*|"[::1]"|"[::ffff:127."*) echo "ok: listening on $addr" ;;
     *) fail "listening on $addr, which is not loopback" ;;
   esac
 done
