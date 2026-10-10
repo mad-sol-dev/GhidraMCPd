@@ -522,6 +522,10 @@
       "commit": "pending",
       "status": "done"
     },
+    "R.24-PHASE1": {
+      "commit": "21ba8ab",
+      "status": "done"
+    },
     "WRITE-ANSWER-TRUTHFUL": {
       "commit": "b5d961a",
       "status": "done"

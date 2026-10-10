@@ -52,3 +52,4 @@
 - 2026-10-10 **R.26** — Schreibzugriffe gegen das aktive Programm geprüft, in der Bridge vor dem Senden und im Plugin am schreibenden Handler (409); Default-Auswahl bindet nicht _commit:c608a50_
 - 2026-10-10 **WRITE-ANSWER-TRUTHFUL** — „Failed to rename function"/„Failed to set comment" galten als Erfolg; nur die Erfolgssätze des Plugins zählen _commit:b5d961a_
 - 2026-10-10 **R.25** — `writes_enabled`/`writes_note` in `project_info` und `/api/health.json`, eine Formulierung für alle Schreibablehnungen, `save_program` bei abgeschalteten Writes gesperrt _commit:31e4442_
+- 2026-10-10 **R.24-PHASE1** — Resolver sendet einmal; `search_functions` ohne Alle-Funktionen-Fallback; gescheiterte Listen sind Fehler statt leer und ungecacht; Jump-Table-Adapter prüfen den Funktionsbeginn; Callee-Namen; Scalar-Grenze als `truncated` _commit:21ba8ab_

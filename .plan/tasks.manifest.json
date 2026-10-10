@@ -677,6 +677,21 @@
       ]
     },
     {
+      "id": "R.24-PHASE1",
+      "title": "R.24 Phase 1: Bridge meldet gescheiterte Anfragen nicht als Befund",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "Ein gescheiterter Aufruf geht einmal raus; nur eine fehlende Route weicht auf einen Alias aus",
+        "Gescheiterte Listen und Suchen sind UNAVAILABLE mit Grund statt leer, und werden nicht gecacht",
+        "Jump-Table-Adapter pruefen den Funktionsbeginn, nicht ob Disassemblat zurueckkam"
+      ],
+      "status": "done",
+      "notes": [
+        "Aus der R.24-Bestandsaufnahme; Phase 2 (Plugin-Konvention) offen."
+      ]
+    },
+    {
       "id": "DOC-DEFAULT-DRIFT",
       "title": "Test: Doku gegen Signatur-Defaults",
       "area": "bridge",
