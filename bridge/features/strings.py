@@ -189,8 +189,9 @@ def _extract_context(
 def xrefs_compact(client: GhidraClient, *, string_addr: int, limit: int = 20) -> Dict[str, object]:
     increment_counter("strings.xrefs.calls")
     enforce_batch_limit(limit, counter="strings.xrefs.limit")
-    refs = client.get_xrefs_to(string_addr, limit=limit)
-    total = len(refs)
+    # One more than shown: a list cut at the limit must not read as complete.
+    refs = client.get_xrefs_to(string_addr, limit=limit + 1)
+    truncated = len(refs) > limit
     callers: List[Dict[str, object]] = []
     for ref in refs[:limit]:
         addr = ref.get("addr")
@@ -211,7 +212,8 @@ def xrefs_compact(client: GhidraClient, *, string_addr: int, limit: int = 20) ->
         increment_counter("strings.xrefs.callers")
     return {
         "string": int_to_hex(string_addr),
-        "count": total,
+        "count": len(callers),
+        "truncated": truncated,
         "callers": callers,
     }
 

@@ -634,13 +634,21 @@
                             "inbound": {
                               "type": "integer"
                             },
+                            "inbound_truncated": {
+                              "type": "boolean"
+                            },
                             "outbound": {
                               "type": "integer"
+                            },
+                            "outbound_truncated": {
+                              "type": "boolean"
                             }
                           },
                           "required": [
                             "inbound",
-                            "outbound"
+                            "outbound",
+                            "inbound_truncated",
+                            "outbound_truncated"
                           ],
                           "type": "object"
                         }
@@ -4462,11 +4470,15 @@
                     "string": {
                       "pattern": "^0x[0-9a-fA-F]+$",
                       "type": "string"
+                    },
+                    "truncated": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "string",
                     "count",
+                    "truncated",
                     "callers"
                   ],
                   "type": "object"

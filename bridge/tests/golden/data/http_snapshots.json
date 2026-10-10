@@ -24,7 +24,7 @@
         "signature": "undefined sub_102004(void)"
       },
       "meta": {
-        "estimate_tokens": 235,
+        "estimate_tokens": 249,
         "fields": [
           "constants",
           "features",
@@ -74,7 +74,9 @@
         ],
         "summary": {
           "inbound": 2,
-          "outbound": 1
+          "inbound_truncated": false,
+          "outbound": 1,
+          "outbound_truncated": false
         }
       }
     },
@@ -366,7 +368,8 @@
         }
       ],
       "count": 2,
-      "string": "0x00200000"
+      "string": "0x00200000",
+      "truncated": false
     },
     "errors": [],
     "ok": true

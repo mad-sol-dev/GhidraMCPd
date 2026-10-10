@@ -65,7 +65,9 @@ def test_analyze_function_complete_full_payload() -> None:
     assert payload["function"]["name"] == "sub_1000"
     assert payload["disasm"]["window"]
     assert payload["decompile"]["snippet"].startswith("int sub_1000")
-    assert payload["xrefs"]["summary"] == {"inbound": 2, "outbound": 2}
+    assert payload["xrefs"]["summary"] == {
+        "inbound": 2, "outbound": 2, "inbound_truncated": False, "outbound_truncated": False,
+    }
     assert payload["callgraph"]["callees"]
     assert payload["strings"]["items"] == [
         {
@@ -100,7 +102,9 @@ def test_analyze_default_omits_disasm_and_decompile() -> None:
 
     # The cheap fields that make the dossier worth calling are still there.
     assert payload["function"]["name"] == "sub_1000"
-    assert payload["xrefs"]["summary"] == {"inbound": 2, "outbound": 2}
+    assert payload["xrefs"]["summary"] == {
+        "inbound": 2, "outbound": 2, "inbound_truncated": False, "outbound_truncated": False,
+    }
     assert payload["features"]["instruction_count"] == 4
 
 
@@ -165,3 +169,38 @@ def test_constants_are_the_pool_words_a_function_loads():
         "total": 2,
     }
     assert analyze._collect_constants(entries, limit=1)["total"] == 2
+
+
+def test_xrefs_cut_at_their_limit_say_so() -> None:
+    """Two callers, two calls, limit 1 each: the counts are not all there is."""
+
+    payload = analyze.analyze_function_complete(
+        StubClient(),
+        address=0x00001004,
+        fields=["xrefs", "features"],
+        options={"xrefs": {"inbound_limit": 1, "outbound_limit": 1}},
+    )
+
+    assert payload["xrefs"]["summary"] == {
+        "inbound": 1, "outbound": 1, "inbound_truncated": True, "outbound_truncated": True,
+    }
+    notes = payload["features"]["notes"]
+    assert any("inbound_limit 1" in note for note in notes)
+    assert any("outbound_limit 1" in note for note in notes)
+    assert payload["meta"]["truncated"] is True
+
+
+def test_xrefs_exactly_at_their_limit_are_complete() -> None:
+    """Asking one more than shown tells a full list from a cut one."""
+
+    payload = analyze.analyze_function_complete(
+        StubClient(),
+        address=0x00001004,
+        fields=["xrefs", "features"],
+        options={"xrefs": {"inbound_limit": 2, "outbound_limit": 2}},
+    )
+
+    summary = payload["xrefs"]["summary"]
+    assert (summary["inbound_truncated"], summary["outbound_truncated"]) == (False, False)
+    assert payload["features"]["notes"] == []
+    assert payload["meta"]["truncated"] is False

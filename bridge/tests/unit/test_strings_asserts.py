@@ -39,7 +39,9 @@ def test_xrefs_compact_records_limit_and_disassembly_calls():
     payload = xrefs_compact(client, string_addr=0x1000)
 
     assert payload["count"] == len(xrefs)
-    assert client.last_limit == 20  # Stage 3 lowered the default page size
+    assert payload["truncated"] is False
+    # Stage 3 lowered the default page size to 20; one more tells a cut list.
+    assert client.last_limit == 21
     assert client.disasm_calls == [0x401000, 0x401010]
 
 
@@ -58,7 +60,8 @@ def test_xrefs_compact_limits_processed_callers():
 
     payload = xrefs_compact(client, string_addr=0x2000, limit=2)
 
-    assert payload["count"] == len(xrefs)
+    assert payload["count"] == 2
+    assert payload["truncated"] is True
     assert len(payload["callers"]) == 2
-    assert client.last_limit == 2
+    assert client.last_limit == 3
     assert client.disasm_calls == [0x500000, 0x500010]

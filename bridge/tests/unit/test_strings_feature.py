@@ -85,9 +85,10 @@ def test_respects_limit():
 
     payload = xrefs_compact(client, string_addr=0x2000, limit=2)
 
-    assert payload["count"] == 3
+    assert payload["count"] == 2
+    assert payload["truncated"] is True
     assert len(payload["callers"]) == 2
-    assert client.last_limit == 2
+    assert client.last_limit == 3
     assert client.disasm_calls == [0x500000, 0x500010]
 
 

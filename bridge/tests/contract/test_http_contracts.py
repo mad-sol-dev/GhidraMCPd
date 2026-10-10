@@ -172,7 +172,8 @@ def test_string_xrefs_contract(contract_client: TestClient) -> None:
     _assert_envelope(body)
     data = body["data"]
     _assert_valid("string_xrefs.v1.json", data)
-    assert data["count"] == 8
+    assert data["count"] == 4
+    assert data["truncated"] is True
     assert len(data["callers"]) == 4
     assert data["callers"][0]["addr"] == "0x00100000"
 

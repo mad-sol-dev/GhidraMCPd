@@ -61,7 +61,8 @@ def test_string_xrefs_safeguard(contract_client: TestClient) -> None:
     )
     assert response.status_code == 200
     data = _assert_envelope(response.json())
-    assert data["count"] == 8
+    assert data["count"] == 4
+    assert data["truncated"] is True
     callers = data["callers"]
     assert len(callers) == 4
     first = callers[0]

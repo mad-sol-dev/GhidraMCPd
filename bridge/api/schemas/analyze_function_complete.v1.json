@@ -107,10 +107,12 @@
         "summary": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["inbound", "outbound"],
+          "required": ["inbound", "outbound", "inbound_truncated", "outbound_truncated"],
           "properties": {
             "inbound": {"type": "integer"},
-            "outbound": {"type": "integer"}
+            "outbound": {"type": "integer"},
+            "inbound_truncated": {"type": "boolean"},
+            "outbound_truncated": {"type": "boolean"}
           }
         }
       }

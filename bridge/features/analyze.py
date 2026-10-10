@@ -166,13 +166,14 @@ def analyze_function_complete(
 
     inbound_entries: List[Dict[str, object]] = []
     outbound_entries: List[Dict[str, object]] = []
+    inbound_truncated = outbound_truncated = False
     if "xrefs" in requested or "callgraph" in requested or "features" in requested:
-        inbound_entries = _collect_inbound_xrefs(
+        inbound_entries, inbound_truncated = _collect_inbound_xrefs(
             client,
             entry_point,
             limit=config.inbound_limit,
         )
-        call_refs = _extract_call_references(
+        call_refs, outbound_truncated = _extract_call_references(
             client,
             disasm_entries,
             limit=config.outbound_limit,
@@ -185,6 +186,8 @@ def analyze_function_complete(
                 "summary": {
                     "inbound": len(inbound_entries),
                     "outbound": len(call_refs),
+                    "inbound_truncated": inbound_truncated,
+                    "outbound_truncated": outbound_truncated,
                 },
             }
 
@@ -218,9 +221,11 @@ def analyze_function_complete(
             outbound_entries,
             string_items,
             body_range,
+            inbound_limit=config.inbound_limit if inbound_truncated else None,
+            outbound_limit=config.outbound_limit if outbound_truncated else None,
         )
 
-    truncated = disasm_truncated or decompile_truncated
+    truncated = disasm_truncated or decompile_truncated or inbound_truncated or outbound_truncated
 
     data_without_meta = {k: v for k, v in payload.items() if k != "meta"}
     estimate_tokens = _estimate_tokens(data_without_meta)
@@ -556,10 +561,17 @@ def _collect_inbound_xrefs(
     entry_point: int,
     *,
     limit: int,
-) -> List[Dict[str, object]]:
+) -> Tuple[List[Dict[str, object]], bool]:
+    """The first ``limit`` references, and whether more exist.
+
+    One more than shown is asked for: a list cut at the limit must not read
+    as all the callers there are.
+    """
+
     if limit <= 0:
-        return []
-    raw = client.get_xrefs_to(entry_point, limit=limit)
+        return [], False
+    raw = client.get_xrefs_to(entry_point, limit=limit + 1)
+    truncated = len(raw) > limit
     results: List[Dict[str, object]] = []
     for item in raw[:limit]:
         addr = item.get("addr")
@@ -576,7 +588,7 @@ def _collect_inbound_xrefs(
             }
         )
     results.sort(key=lambda entry: entry["address"])
-    return results
+    return results, truncated
 
 
 def _extract_ref_type(context: str) -> Optional[str]:
@@ -602,9 +614,11 @@ def _extract_call_references(
     entries: Sequence[Mapping[str, object]],
     *,
     limit: int,
-) -> List[Dict[str, object]]:
+) -> Tuple[List[Dict[str, object]], bool]:
+    """The first ``limit`` calls in listing order, and whether more exist."""
+
     if limit <= 0:
-        return []
+        return [], False
 
     cache: MutableMapping[int, Optional[str]] = {}
     results: List[Dict[str, object]] = []
@@ -631,11 +645,13 @@ def _extract_call_references(
                 "context": entry.get("text", ""),
             }
         )
-        if len(results) >= limit:
+        if len(results) > limit:
             break
 
+    truncated = len(results) > limit
+    results = results[:limit]
     results.sort(key=lambda item: (item.get("to_address") or "", item.get("from_address") or ""))
-    return results
+    return results, truncated
 
 
 def _callers_from_inbound(
@@ -816,9 +832,21 @@ def _summarize_features(
     outbound: Sequence[Mapping[str, object]],
     strings: Sequence[Mapping[str, object]],
     body_range: Tuple[Optional[int], Optional[int]],
+    *,
+    inbound_limit: Optional[int] = None,
+    outbound_limit: Optional[int] = None,
 ) -> Dict[str, object]:
+    """Counts over the collected lists; a limit passed here means that list was cut."""
+
     start, end = body_range
     size_bytes = (end - start + 1) if start is not None and end is not None else None
+    notes: List[str] = []
+    if inbound_limit is not None:
+        notes.append(f"xrefs_inbound_count stops at inbound_limit {inbound_limit}; more exist")
+    if outbound_limit is not None:
+        notes.append(
+            f"xrefs_outbound_count and call_count stop at outbound_limit {outbound_limit}; more exist"
+        )
     return {
         "instruction_count": len(disasm_entries),
         "call_count": sum(1 for entry in outbound if entry.get("type")),
@@ -826,7 +854,7 @@ def _summarize_features(
         "xrefs_inbound_count": len(inbound),
         "xrefs_outbound_count": len(outbound),
         "size_bytes": size_bytes,
-        "notes": [],
+        "notes": notes,
     }
 
 
