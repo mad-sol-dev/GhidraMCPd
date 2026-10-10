@@ -4,7 +4,6 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {STAGE-8} Naht Plugin↔Bridge (`ghidramcpd-rework.md`, Stufe 8): ~~8a Loopback-Bind~~ (abgenommen 2026-10-09), ~~8b Phantom-Tools `write_bytes`/`project_rebase` + Routen-Test~~ (entfernt 2026-10-09), ~~8c `/disassembleAt` als JSON~~ (2026-10-09; Skalar-Vorzeichen live noch zu bestätigen), 8d `/functionsInRange` als JSON. Als Nächstes 8d.
 - {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
 - {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance
@@ -44,6 +43,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {STAGE-8} Naht Plugin↔Bridge: 8a Loopback-Bind, 8b Phantom-Tools entfernt, 8c Disassemblat als Struktur (mmio/analyze/strings lesen Felder), 8d `/functionsInRange` als JSON. Abgenommen 2026-10-10 mit Plugin 1.3.56, Ergebnisse in `ghidramcpd-rework.md`, Stufe 8.
 - [x] {MMIO-STALE-BASE} `mmio_annotate_compact` liest Adressen aus Ghidras Referenzen (Stufe 8c). An 0x002AF9C0 alle 28 Zugriffe = Ghidras Referenzen, die fünf alten Fehladressen korrigiert; Live-Test `bridge/tests/live/test_mmio_stale_base_live.py`, gegen den alten Stand rot.
 - [x] {PLAN-TESTS-RED} `bridge/tests/plan` wieder grün: `STAGE-8`, `IMAGE-BASE-STALE`, `DEAD-ALIAS-FIRST` in `state.json` und Manifest nachgetragen, `AGENT_LOCK`-Lease auf `main` bis 2026-10-23 verlängert. Der Lease-Test schlägt nach Ablauf erneut an — so gebaut, kein Fehler.
 - [x] {PROJECT-INFO-PROVENANCE} `project_info` belegt, welche Bytes antworten: `source_files` mit SHA-256 wie importiert und wie aktuell (`patched`), je Block `file_offset`, `source_file_index` und SHA-256 des Inhalts. Muster aus REAs Ghidra-Bridge (MIT). Verifiziert 2026-10-08 am ZK-Inkjet-Programm: alle vier Hashes = `3be9028b…` = `firmware/bin/ZK-INKJET-NANO-APP.bin`, `patched=false`, `flash` @0x00200000 = Dateioffset 0.

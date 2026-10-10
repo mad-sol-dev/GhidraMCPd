@@ -1665,3 +1665,50 @@ die gemessenen Formen, `test_mmio_heuristics.py` und
 **Nicht in 8c:** `disasm`, `batch_ops`, `search_function`, `functions` lesen
 weiterhin Textzeilen, zerlegen aber keine Operanden. `MMIO-ZERO-TARGET` (bitweise
 Operation ohne Immediate als `target 0x0`) ist alt und notiert.
+
+## Stufe 8d — `/functionsInRange` als JSON (Commit `c0d2115`, Plugin 1.3.56)
+
+`fmt=json` liefert `name`, `address`, `size`, `span` und, wo sie etwas aussagen,
+`thunk`/`thunk_to`/`chunks`. Die Bridge zerlegt keine Zeile mehr; ein Fehler ist
+`UNAVAILABLE` statt einer leeren Liste („keine Funktionen hier").
+
+**Abnahme**, live gegen Plugin 1.3.56, Fingerabdruck geprüft:
+
+- Beide Bereiche des Referenzlaufs und der Bereich um `boot_init`: alter Textweg und
+  JSON identisch. `FUNC-CHUNKS-THUNKS` bleibt verifiziert: `boot_init @ 0x00273ee4`
+  ist Thunk auf `0x0025b0c4`.
+- Ganzes Programm, 1 266 Funktionen: zwei Abweichungen, beide Thunks auf externe
+  Funktionen (`thunk_EXT_FUN_0006781e`). Der Textweg meldete `0xEXTERNAL:00000001`,
+  was das Hex-Muster des Antwortschemas verletzt — **jede Abfrage über einen Bereich
+  mit einem davon scheiterte bisher komplett**, nur liegt keiner in den
+  Referenzbereichen. Die erste JSON-Fassung machte `0x00000001` daraus, eine
+  erfundene Adresse; jetzt `is_thunk` ohne `thunk_to`. Die Ganzprogramm-Abfrage
+  besteht das Schema.
+- Referenzlauf: 68 109 → 68 109 Bytes, 40 Aufrufe, 0 Fehler.
+
+**Nachtrag zu 8c, live bestätigt mit 1.3.56:** alle 1 147 Skalare der vier
+Referenzfunktionen stimmen mit Ghidras Operandentext überein, Vorzeichen
+eingeschlossen; Operandentypen ohne Leerzeichen.
+
+**Nebenbei:** Der Routen-Test sah `/plugin_version` (`e49ea83`, direkt per
+`createContext` registriert) nicht — die Zahl 51 stimmte nur zufällig. Er zählt jetzt
+beide Registrierungsarten (52). `scripts/build_local.sh` las noch `${revision}` aus
+der `pom.xml` und hätte Version `unknown` gebaut; jetzt `plugin_version.sh` und
+dieselbe Filterung wie Maven.
+
+## Stufe 8 — Stand
+
+    8a  Loopback-Bind                      abgenommen (62498c6)
+    8b  Phantom-Tools entfernt             abgenommen (d2ae916), 36 -> 34 Tools
+    8c  Disassemblat als Struktur          abgenommen (2b74f7c, f870d55)
+    8d  /functionsInRange als JSON         abgenommen (c0d2115)
+    Referenzlauf      68 260 -> 68 109 Bytes, 0 Fehler
+    Schema-Sockel     8 691 -> 8 307 Token, Decke 8 400
+    Tests             565 grün, 11 übersprungen (Bridge auf :8000), Plan-Tests grün
+    Plugin            1.3.56
+
+Gefundene Fehler, die wie Aussagen über die Firmware aussahen: fünf erfundene
+MMIO-Registeradressen, ein „String" aus Maschinencode, drei verschwiegene bedingte
+Calls, ein geratenes Argumentregister, eine Funktionsliste, die an zwei externen
+Thunks komplett scheiterte. Keiner davon kam aus einem Test der Suite; alle aus dem
+Vergleich alt gegen neu am laufenden Programm.

@@ -547,8 +547,8 @@
       "status": "todo"
     },
     "STAGE-8": {
-      "commit": "pending",
-      "status": "in-progress"
+      "commit": "c0d2115",
+      "status": "done"
     },
     "IMAGE-BASE-STALE": {
       "commit": "pending",

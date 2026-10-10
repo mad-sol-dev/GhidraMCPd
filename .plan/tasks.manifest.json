@@ -789,7 +789,7 @@
       "title": "Die Naht zwischen Plugin und Bridge (Rework-Stufe 8)",
       "area": "plugin, bridge",
       "depends_on": [],
-      "status": "in-progress",
+      "status": "done",
       "dod": [
         "8a: Plugin bindet nur auf Loopback, abgenommen per scripts/check_plugin_bind.sh",
         "8b: kein Tool ohne Plugin-Route, abgesichert durch bridge/tests/unit/test_plugin_routes.py",
