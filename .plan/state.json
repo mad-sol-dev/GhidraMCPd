@@ -581,6 +581,11 @@
     "MMIO-ZERO-TARGET": {
       "commit": "pending",
       "status": "done"
+    },
+    "REF-RUN-BASELINE-GUARD": {
+      "commit": "d71cfce",
+      "status": "done",
+      "updated_at": "2026-10-11T00:00:00+00:00"
     }
   }
 }

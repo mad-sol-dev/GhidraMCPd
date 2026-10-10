@@ -677,6 +677,18 @@
       ]
     },
     {
+      "id": "REF-RUN-BASELINE-GUARD",
+      "title": "Referenzlaeufe ueberschreiben die eingecheckte Baseline nicht",
+      "area": "scripts",
+      "depends_on": [],
+      "dod": [
+        "Ohne Argumente schreiben beide Referenzskripte nach runs/, nicht nach baseline/",
+        "Eine vorhandene Datei unter baseline/ (Log oder Fingerabdruck) wird nur mit --overwrite-baseline ersetzt, abgelehnt vor dem ersten Kontakt mit Ghidra",
+        "Der R.24-Lauf mit 60 171 Bytes liegt als baseline/reference_run_r24.jsonl vor"
+      ],
+      "status": "done"
+    },
+    {
       "id": "R.24-PHASE3",
       "title": "R.24 Phase 3: Mehrdeutigkeiten bei Paginierung, Cursorn und Lesungen",
       "area": "plugin, bridge",

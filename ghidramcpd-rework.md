@@ -1989,9 +1989,11 @@ Verzeichnis gestartete Bridge schreibt also, wenn ein Tool `dry_run=false` bekom
 
 **Offen in diesem Repo**, in dieser Reihenfolge empfohlen:
 
-1. **`reference_run.py`-Default** auf eine nicht eingecheckte Datei umstellen oder die
-   Baseline nur mit ausdrücklichem Schalter überschreiben; den Lauf mit 60 171 Bytes als
-   neuen Vergleichsstand festhalten (der mit 59 804 liegt nicht als Datei vor).
+1. ~~**`reference_run.py`-Default**~~ erledigt (`d71cfce`): Beide Referenzskripte schreiben
+   per Default nach `runs/` (ignoriert); eine vorhandene Datei unter `baseline/` ersetzen
+   sie nur mit `--overwrite-baseline`. Der Lauf mit 60 171 Bytes ist reproduziert und liegt
+   als `baseline/reference_run_r24.jsonl` (+ `.summary.json`) vor. Die Reproduktionsbefehle
+   der Stufe-0-Ergebnisse oben würden heute abgelehnt, weil die Datei existiert; gewollt.
 2. **R.24 Phase 3:** Paginierung ohne `has_more` (`""` für leer und hinter dem Ende), still
    ignorierte Cursor, `readBytes length=0`, Wahrheitswerte als Strings, `check_dirty_state`
    ohne Programm `ok`, `/disassembleAt` an Nicht-Instruktionen. Teils inkompatibel.

@@ -7,7 +7,7 @@
 - {R.24-PHASE3} Rest aus der R.24-Bestandsaufnahme (später, teils inkompatibel): `paginateList`-Routen antworten `""` für leer und für hinter dem Ende, ohne `has_more`; ungültige Cursor werden still ignoriert (`searchFunctions`, `searchScalars`); `readBytes` mit `length=0` liest ein Byte, kurze Lesungen ohne Marker; Wahrheitswerte als Strings (`check_dirty_state`, `save_program`); `check_dirty_state` meldet ohne Programm `status: ok`; `/disassembleAt` beginnt an einer Nicht-Instruktion still bei der nächsten.
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): `reference_run.py`-Default (überschreibt die eingecheckte Baseline), dann R.24 Phase 3. Hand-off: Ende von `ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): R.24 Phase 3. Hand-off: Ende von `ghidramcpd-rework.md`.
 
 ## NEXT
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
