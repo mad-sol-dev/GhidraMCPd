@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import httpx
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -146,3 +147,21 @@ def test_baseline_conflicts_only_names_existing_baseline_files(tmp_path, monkeyp
 
     assert reference_run.baseline_conflicts(paths, overwrite_baseline=False) == [existing]
     assert reference_run.baseline_conflicts(paths, overwrite_baseline=True) == []
+
+
+def test_a_failed_listing_is_not_fingerprinted(monkeypatch):
+    """An error body read as text counted as one function name."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/project_info":
+            return httpx.Response(200, json={"program_name": "p"})
+        return httpx.Response(425, json={"status": "error", "code": "NOT_READY", "error": "busy"})
+
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        reference_run.httpx, "Client",
+        lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        reference_run.fingerprint_database("http://ghidra.test/")

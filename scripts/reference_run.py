@@ -183,8 +183,12 @@ def fingerprint_database(ghidra_url: str, *, timeout: float = 60.0) -> Dict[str,
 
     base = ghidra_url.rstrip("/") + "/"
     with httpx.Client(base_url=base, timeout=timeout) as http:
-        info = http.get("project_info").json()
-        methods = http.get("methods", params={"offset": 0, "limit": 1_000_000}).text
+        # A failure body must not be fingerprinted: an API 2 error read as
+        # text counted as one function name.
+        info = http.get("project_info").raise_for_status().json()
+        methods = (
+            http.get("methods", params={"offset": 0, "limit": 1_000_000}).raise_for_status().text
+        )
 
     names = [line.strip() for line in methods.splitlines() if line.strip()]
     user_named = [name for name in names if not _DEFAULT_SYMBOL.match(name)]
