@@ -120,9 +120,24 @@ def _require(params: Mapping[str, object], key: str) -> object:
     return params[key]
 
 
+def _bounded_int(
+    params: Mapping[str, object], key: str, default: int, minimum: int, maximum: int
+) -> int:
+    """``params[key]`` within the dedicated tool's bounds, or ValueError.
+
+    The ops reach the plugin without the tools' request schemas; a length of
+    0 came back as one byte, a count above the cap as a silently shorter list.
+    """
+
+    value = int(params.get(key, default))
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{key} must be between {minimum} and {maximum}, got {value}")
+    return value
+
+
 def _op_disassemble_at(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
-    count = int(params.get("count", 16))
+    count = _bounded_int(params, "count", 16, 1, 128)
     fmt = str(params.get("fmt", "json"))
     return disasm.disassemble_at(client, address=address, count=count, fmt=fmt)
 
@@ -132,7 +147,7 @@ def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) ->
     if not isinstance(addresses_param, Sequence) or isinstance(addresses_param, (str, bytes, bytearray)):
         raise TypeError("addresses must be an array of hex strings")
     addresses = [str(value) for value in addresses_param]
-    count = int(params.get("count", 16))
+    count = _bounded_int(params, "count", 16, 1, 128)
     fmt = str(params.get("fmt", "json"))
     return batch_ops.disassemble_batch(
         client,
@@ -142,13 +157,13 @@ def _op_disassemble_batch(client: GhidraClient, params: Mapping[str, object]) ->
         query=str(params.get("query", "")),
         regex=bool(params.get("regex", False)),
         case_sensitive=bool(params.get("case_sensitive", False)),
-        context_lines=int(params.get("context_lines", 0)),
+        context_lines=_bounded_int(params, "context_lines", 0, 0, 16),
     )
 
 
 def _op_read_bytes(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
-    length = int(params.get("length", 64))
+    length = _bounded_int(params, "length", 64, 1, 4096)
     include_literals = bool(params.get("include_literals", False))
     return memory.read_bytes(
         client,
@@ -160,7 +175,7 @@ def _op_read_bytes(client: GhidraClient, params: Mapping[str, object]) -> Mappin
 
 def _op_read_words(client: GhidraClient, params: Mapping[str, object]) -> Mapping[str, object]:
     address = parse_hex(str(_require(params, "address")))
-    count = int(params.get("count", 1))
+    count = _bounded_int(params, "count", 1, 1, 256)
     include_literals = bool(params.get("include_literals", False))
     return batch_ops.read_words(
         client,

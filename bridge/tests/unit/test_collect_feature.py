@@ -316,3 +316,30 @@ def test_search_scalars_with_context_accepts_edge_values(
     assert captured["limit"] == 1
     assert enforce_calls["size"] == expected_window
     assert enforce_calls["counter"] == "search_scalars_with_context.window"
+
+
+class _Untouched:
+    """Every plugin call fails the test: a refused query must not reach it."""
+
+    def __getattr__(self, name: str):
+        raise AssertionError(f"refused query reached the client ({name})")
+
+
+@pytest.mark.parametrize("op, params", [
+    ("read_bytes", {"address": "0x1000", "length": 0}),   # the plugin read 1 byte for 0
+    ("read_bytes", {"address": "0x1000", "length": 4097}),
+    ("read_words", {"address": "0x1000", "count": 0}),
+    ("read_words", {"address": "0x1000", "count": 257}),
+    ("disassemble_at", {"address": "0x1000", "count": 0}),
+    ("disassemble_at", {"address": "0x1000", "count": 129}),
+    ("disassemble_batch", {"addresses": ["0x1000"], "count": 0}),
+    ("disassemble_batch", {"addresses": ["0x1000"], "context_lines": 17}),
+])
+def test_ops_hold_the_dedicated_tools_bounds(op: str, params: dict) -> None:
+    result = execute_collect(_Untouched(), [{"id": "q", "op": op, "params": params}])
+
+    query = _first_query(result)
+    assert query["result"]["ok"] is False
+    error = query["result"]["errors"][0]
+    assert error["code"] == ErrorCode.INVALID_REQUEST.value
+    assert "must be between" in error["message"]
