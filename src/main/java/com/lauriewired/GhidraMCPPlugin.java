@@ -3426,10 +3426,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String disassembleFunctionJson(String addressStr) {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
             if (func == null) throw notFound("no function found at or containing address " + addressStr);
 
