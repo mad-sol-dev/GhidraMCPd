@@ -8,6 +8,7 @@ which does not matter: the bridge recognises a missing route before it looks.
 """
 from __future__ import annotations
 
+import base64
 from typing import Callable
 
 import httpx
@@ -33,3 +34,37 @@ def plugin_error(status: int, code: str, message: str) -> httpx.Response:
     """A failure as the plugin sends it under API 2."""
 
     return httpx.Response(status, json={"status": "error", "code": code, "error": message})
+
+
+# --- cursors as CursorPager writes and reads them --------------------------------
+
+
+def _b64url(text: str) -> str:
+    return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def plugin_cursor(route: str, discriminator: str, offset: int) -> str:
+    """``v1.<b64url route>.<b64url discriminator>.<offset>``, as CursorPager encodes it.
+
+    ``route`` is ``searchFunctions`` or ``searchScalars``; the discriminator is
+    the lowercased query (``*`` for all) or the value as unsigned decimal.
+    """
+
+    return f"v1.{_b64url(route)}.{_b64url(discriminator)}.{offset}"
+
+
+def plugin_cursor_start(cursor: str | None, route: str, discriminator: str, offset: int) -> int:
+    """Where the plugin (API 2) starts for ``cursor``.
+
+    A cursor it cannot decode, or one for another route or query, is ignored
+    and ``offset`` used -- the silent restart R.24 phase 3 (part B) turns into
+    a 400.  Stubs model it so tests see what the plugin does today.
+    """
+
+    parts = (cursor or "").split(".")
+    if len(parts) == 4 and parts[:3] == ["v1", _b64url(route), _b64url(discriminator)]:
+        try:
+            return max(0, int(parts[3]))
+        except ValueError:
+            pass
+    return max(0, offset)

@@ -17,7 +17,12 @@ from mcp.server.fastmcp import FastMCP
 from bridge.api.tools import register_tools
 from bridge.features import analyze, strings
 from bridge.ghidra.client import GhidraClient
-from bridge.tests.plugin_http import plugin_error, plugin_transport
+from bridge.tests.plugin_http import (
+    plugin_cursor,
+    plugin_cursor_start,
+    plugin_error,
+    plugin_transport,
+)
 from bridge.utils.cache import get_search_cache
 from bridge.utils.program_context import PROGRAM_SELECTIONS
 
@@ -243,3 +248,18 @@ def test_save_refuses_a_saved_flag_it_cannot_read():
 
     assert result["ok"] is False
     assert "not a boolean" in str(result["errors"][0])
+
+
+# --- the stubs' cursors are the plugin's ------------------------------------------
+
+
+def test_stub_cursors_match_the_plugins():
+    """Answered by plugin 1.3.65 for /searchFunctions?query=thunk&limit=2."""
+
+    live = "v1.c2VhcmNoRnVuY3Rpb25z.dGh1bms.2"
+    assert plugin_cursor("searchFunctions", "thunk", 2) == live
+    assert plugin_cursor_start(live, "searchFunctions", "thunk", 0) == 2
+    # API 2 ignores a cursor it cannot use and starts at offset (part B: 400).
+    assert plugin_cursor_start("garbage", "searchFunctions", "thunk", 5) == 5
+    assert plugin_cursor_start(live, "searchFunctions", "usb", 0) == 0
+    assert plugin_cursor_start(live, "searchScalars", "thunk", 0) == 0

@@ -3,8 +3,8 @@
 From the inventory in ghidramcpd-rework.md ("R.24 — Bestandsaufnahme"): places
 where the bridge turned a plugin failure into "no matches", "all functions",
 "a function is here", or a field that is always the same value.  The mocked
-plugin answers in the shapes the real one sends (plugin 1.3.63), errors with
-HTTP 200 included.
+plugin answers in the shapes the real one sends (API 2: a failure carries an
+HTTP error status).
 """
 from __future__ import annotations
 
@@ -22,6 +22,8 @@ from bridge.tests.plugin_http import plugin_transport
 
 STATUS = {"domain_file_id": "prog-1", "locked": False, "state": "READY",
           "state_duration_seconds": 1, "warnings": []}
+#: What a program route answers without a program (``notReady`` in the handler).
+_NO_PROGRAM = (425, '{"status":"error","code":"NOT_READY","error":"No program loaded"}')
 
 
 def _client(routes: dict, seen: list | None = None) -> GhidraClient:
@@ -62,7 +64,7 @@ def test_failed_search_is_an_error_not_all_functions():
 
     seen: list[str] = []
     routes = {
-        "searchFunctions": '{"items":[],"has_more":false,"error":"No program loaded"}',
+        "searchFunctions": _NO_PROGRAM,
         "functions": "FUN_00200060 at 00200060\nFUN_0020014c at 0020014c",
     }
     tools = _tools(lambda: _client(routes, seen))
@@ -77,7 +79,7 @@ def test_failed_search_is_an_error_not_all_functions():
 
 def test_failed_search_is_not_cached():
     calls: list[str] = []
-    routes = {"searchFunctions": '{"items":[],"has_more":false,"error":"No program loaded"}'}
+    routes = {"searchFunctions": _NO_PROGRAM}
     tools = _tools(lambda: _client(routes, calls))
 
     tools["search_functions"].fn("usb")
@@ -97,9 +99,6 @@ def test_a_real_empty_search_is_still_empty():
 
 
 # --- a failed listing is not an empty one, and is not cached ------------------
-
-_NO_PROGRAM = '{"items":[],"has_more":false,"error":"No program loaded"}'
-
 
 @pytest.mark.parametrize(
     "tool, args, route",

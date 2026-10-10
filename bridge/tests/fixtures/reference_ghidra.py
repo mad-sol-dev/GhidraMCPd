@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from bridge.ghidra.client import CursorPageResult, RequestError
+from bridge.tests.plugin_http import plugin_cursor, plugin_cursor_start
 
 
 @dataclass
@@ -165,16 +166,12 @@ class ReferenceGhidraClient:
         needle = query.lower().strip()
         filtered = [f for f in all_functions if needle in f.lower()]
         filtered.sort()
-        start = offset
-        if cursor:
-            try:
-                start = int(cursor)
-            except ValueError:
-                start = offset
+        disc = "*" if needle in {"", "*"} else needle
+        start = plugin_cursor_start(cursor, "searchFunctions", disc, offset)
         end = start + max(1, limit)
         page = filtered[start:end]
         has_more = end < len(filtered)
-        next_cursor = str(end) if has_more else None
+        next_cursor = plugin_cursor("searchFunctions", disc, end) if has_more else None
         return CursorPageResult(page, has_more, next_cursor)
 
     def disassemble_at(self, address: int, count: int) -> List[Dict[str, str]]:
@@ -193,22 +190,18 @@ class ReferenceGhidraClient:
     ) -> CursorPageResult[Dict[str, object]]:
         self._clear_error()
         matches = [m for m in self._scalar_matches if value == 0x40000000 or value == 0xDEADBEEF]
-        start = offset
-        if cursor:
-            try:
-                start = int(cursor)
-            except ValueError:
-                start = offset
+        disc = str(value & 0xFFFFFFFFFFFFFFFF)
+        start = plugin_cursor_start(cursor, "searchScalars", disc, offset)
         end = start + max(1, limit)
         page = matches[start:end]
         has_more = end < len(matches)
-        next_cursor = str(end) if has_more else None
+        next_cursor = plugin_cursor("searchScalars", disc, end) if has_more else None
         return CursorPageResult(page, has_more, next_cursor)
 
     def read_bytes(self, address: int, length: int) -> Optional[bytes]:
         self._clear_error()
-        if length <= 0:
-            return b""
+        # The plugin (API 2) reads at least one byte and at most 4096.
+        length = min(max(length, 1), 4096)
         offset = address - self._base
         if offset < 0 or offset >= len(self._data):
             self._set_error(404, "address out of range")

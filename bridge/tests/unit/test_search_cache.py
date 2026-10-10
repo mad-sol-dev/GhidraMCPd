@@ -4,6 +4,7 @@ import pytest
 
 from bridge.features import functions
 from bridge.ghidra.client import CursorPageResult
+from bridge.tests.plugin_http import plugin_cursor, plugin_cursor_start
 from bridge.utils.cache import get_search_cache
 
 
@@ -24,16 +25,12 @@ class _RecordingClient:
     ) -> CursorPageResult[str]:
         self.calls += 1
         all_items = [f"func_{i:04d} @ 0x{i + 1:08x}" for i in range(10)]
-        start = offset
-        if cursor:
-            try:
-                start = max(0, int(cursor))
-            except ValueError:
-                start = offset
+        disc = "*" if query.strip() in {"", "*"} else query.lower()
+        start = plugin_cursor_start(cursor, "searchFunctions", disc, offset)
         end = start + max(1, limit)
         sliced = all_items[start:end]
         has_more = end < len(all_items)
-        next_cursor = str(end) if has_more else None
+        next_cursor = plugin_cursor("searchFunctions", disc, end) if has_more else None
         return CursorPageResult(sliced, has_more, next_cursor)
 
     def disassemble_at(self, address: int, count: int) -> list[dict[str, str]]:
