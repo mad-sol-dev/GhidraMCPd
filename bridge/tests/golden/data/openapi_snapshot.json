@@ -2843,6 +2843,13 @@
                     "language_id": {
                       "type": "string"
                     },
+                    "layout_notes": {
+                      "description": "Present only when image_base or entry points lie outside every memory block.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
                     "memory_blocks": {
                       "items": {
                         "additionalProperties": false,
@@ -3049,6 +3056,13 @@
                     },
                     "language_id": {
                       "type": "string"
+                    },
+                    "layout_notes": {
+                      "description": "Present only when image_base or entry points lie outside every memory block.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
                     },
                     "memory_blocks": {
                       "items": {

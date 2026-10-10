@@ -552,7 +552,7 @@
     },
     "IMAGE-BASE-STALE": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "DEAD-ALIAS-FIRST": {
       "commit": "pending",

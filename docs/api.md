@@ -1614,6 +1614,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `image_base` | string | Yes |  |
   | `imports_count` | integer | Yes | min=0 |
   | `language_id` | string | Yes |  |
+  | `layout_notes` | array<string> | No |  |
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
   | `source_files` | array<object> | No |  |
@@ -1632,6 +1633,9 @@ All three routes share the standard per-request write guard. Each successful wri
     "image_base": "string",
     "imports_count": 0,
     "language_id": "string",
+    "layout_notes": [
+      "string"
+    ],
     "memory_blocks": [
       {
         "end": "string",
@@ -1679,6 +1683,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `image_base` | string | Yes |  |
   | `imports_count` | integer | Yes | min=0 |
   | `language_id` | string | Yes |  |
+  | `layout_notes` | array<string> | No |  |
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
   | `source_files` | array<object> | No |  |
@@ -1697,6 +1702,9 @@ All three routes share the standard per-request write guard. Each successful wri
     "image_base": "string",
     "imports_count": 0,
     "language_id": "string",
+    "layout_notes": [
+      "string"
+    ],
     "memory_blocks": [
       {
         "end": "string",

@@ -806,7 +806,7 @@
       "title": "project_info meldet image_base 0x0, der einzige Block liegt bei 0x00200000",
       "area": "plugin, bridge",
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "dod": [
         "Klaeren, ob das ZK-Inkjet-Programm korrigiert oder project_info die Abweichung zwischen image_base und Blockstart melden soll"
       ],

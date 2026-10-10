@@ -7,6 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from ...ghidra.client import GhidraClient
+from ...features.project_layout import layout_notes
 from ...utils.errors import ErrorCode
 from ...utils.logging import request_scope
 from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
@@ -142,6 +143,9 @@ def _normalise_project_info(payload: Dict[str, Any]) -> Dict[str, Any]:
         normalised_blocks.sort(key=_block_sort_key)
         data["memory_blocks"] = normalised_blocks
 
+    notes = layout_notes(data)
+    if notes:
+        data["layout_notes"] = notes
     return data
 
 

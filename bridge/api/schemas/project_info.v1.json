@@ -14,14 +14,48 @@
     "exports_count"
   ],
   "properties": {
-    "program_name": {"type": "string"},
-    "executable_path": {"type": ["string", "null"]},
-    "executable_md5": {"type": ["string", "null"]},
-    "executable_sha256": {"type": ["string", "null"]},
-    "executable_format": {"type": ["string", "null"]},
-    "image_base": {"type": ["string", "null"]},
-    "language_id": {"type": "string"},
-    "compiler_spec_id": {"type": ["string", "null"]},
+    "program_name": {
+      "type": "string"
+    },
+    "executable_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "executable_md5": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "executable_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "executable_format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "image_base": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "language_id": {
+      "type": "string"
+    },
+    "compiler_spec_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "entry_points": {
       "type": "array",
       "items": {
@@ -41,14 +75,36 @@
           "patched"
         ],
         "properties": {
-          "name": {"type": ["string", "null"]},
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "size": {
             "type": "integer",
             "minimum": 0
           },
-          "original_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
-          "modified_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
-          "patched": {"type": ["boolean", "null"]}
+          "original_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "modified_sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "patched": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -67,9 +123,24 @@
           "initialized"
         ],
         "properties": {
-          "name": {"type": ["string", "null"]},
-          "start": {"type": ["string", "null"]},
-          "end": {"type": ["string", "null"]},
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "start": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "length": {
             "type": "integer",
             "minimum": 0
@@ -78,11 +149,33 @@
             "type": "string",
             "pattern": "^[r-][w-][x-]$"
           },
-          "loaded": {"type": "boolean"},
-          "initialized": {"type": "boolean"},
-          "source_file_index": {"type": ["integer", "null"], "minimum": 0},
-          "file_offset": {"type": ["integer", "null"], "minimum": 0},
-          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+          "loaded": {
+            "type": "boolean"
+          },
+          "initialized": {
+            "type": "boolean"
+          },
+          "source_file_index": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "file_offset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$"
+          }
         }
       }
     },
@@ -91,8 +184,18 @@
       "minimum": 0
     },
     "exports_count": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0
+    },
+    "layout_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Present only when image_base or entry points lie outside every memory block."
     }
   }
 }

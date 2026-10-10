@@ -30,6 +30,7 @@ from ..features import (
 from ..features import listing, mutations
 from ..features.listing import ListingUnavailable
 from ..features.function_meta import read_function_name
+from ..features.project_layout import layout_notes
 from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient
 from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
@@ -2702,6 +2703,9 @@ def _normalise_project_info(payload: Mapping[str, Any]) -> Dict[str, Any]:
         normalised_blocks.sort(key=_block_sort_key)
         data["memory_blocks"] = normalised_blocks
 
+    notes = layout_notes(data)
+    if notes:
+        data["layout_notes"] = notes
     return data
 
 

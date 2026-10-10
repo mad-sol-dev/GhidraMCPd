@@ -26,7 +26,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
 - {ANALYZE-POOL-CONSTANTS} Konstantenpool-Worte als eigener Abschnitt
 - {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
-- {IMAGE-BASE-STALE} `image_base` meldet am ZK-Inkjet-Programm 0x00000000, der einzige Block liegt bei 0x00200000; 16 Einsprungpunkte bei 0x0/0xFFFF0000 zeigen auf nicht gemappten Speicher (ZK-Repo: Ghidra nimmt High Vectors an, CL-TOOL-REC-121). Die Linkbasis ist laut ZK-Repo 0x00058000 (CL-BOOT-REC-113), weder image_base noch Blockstart. Klaeren, ob das Programm korrigiert oder `project_info` die Abweichung melden soll. Gefunden 2026-10-08.
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints
@@ -37,6 +36,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {IMAGE-BASE-STALE} Werkzeugseite: `project_info` trägt `layout_notes`, wenn `image_base` oder Einsprungpunkte in keinem Speicherblock liegen (sonst fehlt das Feld). `image_base` 0x0 ist Ghidras echter Wert, nicht veraltet. Live am ZK-Inkjet-Programm beide Hinweise. Die Korrektur des Programms (Block nach 0x00058000 verschieben) gehört ins ZK-Inkjet-Projekt, dort CL-TOOL-REC-121.
 - [x] {RENAME-DATA-TRUTHFUL} `/renameData` meldet, was passiert ist (`Data renamed: <alt> -> <neu>` oder `ERROR:` mit Grund, ohne definierte Daten mit Verweis auf `/createLabel`) und übernimmt die Transaktion nur bei Erfolg. Live mit Plugin 1.3.58: vier Fehlerpfade, Umbenennung `DAT_002afb40 -> R58_live_check` und Zurücklesen, danach in Ghidra zurückgenommen. Ein gleicher Name ist danach ein No-op ohne Transaktion (im Code, nicht live geprüft).
 - [x] {FIND-IN-FUNCTION-TEXT} `find_in_function` mit `fmt="text"` als MCP-Default: zusammengeführte Fenster, `--` dazwischen. Referenzlauf: die zwei Aufrufe 13 912 → 4 199 Bytes (−70 %), Lauf gesamt 67 977 → 58 264. Nebenbei behoben: JSON-`address` war fast immer `null` (Parser erkannte nur `0x…`/reine Ziffern), `truncated` war schon bei genau `limit` Treffern `true`; neu `*_found`. Sockel 8 496 (Decke 8 500 hält). Strukturlauf setzt `fmt="json"` ausdrücklich (Rahmen 8).
 - [x] {JT-PRENAME-PARSE} `jt_slot_process` liest Namen vorher/nachher über den gemeinsamen Prosa-Parser (`features/function_meta.py`, vorher nur in `tools.py`). Weiter als notiert: auch `verify.name` war immer `null`, `comment_present` behauptete `false`/`true` aus einem Feld, das das Plugin nicht hat (jetzt `null` + Hinweis, Schema nullable), und die Einsprungprüfung im ARM/Thumb-Adapter lief nie (`Entry` statt `entry_point`). Die Namensverifikation greift jetzt erstmals; ein widersprüchlicher Stub (`renamed_7` geschrieben, `new_name` gemeldet) fiel dabei auf. Live: Parser an `boot_init`, `rename_function`-Ledger. `jt_slot_process` selbst nicht live geschrieben.
