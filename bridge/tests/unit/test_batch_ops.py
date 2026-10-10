@@ -172,7 +172,11 @@ def test_read_words_optionally_includes_literals():
 
 
 def test_search_scalars_with_context_preserves_pagination(monkeypatch):
-    """search_scalars_with_context should surface pagination metadata."""
+    """search_scalars_with_context surfaces has_more, but no cursor.
+
+    The tool takes no cursor, so one it hands out could not be used:
+    search_scalars is where the rest of the hits are paged.
+    """
 
     client = StubClient(
         disasm_results={
@@ -220,6 +224,6 @@ def test_search_scalars_with_context_preserves_pagination(monkeypatch):
 
     assert result["total"] == 12
     assert result["has_more"] is True
-    assert result["resume_cursor"] == "cursor-1"
+    assert "resume_cursor" not in result
     assert len(result["matches"]) == 1
     assert result["matches"][0]["address"] == "0x00001000"

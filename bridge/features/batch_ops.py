@@ -260,8 +260,9 @@ def search_scalars_with_context(
         Dictionary with keys:
         - value: Search value as hex string
         - total: Total number of matches found (if known)
-        - has_more: Whether additional pages of matches are available
-        - resume_cursor: Cursor token for fetching the next page (if provided)
+        - has_more: Whether there are more hits than ``limit``.  No cursor:
+          this call takes none, so one it cannot use is not handed out;
+          search_scalars pages through the rest.
         - matches: List of match dicts, each containing:
             - address: Match address as hex string
             - value: Value as hex string
@@ -316,18 +317,12 @@ def search_scalars_with_context(
     if total is None and not has_more and not stopped_early:
         total = len(matches)
 
-    resume_cursor = results.get("resume_cursor") or results.get("cursor")
-    if isinstance(resume_cursor, str) and not resume_cursor:
-        resume_cursor = None
-
     response: Dict[str, object] = {
         "value": int_to_hex(value),
         "total": total,
         "has_more": has_more,
         "matches": matches,
     }
-    if resume_cursor is not None:
-        response["resume_cursor"] = resume_cursor
 
     method_notes.attach("search_scalars_with_context", response)
     finalize_page(response, truncated=True if stopped_early else None)

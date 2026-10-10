@@ -2659,7 +2659,6 @@ def register_tools(
             value: the constant, hex string '0xB1008000' or int.
             context_lines: instructions each side of a hit, >= 0, default 4.
             limit: results per page, >= 1, default 20.
-            page: 1-based, >= 1, default 1.
             fmt: 'text' (default) puts rendered lines under lines; 'json' puts
                 instruction objects under disassembly, at roughly twice the
                 bytes."""
