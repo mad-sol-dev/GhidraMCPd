@@ -20,7 +20,7 @@ def _success_handler(request: httpx.Request) -> httpx.Response:
     if path.endswith("/read_dword"):
         return httpx.Response(200, text="00001000\n")
     if path.endswith("/get_function_by_address"):
-        return httpx.Response(200, text="name: target\nentry_point: 0x00001000\n")
+        return httpx.Response(200, text="Function: target at 00001000\nSignature: undefined target(void)\nEntry: 00001000\n")
     if path.endswith("/disassemble"):
         return httpx.Response(200, text="00001000: PUSH {lr}\n00001004: BX LR\n")
     if path.endswith("/xrefs_to"):
@@ -40,7 +40,7 @@ def test_ghidra_client_happy_path() -> None:
 
     assert client.read_dword(0x1000) == 0x1000
     meta = client.get_function_by_address(0x1000)
-    assert meta and meta["name"] == "target"
+    assert meta and meta["Function"] == "target at 00001000" and meta["Entry"] == "00001000"
     assert client.disassemble_function(0x1000)
     assert client.get_xrefs_to(0x2000) == [
         {"addr": 0x2000, "context": "BL target"}

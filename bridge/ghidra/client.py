@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import base64
 import json
+import re
 from jsonschema import Draft202012Validator
 from dataclasses import dataclass, field
 import logging
@@ -76,6 +77,9 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "DELETE_DATATYPE": ("deleteDataType",),
 }
 
+
+#: The first line of /get_function_by_address when a function is there.
+_FUNCTION_LINE = re.compile(r"^.+ at [0-9a-fA-F]+$")
 
 #: The plugin's answers to a successful rename_function_by_address and
 #: set_*_comment; everything else, "Failed to ..." included, is a failure.
@@ -1051,26 +1055,23 @@ class GhidraClient:
         lines = self._get_resolver.resolve("FUNC_BY_ADDR", requester)
         if _is_error(lines):
             return None
+        # The plugin's answer is prose: "Function: <name> at <hex>", then
+        # Signature/Entry/Body.  Anything else -- "No function found at
+        # address ...", "Error getting function: ..." -- is no function, and
+        # its text is the reason.  Split on ":" alone, "Error getting
+        # function: <msg>" used to become a truthy {"Error getting function": msg}.
         meta: Dict[str, Any] = {}
         for line in lines:
-            if ":" in line:
-                key, value = line.split(":", 1)
-            elif "=" in line:
-                key, value = line.split("=", 1)
-            else:
-                continue
-            meta[key.strip()] = value.strip()
-        if "entry_point" in meta:
-            try:
-                meta["entry_point"] = int(meta["entry_point"], 16)
-            except ValueError:
-                pass
-        if "address" in meta:
-            try:
-                meta["address"] = int(meta["address"], 16)
-            except ValueError:
-                pass
-        return meta if meta else None
+            key, sep, value = line.partition(":")
+            if sep:
+                meta[key.strip()] = value.strip()
+        if not _FUNCTION_LINE.match(str(meta.get("Function", ""))):
+            text = " ".join(line.strip() for line in lines if line.strip())
+            self._last_error = RequestError(
+                status=200, reason=text or "empty answer from the plugin", retryable=False
+            )
+            return None
+        return meta
 
     def get_xrefs_to(self, address: int, *, limit: int = 50) -> List[Xref]:
         increment_counter("ghidra.xrefs")

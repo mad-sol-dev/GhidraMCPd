@@ -33,6 +33,12 @@ class StubGhidraClient:
         return self.functions.get(address)
 
 
+def _meta(name: str, address: int) -> Dict[str, object]:
+    """What GhidraClient.get_function_by_address makes of the plugin's prose."""
+
+    return {"Function": f"{name} at {address:08x}", "Entry": f"{address:08x}"}
+
+
 @pytest.fixture
 def adapter() -> ARMThumbAdapter:
     return ARMThumbAdapter()
@@ -108,7 +114,7 @@ def test_slot_check_arm_candidate_verified(adapter: ARMThumbAdapter) -> None:
     client = StubGhidraClient(
         dwords={addr: target},
         disassembly={target: ["push {lr}"]},
-        functions={target: {"entry_point": target, "name": "func_2400"}},
+        functions={target: _meta("func_2400", target)},
     )
 
     result = slot_check(
@@ -123,7 +129,7 @@ def test_slot_check_arm_candidate_verified(adapter: ARMThumbAdapter) -> None:
     assert result["errors"] == []
     assert result["mode"] == "ARM"
     assert result["target"] == "0x00002400"
-    assert client.disassemble_calls == [target]
+    assert client.disassemble_calls == []
     assert client.function_calls == [target]
 
 
@@ -135,7 +141,7 @@ def test_slot_check_thumb_candidate_verified(adapter: ARMThumbAdapter) -> None:
     client = StubGhidraClient(
         dwords={addr: thumb_ptr},
         disassembly={real_target: ["push {r4, lr}"]},
-        functions={real_target: {"entry_point": real_target, "name": "thumb_func"}},
+        functions={real_target: _meta("thumb_func", real_target)},
     )
 
     result = slot_check(
@@ -150,9 +156,9 @@ def test_slot_check_thumb_candidate_verified(adapter: ARMThumbAdapter) -> None:
     assert result["errors"] == []
     assert result["mode"] == "Thumb"
     assert result["target"] == "0x00002600"
-    assert client.disassemble_calls[0] == thumb_ptr
-    assert client.disassemble_calls[-1] == real_target
-    assert client.function_calls == [thumb_ptr, real_target]
+    assert client.disassemble_calls == []
+    # an odd pointer is never tried as ARM code
+    assert client.function_calls == [real_target]
 
 
 def test_slot_check_accepts_lower_bound(adapter: ARMThumbAdapter) -> None:
@@ -163,7 +169,7 @@ def test_slot_check_accepts_lower_bound(adapter: ARMThumbAdapter) -> None:
     client = StubGhidraClient(
         dwords={addr: code_min},
         disassembly={code_min: ["push {lr}"]},
-        functions={code_min: {"entry_point": code_min, "name": "lower_bound"}},
+        functions={code_min: _meta("lower_bound", code_min)},
     )
 
     result = slot_check(
@@ -178,5 +184,39 @@ def test_slot_check_accepts_lower_bound(adapter: ARMThumbAdapter) -> None:
     assert result["errors"] == []
     assert result["mode"] == "ARM"
     assert result["target"] == "0x00002800"
-    assert client.disassemble_calls == [code_min]
+    assert client.disassemble_calls == []
     assert client.function_calls == [code_min]
+
+
+def test_disassemblable_target_without_a_function_is_rejected(adapter: ARMThumbAdapter) -> None:
+    """The plugin's "No function found at or containing ..." is a non-empty
+    disassembly answer; it used to pass every in-range target as a function."""
+
+    jt_base = 0x2000
+    addr = _slot_addr(jt_base, 2)
+    target = 0x2400
+    client = StubGhidraClient(
+        dwords={addr: target},
+        disassembly={target: ["No function found at or containing address 0x00002400"]},
+    )
+
+    result = slot_check(
+        client, jt_base=jt_base, slot_index=2, code_min=0x2000, code_max=0x3000, adapter=adapter,
+    )
+
+    assert result["errors"] == [DetailCode.NO_FUNCTION_AT_TARGET.value]
+
+
+def test_target_inside_a_function_is_not_its_entry(adapter: ARMThumbAdapter) -> None:
+    jt_base = 0x2000
+    addr = _slot_addr(jt_base, 2)
+    client = StubGhidraClient(
+        dwords={addr: 0x2408},
+        functions={0x2408: _meta("func_2400", 0x2400)},
+    )
+
+    result = slot_check(
+        client, jt_base=jt_base, slot_index=2, code_min=0x2000, code_max=0x3000, adapter=adapter,
+    )
+
+    assert result["errors"] == [DetailCode.NO_FUNCTION_AT_TARGET.value]

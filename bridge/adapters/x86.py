@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from . import ArchAdapter, Probe
+from ..features.function_meta import function_entry
 
 
 @dataclass(slots=True)
@@ -25,15 +25,9 @@ class X86Adapter(ArchAdapter):
         if not self.in_code_range(ptr, code_min, code_max):
             return None, None
 
-        if client.disassemble_function(ptr):
+        # A function starts here -- see ARMThumbAdapter._verify_candidate.
+        if function_entry(client.get_function_by_address(ptr)) == ptr:
             return "x86", ptr
-
-        meta = client.get_function_by_address(ptr)
-        if isinstance(meta, dict):
-            entry_point: Any = meta.get("entry_point") or meta.get("address")
-            if isinstance(entry_point, int) and entry_point == ptr:
-                return "x86", ptr
-
         return None, None
 
 

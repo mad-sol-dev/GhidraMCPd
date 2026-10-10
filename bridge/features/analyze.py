@@ -21,6 +21,7 @@ from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequ
 
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex
+from .function_meta import read_function_name
 from .listing import structured_listing
 from ..utils.logging import enforce_batch_limit, increment_counter
 from ..utils.tokens import estimate_tokens
@@ -614,8 +615,9 @@ def _extract_call_references(
         if target_address is None:
             continue
         if target_address not in cache:
-            meta = client.get_function_by_address(target_address)
-            cache[target_address] = (meta or {}).get("name") if isinstance(meta, Mapping) else None
+            # read_function_name parses the plugin's "Function: <name> at <hex>";
+            # .get("name") read a field the plugin never sends -- always None.
+            cache[target_address] = read_function_name(client, target_address)
         results.append(
             {
                 "from_address": entry.get("address", ""),

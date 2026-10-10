@@ -389,7 +389,14 @@ class StubGhidraClient:
     def get_function_by_address(self, address: int) -> Optional[Dict[str, str]]:
         self._clear_error()
         meta = self._functions.get(address)
-        return dict(meta) if meta else None
+        if not meta:
+            return None
+        # The plugin's shape (prose split on ":"), not the stub's own record
+        return {
+            "Function": f"{meta['name']} at {address:08x}",
+            "Signature": f"undefined {meta['name']}(void)",
+            "Entry": f"{address:08x}",
+        }
 
     def rename_function(self, address: int, new_name: str) -> bool:
         self._clear_error()

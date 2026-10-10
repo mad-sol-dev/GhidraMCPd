@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from . import ArchAdapter, Probe
 from ..features.function_meta import function_entry
@@ -23,8 +22,11 @@ class ARMThumbAdapter(ArchAdapter):
     def probe_function(
         self, client, ptr: int, code_min: int, code_max: int
     ) -> Probe:
+        # Bit 0 set is a Thumb pointer (interworking); ARM code is word-aligned.
+        # An odd ARM target used to be ruled out only by accident, when the
+        # old disassembly check happened to fail there.
         candidates: list[tuple[str, int]] = []
-        if self.in_code_range(ptr, code_min, code_max):
+        if ptr % self.code_alignment == 0 and self.in_code_range(ptr, code_min, code_max):
             candidates.append(("ARM", ptr))
         thumb_target = ptr - 1
         if ptr & 1 and thumb_target >= 0 and self.in_code_range(thumb_target, code_min, code_max):
@@ -39,23 +41,17 @@ class ARMThumbAdapter(ArchAdapter):
         return None, None
 
     def _verify_candidate(self, client, target: int) -> bool:
-        disasm = client.disassemble_function(target)
-        if disasm:
-            meta = client.get_function_by_address(target)
-            if meta:
-                # The plugin's field is "Entry" (hex text); entry_point/address
-                # never existed, so this check used to be skipped every time.
-                entry_point = function_entry(meta)
-                if entry_point is not None and entry_point != target:
-                    return False
-            return True
+        """A function starts at ``target``.
+
+        Asked of /get_function_by_address, which matches entry points only.
+        "Can it be disassembled" is no answer: /disassemble_function finds the
+        function *containing* an address, and its failure prose ("No function
+        found at or containing ...") is a non-empty list -- so every in-range
+        target used to pass.
+        """
+
         meta = client.get_function_by_address(target)
-        if not meta:
-            return False
-        entry_point: Any = meta.get("entry_point") or meta.get("address")
-        if not isinstance(entry_point, int) or entry_point != target:
-            return False
-        return True
+        return function_entry(meta) == target
 
 
 __all__ = ["ARMThumbAdapter"]

@@ -24,7 +24,7 @@ class FakeSession:
         if path in {"disassemble", "disassemble_function", "disasmByAddr"}:
             return FakeResponse("00001000: MOV R0, R1\n00001004: BX LR\n")
         if path in {"function_by_addr", "get_function_by_address", "functionMeta"}:
-            return FakeResponse("name: func\nentry_point: 0x00001000\n")
+            return FakeResponse("Function: func at 00001000\nSignature: undefined func(void)\nEntry: 00001000\n")
         if path in {"get_xrefs_to", "xrefs_to"}:
             return FakeResponse('{"items":[{"address":"0x00002000","context":"call string"},{"address":"0x00003000","context":"BL other"}],"has_more":false}')
         if path in {"decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"}:

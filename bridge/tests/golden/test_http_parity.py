@@ -171,7 +171,15 @@ class GoldenStubGhidraClient:
         return self._dwords.get(address)
 
     def get_function_by_address(self, address: int) -> Optional[Dict[str, str]]:
-        return dict(self._functions.get(address, {})) or None
+        meta = self._functions.get(address)
+        if not meta:
+            return None
+        # The plugin's shape (prose split on ":"), not the stub's own record
+        return {
+            "Function": f"{meta['name']} at {address:08x}",
+            "Signature": f"undefined {meta['name']}(void)",
+            "Entry": f"{address:08x}",
+        }
 
     def rename_function(self, address: int, new_name: str) -> bool:
         if address not in self._functions:
