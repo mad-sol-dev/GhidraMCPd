@@ -450,7 +450,7 @@
         "Status endpoint exposes readiness without blocking heavy calls",
         "Bridge waits/polls after open/select before analysis tools, surfacing wait guidance"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.24",
