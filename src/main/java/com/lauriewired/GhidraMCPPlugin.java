@@ -2575,7 +2575,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String offsetStr = field.get("offset");
             String lengthStr = field.get("length");
 
-            DataType fieldDt = resolveDataType(dtm, fieldType);
+            DataType fieldDt = requireDataType(dtm, fieldType, fieldName);
             int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
             if (fieldLen <= 0) fieldLen = 1;
 
@@ -2601,7 +2601,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String fieldType = field.get("type");
             String lengthStr = field.get("length");
 
-            DataType fieldDt = resolveDataType(dtm, fieldType);
+            DataType fieldDt = requireDataType(dtm, fieldType, fieldName);
             int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
             if (fieldLen <= 0) fieldLen = 1;
 
@@ -2685,7 +2685,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String offsetStr = field.get("offset");
             String lengthStr = field.get("length");
 
-            DataType fieldDt = resolveDataType(dtm, fieldType);
+            DataType fieldDt = requireDataType(dtm, fieldType, fieldName);
             int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
             if (fieldLen <= 0) fieldLen = 1;
 
@@ -2713,7 +2713,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String fieldType = field.get("type");
             String lengthStr = field.get("length");
 
-            DataType fieldDt = resolveDataType(dtm, fieldType);
+            DataType fieldDt = requireDataType(dtm, fieldType, fieldName);
             int fieldLen = (lengthStr != null) ? Integer.parseInt(lengthStr) : fieldDt.getLength();
             if (fieldLen <= 0) fieldLen = 1;
 
@@ -2956,14 +2956,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 return new PointerDataType(dtm.getDataType("/void"));
             }
 
-            // Try to find the base type
+            // Only when the base exists: "PacketHeader" is not a pointer to
+            // "acketHeader", and an unknown base used to become void* silently.
             DataType baseType = findDataTypeByNameInAllCategories(dtm, baseTypeName);
             if (baseType != null) {
                 return new PointerDataType(baseType);
             }
-
-            Msg.warn(this, "Base type not found for " + typeName + ", defaulting to void*");
-            return new PointerDataType(dtm.getDataType("/void"));
         }
 
         // Handle common built-in types
@@ -3006,9 +3004,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                     return directType;
                 }
 
-                // Fallback to int if we couldn't find it
-                Msg.warn(this, "Unknown type: " + typeName + ", defaulting to int");
-                return dtm.getDataType("/int");
+                // Unknown.  This used to return int with a log warning, so a
+                // structure field typed "uint8_t" became an int and the call
+                // reported success.  The caller decides; see requireDataType.
+                return null;
         }
     }
     
@@ -3017,34 +3016,44 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * This searches through all categories rather than just the root
      */
     private DataType findDataTypeByNameInAllCategories(DataTypeManager dtm, String typeName) {
-        // Try exact match first
-        DataType result = searchByNameInAllCategories(dtm, typeName);
-        if (result != null) {
-            return result;
-        }
+        // One pass covers both: the search already falls back to a match that
+        // ignores case.  The second, lowercased scan never found anything new.
+        return searchByNameInAllCategories(dtm, typeName);
+    }
 
-        // Try lowercase
-        return searchByNameInAllCategories(dtm, typeName.toLowerCase());
+    /**
+     * A structure or union field's type, or an exception naming it.  Thrown
+     * inside the caller's transaction, it rolls the whole operation back and
+     * reaches the response as "Failed to create ...: unknown data type ...".
+     */
+    private DataType requireDataType(DataTypeManager dtm, String typeName, String fieldName) {
+        DataType dataType = typeName == null ? null : resolveDataType(dtm, typeName);
+        if (dataType == null) {
+            throw new IllegalArgumentException(
+                "unknown data type '" + typeName + "' for field '" + fieldName + "'");
+        }
+        return dataType;
     }
 
     /**
      * Helper method to search for a data type by name in all categories
      */
     private DataType searchByNameInAllCategories(DataTypeManager dtm, String name) {
-        // Get all data types from the manager
+        // An exact match wins wherever it sits; a match ignoring case is only
+        // the fallback.  The old loop returned whichever came first, so "Foo"
+        // could resolve to an earlier "FOO" while "Foo" itself existed.
+        DataType ignoringCase = null;
         Iterator<DataType> allTypes = dtm.getAllDataTypes();
         while (allTypes.hasNext()) {
             DataType dt = allTypes.next();
-            // Check if the name matches exactly (case-sensitive) 
             if (dt.getName().equals(name)) {
                 return dt;
             }
-            // For case-insensitive, we want an exact match except for case
-            if (dt.getName().equalsIgnoreCase(name)) {
-                return dt;
+            if (ignoringCase == null && dt.getName().equalsIgnoreCase(name)) {
+                ignoringCase = dt;
             }
         }
-        return null;
+        return ignoringCase;
     }
 
     // ----------------------------------------------------------------------------------
