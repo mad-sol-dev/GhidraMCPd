@@ -165,10 +165,12 @@ def test_analyze_default_fields_leave_out_the_expensive_two(tools):
 
     from bridge.features.analyze import _ALLOWED_FIELDS, _DEFAULT_FIELDS
 
-    assert set(_DEFAULT_FIELDS) == {"function", "xrefs", "strings", "features"}
+    # 'constants' joined in ANALYZE-POOL-CONSTANTS: about 600 bytes on the
+    # reference functions, and they carry USBD_BA and the RAM pointers.
+    assert set(_DEFAULT_FIELDS) == {"function", "xrefs", "strings", "constants", "features"}
     assert set(_DEFAULT_FIELDS) < set(_ALLOWED_FIELDS)
     assert "decompile" not in _DEFAULT_FIELDS
     assert "disasm" not in _DEFAULT_FIELDS
 
     description = tools["analyze_function_complete"].description or ""
-    assert "function, xrefs, strings, features" in description
+    assert "function, xrefs, strings, constants, features" in description

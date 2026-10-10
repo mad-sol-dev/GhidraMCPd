@@ -512,7 +512,7 @@
     },
     "ANALYZE-POOL-CONSTANTS": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "FIND-IN-FUNCTION-TEXT": {
       "commit": "pending",

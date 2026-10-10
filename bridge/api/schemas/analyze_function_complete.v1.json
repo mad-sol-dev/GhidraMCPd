@@ -148,6 +148,28 @@
         }
       }
     },
+    "constants": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "pool", "source", "loads"],
+            "properties": {
+              "value": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+              "pool": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+              "source": {"type": ["string", "null"]},
+              "loads": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        "limit": {"type": "integer"},
+        "total": {"type": "integer"}
+      }
+    },
     "strings": {
       "type": ["object", "null"],
       "additionalProperties": false,

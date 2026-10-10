@@ -643,7 +643,7 @@
         "Als pool_constants ausweisen: Adresse, Wort, ladende Instruktion",
         "Nicht mit strings vermischen -- das war der behobene Fehler"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "0x8190/0x82B0 aus finding-0005 sind genau solche Worte. Der Wert ist da, nur die Beschriftung war falsch. Feature, kein Fix."
       ]

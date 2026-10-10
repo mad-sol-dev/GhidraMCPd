@@ -2,6 +2,11 @@
   "analyze_function_complete": {
     "data": {
       "address": "0x00102004",
+      "constants": {
+        "items": [],
+        "limit": 8,
+        "total": 0
+      },
       "features": {
         "call_count": 1,
         "instruction_count": 3,
@@ -20,8 +25,9 @@
         "signature": null
       },
       "meta": {
-        "estimate_tokens": 221,
+        "estimate_tokens": 234,
         "fields": [
+          "constants",
           "features",
           "function",
           "strings",

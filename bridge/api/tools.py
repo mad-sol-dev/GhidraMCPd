@@ -1150,14 +1150,12 @@ def register_tools(
             address: function entry, hex, e.g. '0x002af9c0'.
             fields: sections to include, any of 'function' (name, entry,
                 body range, prototype), 'disasm', 'decompile', 'xrefs',
-                'callgraph',
-                'strings', 'features' (derived counts). Default:
-                function, xrefs, strings, features. Naming any field replaces
+                'callgraph', 'strings', 'constants' (words loaded from the
+                constant pool), 'features' (derived counts). Default:
+                function, xrefs, strings, constants, features. Naming any field replaces
                 the default set rather than adding to it, so pass
                 ['disasm'] to get only the listing.
-            fmt: only 'json' is accepted; anything else is an error. Note
-                this is not the listing fmt of disassemble_at -- an embedded
-                'disasm' section is always objects, never rendered lines.
+            fmt: only 'json' is accepted (not disassemble_at's listing fmt).
             max_result_tokens: int ceiling on the response, or null (default)
                 for none. When exceeded, disasm and decompile are trimmed and
                 meta.truncated is set.
@@ -1166,6 +1164,7 @@ def register_tools(
                 disasm.before/after 0-64 (8), disasm.max_instructions 1-128 (48),
                 xrefs.inbound_limit/outbound_limit 0-256 (40),
                 callgraph.limit 0-256 (24), strings.limit 0-64 (6),
+                constants.limit 0-64 (8),
                 strings.max_cstring_len 1-1024 (256),
                 decompile.enabled bool (true), decompile.max_lines 1-500 (120).
 

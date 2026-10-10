@@ -33,6 +33,7 @@ _ALLOWED_FIELDS: Tuple[str, ...] = (
     "xrefs",
     "callgraph",
     "strings",
+    "constants",
     "features",
 )
 
@@ -49,6 +50,7 @@ _DEFAULT_FIELDS: Tuple[str, ...] = (
     "function",
     "xrefs",
     "strings",
+    "constants",
     "features",
 )
 
@@ -65,6 +67,7 @@ class AnalyzeConfig:
         "outbound_limit",
         "callgraph_limit",
         "strings_limit",
+        "constants_limit",
         "cstring_max_len",
         "decompile_enabled",
         "decompile_max_lines",
@@ -80,6 +83,7 @@ class AnalyzeConfig:
         outbound_limit: int = 40,
         callgraph_limit: int = 24,
         strings_limit: int = 6,
+        constants_limit: int = 8,
         cstring_max_len: int = 256,
         decompile_enabled: bool = True,
         decompile_max_lines: int = 120,
@@ -91,6 +95,7 @@ class AnalyzeConfig:
         self.outbound_limit = outbound_limit
         self.callgraph_limit = callgraph_limit
         self.strings_limit = strings_limit
+        self.constants_limit = constants_limit
         self.cstring_max_len = cstring_max_len
         self.decompile_enabled = decompile_enabled
         self.decompile_max_lines = decompile_max_lines
@@ -132,7 +137,7 @@ def analyze_function_complete(
     disasm_truncated = False
 
     needs_disasm = bool(
-        requested.intersection({"disasm", "xrefs", "callgraph", "strings", "features"})
+        requested.intersection({"disasm", "xrefs", "callgraph", "strings", "constants", "features"})
     )
     if needs_disasm:
         disasm_entries = _listing_entries(client, entry_point)
@@ -201,6 +206,9 @@ def analyze_function_complete(
             "source": "disassembly_literals",
         }
 
+    if "constants" in requested:
+        payload["constants"] = _collect_constants(disasm_entries, limit=config.constants_limit)
+
     if "features" in requested:
         payload["features"] = _summarize_features(
             disasm_entries,
@@ -231,6 +239,7 @@ def _parse_options(raw: Mapping[str, object]) -> AnalyzeConfig:
     xref_opts = _coerce_mapping(raw.get("xrefs"))
     callgraph_opts = _coerce_mapping(raw.get("callgraph"))
     string_opts = _coerce_mapping(raw.get("strings"))
+    constant_opts = _coerce_mapping(raw.get("constants"))
     decomp_opts = _coerce_mapping(raw.get("decompile"))
 
     before = _clamped_int(disasm_opts.get("before", 8), minimum=0, maximum=64)
@@ -249,6 +258,7 @@ def _parse_options(raw: Mapping[str, object]) -> AnalyzeConfig:
     outbound_limit = _clamped_int(xref_opts.get("outbound_limit", 40), minimum=0, maximum=256)
     callgraph_limit = _clamped_int(callgraph_opts.get("limit", 24), minimum=0, maximum=256)
     strings_limit = _clamped_int(string_opts.get("limit", 6), minimum=0, maximum=64)
+    constants_limit = _clamped_int(constant_opts.get("limit", 8), minimum=0, maximum=64)
     cstring_max_len = _clamped_int(
         string_opts.get("max_cstring_len", 256), minimum=1, maximum=1024
     )
@@ -263,6 +273,7 @@ def _parse_options(raw: Mapping[str, object]) -> AnalyzeConfig:
         ("analyze.xrefs.outbound_limit", outbound_limit),
         ("analyze.callgraph.limit", callgraph_limit),
         ("analyze.strings.limit", strings_limit),
+        ("analyze.constants.limit", constants_limit),
     ):
         enforce_batch_limit(value or 0, counter=counter)
 
@@ -274,6 +285,7 @@ def _parse_options(raw: Mapping[str, object]) -> AnalyzeConfig:
         outbound_limit=outbound_limit,
         callgraph_limit=callgraph_limit,
         strings_limit=strings_limit,
+        constants_limit=constants_limit,
         cstring_max_len=cstring_max_len,
         decompile_enabled=decompile_enabled,
         decompile_max_lines=decompile_max_lines,
@@ -715,6 +727,41 @@ def _collect_strings(
             if len(results) >= limit:
                 break
     return results
+
+
+def _collect_constants(
+    entries: Sequence[Mapping[str, object]], *, limit: int
+) -> Dict[str, object]:
+    """The words the function loads from its constant pool (ANALYZE-POOL-CONSTANTS).
+
+    Each READ reference into the image carries the word stored there (stage
+    8c), which for a PC-relative load is the value loaded: peripheral bases,
+    RAM pointers, masks.  The strings section drops these -- a pool word is
+    not text -- and before 8c it called them strings; listed here they are
+    what they are.  One item per distinct value, in order of first load, with
+    where it sits and how often it is loaded.
+    """
+
+    by_value: Dict[str, Dict[str, object]] = {}
+    for entry in entries:
+        if entry.get("flow") != "fallthrough":
+            continue
+        for ref in entry.get("refs", ()):
+            if ref.get("type") != "READ" or not ref.get("mapped") or "word" not in ref:
+                continue
+            value = str(ref["word"]).lower()
+            item = by_value.get(value)
+            if item is None:
+                by_value[value] = {
+                    "value": value,
+                    "pool": int_to_hex(int(str(ref.get("to")), 16)),
+                    "source": entry.get("address"),
+                    "loads": 1,
+                }
+            else:
+                item["loads"] = int(item["loads"]) + 1
+    items = list(by_value.values())
+    return {"items": items[:limit], "limit": limit, "total": len(items)}
 
 
 #: The plugin escapes non-printable bytes as text: a word like 0xFF9F0F1F comes

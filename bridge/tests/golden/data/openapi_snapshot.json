@@ -27,6 +27,7 @@
                         "xrefs",
                         "callgraph",
                         "strings",
+                        "constants",
                         "features"
                       ],
                       "type": "string"
@@ -53,6 +54,17 @@
                         "properties": {
                           "limit": {
                             "maximum": 256,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "constants": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "limit": {
+                            "maximum": 64,
                             "minimum": 0,
                             "type": "integer"
                           }
@@ -217,6 +229,54 @@
                             "type": "object"
                           },
                           "type": "array"
+                        }
+                      },
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "constants": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "loads": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "pool": {
+                                "pattern": "^0x[0-9a-fA-F]+$",
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "value": {
+                                "pattern": "^0x[0-9a-fA-F]+$",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "pool",
+                              "source",
+                              "loads"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
                         }
                       },
                       "type": [

@@ -77,7 +77,7 @@ def test_analyze_function_complete_full_payload() -> None:
     ]
     assert payload["features"]["instruction_count"] == 4
     assert payload["meta"]["fields"] == sorted(
-        ["function", "disasm", "decompile", "xrefs", "callgraph", "strings", "features"]
+        ["function", "disasm", "decompile", "xrefs", "callgraph", "strings", "constants", "features"]
     )
 
 
@@ -93,7 +93,7 @@ def test_analyze_default_omits_disasm_and_decompile() -> None:
     payload = analyze.analyze_function_complete(client, address=0x00001004)
 
     assert payload["meta"]["fields"] == sorted(
-        ["function", "xrefs", "strings", "features"]
+        ["function", "xrefs", "strings", "constants", "features"]
     )
     assert "disasm" not in payload
     assert "decompile" not in payload
@@ -133,3 +133,35 @@ def test_analyze_function_rejects_invalid_field() -> None:
     client = StubClient()
     with pytest.raises(ValueError):
         analyze.analyze_function_complete(client, address=0x1000, fields=["invalid"])
+
+
+def test_constants_are_the_pool_words_a_function_loads():
+    """ANALYZE-POOL-CONSTANTS, with the shapes of 0x002AF9C0."""
+
+    def load(address, pool, word):
+        record = insn(address, "ldr", text=f"ldr r0,[0x{pool:x}]", ref=(pool, "READ", True))
+        record["refs"][0]["word"] = f"0x{word:08x}"
+        return record
+
+    entries = analyze._listing_entries(type("C", (), {
+        "disassemble_function_structured": lambda self, a: listing(a, [
+            load(0x2AFA38, 0x2AFB40, 0xB1008704),
+            insn(0x2AFA3C, "ldr", ref=(0xB1008704, "READ", False)),  # MMIO, no word
+            load(0x2AFA50, 0x2AFB44, 0x00008190),
+            load(0x2AFAD0, 0x2AFB40, 0xB1008704),
+            insn(0x2AFB0C, "ldmia", flow="return"),
+        ]),
+        "last_error": None,
+    })(), 0x2AF9C0)
+
+    result = analyze._collect_constants(entries, limit=8)
+
+    assert result == {
+        "items": [
+            {"value": "0xb1008704", "pool": "0x002afb40", "source": "0x002afa38", "loads": 2},
+            {"value": "0x00008190", "pool": "0x002afb44", "source": "0x002afa50", "loads": 1},
+        ],
+        "limit": 8,
+        "total": 2,
+    }
+    assert analyze._collect_constants(entries, limit=1)["total"] == 2

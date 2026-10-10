@@ -24,7 +24,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {DIAG.3} Force-refresh endpoint for manual state re-checking (allow users to trigger trackProgram() when state appears stale)
 - {DIAG.4} Analysis completion metadata in search results (add analysis_complete flag based on AutoAnalysisManager state)
 - {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
-- {ANALYZE-POOL-CONSTANTS} Konstantenpool-Worte als eigener Abschnitt
 - {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
 
 ## LATER
@@ -36,6 +35,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {ANALYZE-POOL-CONSTANTS} `analyze_function_complete` hat den Abschnitt `constants` (im Default): je Wert, den die Funktion aus dem Konstantenpool lädt, Pool-Adresse, erste Ladestelle, Anzahl Loads; `options.constants.limit` 0–64 (8). Live an 0x002AF9C0: 0xB1008000 (USBD_BA), 0xB1008704, 0x8190, 0x82B0; an 0x002AF80C zusätzlich 0x00109AC4. Referenzlauf 58 264 → 59 804 Bytes (analyze +644/+561; project_info +335 aus IMAGE-BASE-STALE, dort nicht gemessen). Sockel 8 485.
 - [x] {IMAGE-BASE-STALE} Werkzeugseite: `project_info` trägt `layout_notes`, wenn `image_base` oder Einsprungpunkte in keinem Speicherblock liegen (sonst fehlt das Feld). `image_base` 0x0 ist Ghidras echter Wert, nicht veraltet. Live am ZK-Inkjet-Programm beide Hinweise. Die Korrektur des Programms (Block nach 0x00058000 verschieben) gehört ins ZK-Inkjet-Projekt, dort CL-TOOL-REC-121.
 - [x] {RENAME-DATA-TRUTHFUL} `/renameData` meldet, was passiert ist (`Data renamed: <alt> -> <neu>` oder `ERROR:` mit Grund, ohne definierte Daten mit Verweis auf `/createLabel`) und übernimmt die Transaktion nur bei Erfolg. Live mit Plugin 1.3.58: vier Fehlerpfade, Umbenennung `DAT_002afb40 -> R58_live_check` und Zurücklesen, danach in Ghidra zurückgenommen. Ein gleicher Name ist danach ein No-op ohne Transaktion (im Code, nicht live geprüft).
 - [x] {FIND-IN-FUNCTION-TEXT} `find_in_function` mit `fmt="text"` als MCP-Default: zusammengeführte Fenster, `--` dazwischen. Referenzlauf: die zwei Aufrufe 13 912 → 4 199 Bytes (−70 %), Lauf gesamt 67 977 → 58 264. Nebenbei behoben: JSON-`address` war fast immer `null` (Parser erkannte nur `0x…`/reine Ziffern), `truncated` war schon bei genau `limit` Treffern `true`; neu `*_found`. Sockel 8 496 (Decke 8 500 hält). Strukturlauf setzt `fmt="json"` ausdrücklich (Rahmen 8).

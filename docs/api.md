@@ -370,6 +370,9 @@ All three routes share the standard per-request write guard. Each successful wri
     "callgraph": {
       "limit": 0
     },
+    "constants": {
+      "limit": 0
+    },
     "decompile": {
       "enabled": false,
       "max_lines": 0
@@ -399,6 +402,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `address` | string | Yes |  |
   | `callgraph` | object | No |  |
+  | `constants` | object | No |  |
   | `decompile` | object | No |  |
   | `disasm` | object | No |  |
   | `features` | object | No |  |
@@ -425,6 +429,18 @@ All three routes share the standard per-request write guard. Each successful wri
           "type": "string"
         }
       ]
+    },
+    "constants": {
+      "items": [
+        {
+          "loads": 0,
+          "pool": "0x0",
+          "source": "string",
+          "value": "0x0"
+        }
+      ],
+      "limit": 0,
+      "total": 0
     },
     "decompile": {
       "enabled": false,
