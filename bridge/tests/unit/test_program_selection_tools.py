@@ -47,7 +47,7 @@ class _SelectionClient:
             "locked": False,
         }
 
-    def open_program(self, domain_file_id: str, *, path: str | None = None):
+    def open_program(self, domain_file_id: str, *, path: str | None = None, on_dirty: str | None = None):
         self.open_calls.append({"domain_file_id": domain_file_id, "path": path})
         self._active_domain_file_id = domain_file_id
         return {"status": "ok", "warnings": ["Program auto-opened for test"]}
@@ -205,7 +205,7 @@ def test_program_selection_propagates_open_errors(monkeypatch) -> None:
             super().__init__()
             self.last_error = None
 
-        def open_program(self, domain_file_id: str, *, path: str | None = None):
+        def open_program(self, domain_file_id: str, *, path: str | None = None, on_dirty: str | None = None):
             class _Error:
                 def __init__(self):
                     self.status = 500

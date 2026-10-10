@@ -520,7 +520,7 @@
     },
     "DOC-DEFAULT-DRIFT": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "DISASM-SILENT-SKIP": {
       "commit": "pending",

@@ -608,7 +608,7 @@ def register_tools(
 
     @server.tool()
     @tracked_tool(lock_usage=False)
-    def select_program(client, domain_file_id: str, on_dirty: str | None = None) -> Dict[str, object]:
+    def select_program(client, domain_file_id: str, on_dirty: str = "error") -> Dict[str, object]:
         """Open a program from the current project, making it the active one.
 
         Not for: discovering what is available -- take domain_file_id from

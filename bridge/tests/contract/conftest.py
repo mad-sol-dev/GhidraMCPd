@@ -624,7 +624,7 @@ class StubGhidraClient:
             "warnings": [],
         }
 
-    def open_program(self, domain_file_id: str, *, path: str | None = None) -> Dict[str, object]:
+    def open_program(self, domain_file_id: str, *, path: str | None = None, on_dirty: str | None = None) -> Dict[str, object]:
         self._clear_error()
         # Track which program was opened
         self._active_program_id = str(domain_file_id)

@@ -671,7 +671,7 @@
         "Fuer jedes Tool: jede im Docstring genannte Default-Zahl gegen den tatsaechlichen Signatur-Default pruefen",
         "Faellt fehl bei Widerspruechen wie \"default limit of 100\" bei limit=20"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "Genau dieser Widerspruch stand monatelang im Docstring und wurde vom Feldtest gefunden, nicht von der Suite. test_no_parameter_without_documentation prueft nur, DASS ein Parameter erwaehnt wird."
       ]

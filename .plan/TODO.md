@@ -24,7 +24,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {DIAG.3} Force-refresh endpoint for manual state re-checking (allow users to trigger trackProgram() when state appears stale)
 - {DIAG.4} Analysis completion metadata in search results (add analysis_complete flag based on AutoAnalysisManager state)
 - {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
-- {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
 
 ## LATER
 - {R.5} CORS/origin whitelist controls for bridge endpoints
@@ -35,6 +34,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {DOC-DEFAULT-DRIFT} `test_doc_defaults.py`: jeder in einer Tool-Beschreibung genannte Parameter-Default (52 Stück) muss dem Schema-Default entsprechen, und jede `analyze`-Option muss mit Bereich und Default zu Anfrage-Schema und `AnalyzeConfig` passen. Beim Einführen keine echte Drift; ein Fall, wo das Schema `null` sagte und erst das Plugin `"error"` daraus machte (`select_program.on_dirty`), hat jetzt den ausdrücklichen Default. Beide Prüfungen schlagen bei eingebauter Drift an.
 - [x] {ANALYZE-POOL-CONSTANTS} `analyze_function_complete` hat den Abschnitt `constants` (im Default): je Wert, den die Funktion aus dem Konstantenpool lädt, Pool-Adresse, erste Ladestelle, Anzahl Loads; `options.constants.limit` 0–64 (8). Live an 0x002AF9C0: 0xB1008000 (USBD_BA), 0xB1008704, 0x8190, 0x82B0; an 0x002AF80C zusätzlich 0x00109AC4. Referenzlauf 58 264 → 59 804 Bytes (analyze +644/+561; project_info +335 aus IMAGE-BASE-STALE, dort nicht gemessen). Sockel 8 485.
 - [x] {IMAGE-BASE-STALE} Werkzeugseite: `project_info` trägt `layout_notes`, wenn `image_base` oder Einsprungpunkte in keinem Speicherblock liegen (sonst fehlt das Feld). `image_base` 0x0 ist Ghidras echter Wert, nicht veraltet. Live am ZK-Inkjet-Programm beide Hinweise. Die Korrektur des Programms (Block nach 0x00058000 verschieben) gehört ins ZK-Inkjet-Projekt, dort CL-TOOL-REC-121.
 - [x] {RENAME-DATA-TRUTHFUL} `/renameData` meldet, was passiert ist (`Data renamed: <alt> -> <neu>` oder `ERROR:` mit Grund, ohne definierte Daten mit Verweis auf `/createLabel`) und übernimmt die Transaktion nur bei Erfolg. Live mit Plugin 1.3.58: vier Fehlerpfade, Umbenennung `DAT_002afb40 -> R58_live_check` und Zurücklesen, danach in Ghidra zurückgenommen. Ein gleicher Name ist danach ein No-op ohne Transaktion (im Code, nicht live geprüft).
