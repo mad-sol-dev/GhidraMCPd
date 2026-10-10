@@ -462,7 +462,7 @@
         "readBytes/readBytesBase64 return clear success payloads and error markers",
         "Python client maps 8080 errors deterministically without misinterpreting payloads; tests cover success/failure"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.25",
