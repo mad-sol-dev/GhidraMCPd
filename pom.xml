@@ -7,7 +7,7 @@
   <groupId>com.lauriewired</groupId>
   <artifactId>GhidraMCP</artifactId>
   <packaging>jar</packaging>
-  <version>1.3.0</version>
+  <version>${revision}</version>
   <name>GhidraMCP</name>
   <url>http://maven.apache.org</url>
 
@@ -17,6 +17,10 @@
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ghidra.version>11.4.2</ghidra.version>
+    <!-- Plugin version: major.minor by hand, the patch level comes from git via
+         scripts/plugin_version.sh (passed as -Drevision=...). Plain mvn builds get "-local". -->
+    <plugin.version.base>1.3</plugin.version.base>
+    <revision>${plugin.version.base}.0-local</revision>
     <ghidra.dir>${project.basedir}/lib</ghidra.dir>
     <ghidra.generic.path>Generic.jar</ghidra.generic.path>
     <ghidra.softwareModeling.path>SoftwareModeling.jar</ghidra.softwareModeling.path>
@@ -119,6 +123,22 @@
   </dependencies>
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>ghidramcp-version.properties</exclude>
+        </excludes>
+      </resource>
+      <!-- Only the version file is filtered, so ${project.version} lands in the JAR -->
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>ghidramcp-version.properties</include>
+        </includes>
+      </resource>
+    </resources>
     <plugins>
         <!-- Compiler: setze Java 17 über "release" -->
       <plugin>

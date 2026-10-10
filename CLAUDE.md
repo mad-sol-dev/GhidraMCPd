@@ -52,10 +52,11 @@ python scripts/fetch_ghidra_jars.py
 
 # Build extension (local Maven)
 export GHIDRA_DIR=/path/to/ghidra_11.4.2_PUBLIC  # optional
-mvn -DskipTests package
-mvn package  # with tests
+mvn -DskipTests -Drevision="$(scripts/plugin_version.sh)" package
+mvn -Drevision="$(scripts/plugin_version.sh)" package  # with tests
 
-# Output: target/GhidraMCP-1.3.0.zip
+# Output: target/GhidraMCP-<version>.zip, version from git (see docs/development.md)
+# Installed version: curl http://127.0.0.1:8080/plugin_version
 
 # Docker cache workaround (if version doesn't update):
 docker build --no-cache -f Dockerfile.build .

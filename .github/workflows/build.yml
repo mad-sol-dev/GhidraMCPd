@@ -89,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # plugin_version.sh counts commits
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -108,5 +110,5 @@ jobs:
           echo "GHIDRA_DIR=$(echo ghidra_*_PUBLIC)" >> "$GITHUB_ENV"
       - name: Fetch required Ghidra jars
         run: python scripts/fetch_ghidra_jars.py --tag "Ghidra_${GHIDRA_VERSION}_build"
-      - run: mvn -B -DskipTests package
+      - run: mvn -B -DskipTests -Drevision="$(scripts/plugin_version.sh)" package
 

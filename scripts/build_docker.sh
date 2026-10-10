@@ -51,6 +51,9 @@ fi
 echo "Target: Ghidra $GHIDRA_VERSION"
 echo "URL:    $LATEST_URL"
 
+PLUGIN_VERSION="$(bash "$(dirname "$0")/plugin_version.sh")"
+echo "Plugin: $PLUGIN_VERSION"
+
 # 2. Docker Build (Patching passiert intern via ARG)
 echo "Building Docker image..."
 docker build \
@@ -58,6 +61,7 @@ docker build \
     -t "${IMAGE_TAG}" \
     --build-arg GHIDRA_ZIP_URL="${LATEST_URL}" \
     --build-arg GHIDRA_VERSION="${GHIDRA_VERSION}" \
+    --build-arg PLUGIN_VERSION="${PLUGIN_VERSION}" \
     .
 
 # 3. Artefakt extrahieren
@@ -70,10 +74,14 @@ docker cp "${CONTAINER_ID}:/workspace/target/." target/
 find target -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
 
 JAR_PATH=$(ls target/GhidraMCP*.jar 2>/dev/null | head -n 1 || true)
-ZIP_PATH=$(ls target/GhidraMCP-*.zip 2>/dev/null | head -n 1 || true)
+# Exactly this build's ZIP; older ones may still sit in target/
+ZIP_PATH="target/GhidraMCP-${PLUGIN_VERSION}.zip"
+[ -f "$ZIP_PATH" ] || ZIP_PATH=""
+
 
 echo "--------------------------------------------------"
 [ -n "$JAR_PATH" ] && echo "JAR : $JAR_PATH"
 [ -n "$ZIP_PATH" ] && echo "ZIP : $ZIP_PATH"
+echo "Version: $PLUGIN_VERSION"
 echo "--------------------------------------------------"
 

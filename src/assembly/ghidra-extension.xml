@@ -25,6 +25,8 @@
                 <include>Module.manifest</include>
             </includes>
             <outputDirectory>GhidraMCP</outputDirectory>
+            <!-- Fills ${project.version} into the description shown in Install Extensions -->
+            <filtered>true</filtered>
         </fileSet>
         
         <!-- 2) Copy your built plugin JAR into GhidraMCP/lib -->

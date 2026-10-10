@@ -79,6 +79,7 @@ import com.lauriewired.ProgramCapable;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
@@ -95,6 +96,7 @@ import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Properties;
 
 @PluginInfo(
     status = PluginStatus.RELEASED,
@@ -112,6 +114,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private static final String BIND_OPTION_NAME = "Bind Address";
     private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
     private static final int DEFAULT_PORT = 8080;
+    /** Build version, filled in by Maven from scripts/plugin_version.sh. */
+    static final String PLUGIN_VERSION = loadPluginVersion();
     private static final int DEFAULT_HEXDUMP_WIDTH = 16;
     private static final int MAX_BYTE_READ = 0x200;      // 512 bytes
     private static final int MAX_DATA_WINDOW = 0x800;    // 2048 bytes
@@ -410,7 +414,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     public GhidraMCPPlugin(PluginTool tool) {
         super(tool);
-        Msg.info(this, "GhidraMCPPlugin loading...");
+        Msg.info(this, "GhidraMCPPlugin " + PLUGIN_VERSION + " loading...");
 
         // Register the configuration option
         Options options = tool.getOptions(OPTION_CATEGORY_NAME);
@@ -431,7 +435,22 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         catch (IOException e) {
             Msg.error(this, "Failed to start HTTP server", e);
         }
-        Msg.info(this, "GhidraMCPPlugin loaded!");
+        Msg.info(this, "GhidraMCPPlugin " + PLUGIN_VERSION + " loaded!");
+    }
+
+    static String loadPluginVersion() {
+        try (InputStream in = GhidraMCPPlugin.class.getResourceAsStream("/ghidramcp-version.properties")) {
+            if (in == null) {
+                return "unknown";
+            }
+            Properties props = new Properties();
+            props.load(in);
+            String version = props.getProperty("version", "").trim();
+            // An unfiltered resource (IDE build) still holds the Maven placeholder
+            return version.isEmpty() || version.startsWith("${") ? "unknown" : version;
+        } catch (IOException e) {
+            return "unknown";
+        }
     }
 
     /**
@@ -517,6 +536,16 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     private static void registerRoutes(HttpServer server) {
+        // Answers without any tool or program, so the installed build can always be checked
+        server.createContext("/plugin_version", exchange -> {
+            byte[] bytes = ("{\"version\":\"" + PLUGIN_VERSION + "\",\"status\":\"ok\"}")
+                .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
         registerProgramHandler(server, "/methods", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             int offset = plugin.parseIntOrDefault(qparams.get("offset"), 0);

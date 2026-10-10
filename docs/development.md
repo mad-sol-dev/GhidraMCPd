@@ -33,21 +33,38 @@ Use this path when you need IDE support or want to iterate on the Ghidra extensi
 2. **Build the extension:**
 
    ```bash
-   mvn -DskipTests package
+   mvn -DskipTests -Drevision="$(scripts/plugin_version.sh)" package
    ```
 
-   To include tests:
+   To include tests, drop `-DskipTests`. Without `-Drevision` the build is
+   labelled `1.3.0-local`.
 
-   ```bash
-   mvn package
-   ```
+### Plugin Version
+
+The version counts up by itself with every plugin change. `scripts/plugin_version.sh`
+derives it from git; `scripts/build_docker.sh` and CI call it for you.
+
+| Tree state | Version | Example |
+|---|---|---|
+| clean | `<base>.<N>`, N = commits touching `src/` or `pom.xml` | `1.3.54` |
+| uncommitted plugin changes | `<base>.<N+1>-dev.<UTC timestamp>` | `1.3.55-dev.20261010084359` |
+
+`<base>` (major.minor) is set by hand as `<plugin.version.base>` in `pom.xml`.
+
+Where to read the installed version:
+- Install Extensions dialog: in the description ("Plugin version ...")
+- Ghidra log: `GhidraMCPPlugin <version> loaded!`
+- HTTP: `curl http://127.0.0.1:8080/plugin_version` (works without an open program)
+
+The `version=` line in `extension.properties` must stay the Ghidra version; Ghidra
+refuses the extension otherwise.
 
 ### Output Location
 
 The build produces:
 
 ```
-target/GhidraMCP-1.0-SNAPSHOT.jar
+target/GhidraMCP-<version>.zip
 ```
 
 ### Installation
@@ -55,7 +72,7 @@ target/GhidraMCP-1.0-SNAPSHOT.jar
 **Option 1: Manual copy**
 
 ```bash
-cp target/GhidraMCP-1.0-SNAPSHOT.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
+cp target/GhidraMCP.jar $GHIDRA_INSTALL_DIR/Extensions/Ghidra/
 ```
 
 **Option 2: Ghidra GUI**
