@@ -150,6 +150,8 @@ def render_lines(mutations: Sequence[Mutation]) -> List[str]:
         marker = "" if entry.applied else "[proposed] "
         if entry.kind == "datatype":
             body = f"{entry.target}  datatype  {_datatype_body(entry)}"
+        elif entry.kind == "label":
+            body = f"{entry.target}  label     + {_render_value(entry.new)}"
         else:
             body = (
                 f"{entry.target}  {entry.kind:<8}  "

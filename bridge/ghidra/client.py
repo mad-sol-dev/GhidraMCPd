@@ -1456,6 +1456,11 @@ class GhidraClient:
                 "dry_run": "true" if dry_run else "false",
             },
         )
+        if isinstance(lines, RequestError) and lines.status is not None and lines.status < 400:
+            # An HTTP 200 carrying {"error": ...}: the plugin answered and
+            # refused -- an invalid name, say.  _request_lines folds that into a
+            # RequestError; for this route it is the answer, not a failure.
+            return {"status": "error", "error": lines.reason}
         if _is_error(lines):
             if self._last_error is None:
                 self._last_error = RequestError(

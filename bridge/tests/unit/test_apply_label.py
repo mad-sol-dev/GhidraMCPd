@@ -95,7 +95,11 @@ def test_a_user_named_primary_is_kept_and_said_so():
     assert data["applied"] is True
     assert data["primary"] is False
     assert any("secondary" in n for n in data["notes"])
-    assert mutations.since_last_save()[0].old == "usbd_init_phy_cep"
+    entry = mutations.since_last_save()[0]
+    assert entry.old is None
+    assert entry.detail == "beside usbd_init_phy_cep"
+    # Found live: rendered as "DMAC_BA -> R12_live_check", which reads as a rename.
+    assert mutations.render_lines([entry]) == ["0x002af9c0  label     + alias  (beside usbd_init_phy_cep)"]
 
 
 def test_ghidras_name_rule_is_reported_as_a_bad_request():
@@ -163,3 +167,19 @@ def test_a_missing_route_is_no_answer():
     client, _ = _client(404, "<h1>404 Not Found</h1>")
     assert client.create_label(0xB1006000, "FMI_CTL", dry_run=True) is None
     assert client.last_error is not None
+
+
+def test_a_refusal_is_an_answer_not_a_transport_failure():
+    """Found live: an invalid name came back as UNAVAILABLE.
+
+    The plugin answers HTTP 200 with {"error": ..., "status": "error"}, and the
+    generic request path turns any such body into a RequestError.
+    """
+
+    body = json.dumps({"error": "invalid label name 'a b': Symbol name contains invalid characters: a b",
+                       "status": "error"})
+    client, _ = _client(200, body)
+    answer = client.create_label(0xB1006000, "a b", dry_run=True)
+    assert answer["status"] == "error"
+    with pytest.raises(labels.LabelRejected, match="invalid label name"):
+        labels.apply_label(client, address=0xB1006000, name="a b", dry_run=True)

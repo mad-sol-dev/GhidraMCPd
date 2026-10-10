@@ -21,8 +21,8 @@ _NOTE_DRY_RUN = "dry-run requested: label not created"
 _NOTE_WRITES_DISABLED = "writes disabled (set GHIDRA_MCP_ENABLE_WRITES=1 to enable)"
 _NOTE_ALREADY_PRESENT = "a label of this name is already at this address; nothing to do"
 _NOTE_SECONDARY = (
-    "created as a secondary label: a user-named symbol is primary here, and "
-    "renaming that one is rename_function's job, not a label's"
+    "created as a secondary label: a user-named symbol is primary here and "
+    "stays primary -- a label adds a name, it does not replace one"
 )
 _NOTE_UNMAPPED = "address lies outside every memory block (MMIO, unmapped RAM); labelled anyway"
 
@@ -91,13 +91,17 @@ def apply_label(
         reason: Optional[str] = None
         if not created:
             reason = "dry_run" if dry_run else "writes_disabled"
+        # A label adds a name; nothing is replaced, so there is no "old".
+        # What was primary goes into detail, or the ledger line would read
+        # "DMAC_BA -> R12_live_check", a rename that did not happen.
         mutations.record(
             kind="label",
             target=int_to_hex(address),
-            old=str(primary_before) if primary_before is not None else None,
+            old=None,
             new=name,
             applied=created,
             reason=reason,
+            detail=f"beside {primary_before}" if primary_before is not None else None,
         )
 
     return {
