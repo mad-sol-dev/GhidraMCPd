@@ -594,8 +594,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         registerProgramHandler(server, "/renameData", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
-            plugin.renameDataAtAddress(params.get("address"), params.get("newName"));
-            plugin.sendResponse(exchange, "Rename data attempted");
+            plugin.sendResponse(exchange, plugin.renameDataAtAddress(params.get("address"), params.get("newName")));
         });
 
         registerProgramHandler(server, "/createLabel", (plugin, exchange) -> {
@@ -1216,38 +1215,61 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return successFlag.get();
     }
 
-    private void renameDataAtAddress(String addressStr, String newName) {
+    /**
+     * {@code POST /renameData}: rename the symbol on defined data.
+     *
+     * <p>Answers what happened.  It used to answer "Rename data attempted"
+     * whatever happened -- including at an address without defined data, where
+     * it did nothing at all -- and committed its transaction even after an
+     * exception.  A label at an arbitrary address is {@code /createLabel}.
+     */
+    private String renameDataAtAddress(String addressStr, String newName) {
         Program program = getCurrentProgram();
-        if (program == null) return;
+        if (program == null) return "ERROR: no program loaded";
+        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
+        if (newName == null || newName.isEmpty()) return "ERROR: newName is required";
 
+        Address addr;
+        try {
+            addr = program.getAddressFactory().getAddress(addressStr);
+        } catch (Exception e) {
+            addr = null;
+        }
+        if (addr == null) return "ERROR: invalid address " + addressStr;
+        if (program.getListing().getDefinedDataAt(addr) == null) {
+            return "ERROR: no defined data at " + addr
+                + "; /createLabel places a label at any address";
+        }
+
+        StringBuilder outcome = new StringBuilder();
+        Address target = addr;
         try {
             SwingUtilities.invokeAndWait(() -> {
                 int tx = program.startTransaction("Rename data");
+                boolean commit = false;
                 try {
-                    Address addr = program.getAddressFactory().getAddress(addressStr);
-                    Listing listing = program.getListing();
-                    Data data = listing.getDefinedDataAt(addr);
-                    if (data != null) {
-                        SymbolTable symTable = program.getSymbolTable();
-                        Symbol symbol = symTable.getPrimarySymbol(addr);
-                        if (symbol != null) {
-                            symbol.setName(newName, SourceType.USER_DEFINED);
-                        } else {
-                            symTable.createLabel(addr, newName, SourceType.USER_DEFINED);
-                        }
+                    SymbolTable symTable = program.getSymbolTable();
+                    Symbol symbol = symTable.getPrimarySymbol(target);
+                    String oldName = symbol != null ? symbol.getName() : "(none)";
+                    if (symbol != null) {
+                        symbol.setName(newName, SourceType.USER_DEFINED);
+                    } else {
+                        symTable.createLabel(target, newName, SourceType.USER_DEFINED);
                     }
-                }
-                catch (Exception e) {
+                    commit = true;
+                    outcome.append("Data renamed: ").append(oldName).append(" -> ")
+                        .append(newName).append(" at ").append(target);
+                } catch (Exception e) {
+                    outcome.append("ERROR: rename data failed: ").append(e.getMessage());
                     Msg.error(this, "Rename data error", e);
-                }
-                finally {
-                    program.endTransaction(tx, true);
+                } finally {
+                    program.endTransaction(tx, commit);
                 }
             });
+        } catch (InterruptedException | InvocationTargetException e) {
+            return "ERROR: rename data failed: " + e.getMessage();
         }
-        catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute rename data on Swing thread", e);
-        }
+        return outcome.toString();
     }
 
     /**
