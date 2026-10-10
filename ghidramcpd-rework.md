@@ -1792,6 +1792,11 @@ Zahl nicht zur Inventur passte.
 
 ## Hand-off (2026-10-10)
 
+> **Abgelöst** durch das Hand-off vom 2026-10-11 am Ende dieses Dokuments. Erledigt seither:
+> R.23, R.26, R.25, R.24 (Phasen 1 und 2). Unverändert offen: der R.22-Cache, der
+> Skript-Adapter, `save_program` mit `program_name: null`, der Nutzen der `jt_*`-Familie,
+> `jt_slot_process` live, und die Punkte im ZK-Inkjet-Projekt.
+
 **Vor der nächsten Arbeitssitzung am ZK-Inkjet-Projekt:** die dortige Bridge neu starten,
 sonst läuft sie mit altem Code. Plugin 1.3.60 ist installiert; alles ab 1.3.56 genügt der Bridge.
 
@@ -1903,3 +1908,101 @@ because "addr" is null`, live an `read_dword`, `read_bytes`, `get_function_by_ad
 12. „Error getting function: …" wird zu einem gültigen Metadaten-Dict (enthält einen Doppelpunkt).
 13. Falsche Gründe: leere/abgelehnte Antworten heißen „Plugin zu alt"; Plugin-Ablehnungen
     (Datentyp existiert, Speichern nicht erlaubt) heißen Transportfehler/`UNAVAILABLE`.
+
+
+---
+
+# Sitzungsabschluss (2026-10-11)
+
+Sitzung vom 2026-10-10/11, Commits `ea2700a..cd3a1bd` (19) plus dieser Abschluss. Alles
+gepusht. Plugin 1.3.65 (API 2) installiert und live geprüft.
+
+## Was gemacht wurde
+
+| Thema | Commits | Ergebnis |
+|---|---|---|
+| R.23 Programmzustand | `ea2700a`, `11a6a13`, `6a7aff9` | Zustand je Abfrage aus `isAnalyzing()`; kein erzwungenes READY nach 5 min; `select_program` wartet bis 10 s |
+| R.26 Schreibziel | `c608a50`, `7970837`, `d0cb665` | Schreibzugriffe gegen das aktive Programm geprüft, in der Bridge vor dem Senden und im Plugin am Handler (409) |
+| `WRITE-ANSWER-TRUTHFUL` | `b5d961a` | „Failed to rename function" galt als Erfolg |
+| R.25 Read-only | `31e4442`, `9814892` | `writes_enabled`/`writes_note` in `project_info` und Health; eine Formulierung; `save_program` gesperrt |
+| R.24 Bestandsaufnahme | `825fe40` | 53 Routen, alle Client-Methoden, 245 Live-Proben |
+| R.24 Phase 1 (Bridge) | `a6379fa`, `05361f7`, `21ba8ab`, `27b39fc` | Resolver sendet einmal; kein Alle-Funktionen-Fallback; Fehler sind Fehler statt leer; Jump-Table-Adapter prüfen den Funktionsbeginn; Scalar-Grenze als `truncated` |
+| R.24 Phase 2 (API 2) | `fc8da25`, `f587462`, `a5c56e4`, `cd3a1bd` | jeder Fehler mit HTTP-Status und einer JSON-Form; Bridge verlangt API 2 und trennt „nichts da" von „gescheitert" |
+
+## Zahlen
+
+    Referenzlauf (Default)   59 804 -> 60 171 Bytes, 40/40 ohne Fehler, Fingerabdruck geprüft
+    Schema-Sockel            8 481 -> 8 494 Token (35 Tools, Decke 8 500)
+    Tests                    601 -> 697 grün, 11 übersprungen (keine Bridge auf :8000)
+    Live-Tests               39 -> 59 grün (Plugin 1.3.65)
+    Plugin                   1.3.60 -> 1.3.65, Antwortkonvention API 2
+
+## Der rote Faden, ein drittes Mal
+
+Wieder derselbe Befundtyp, diesmal eine Ebene tiefer, bei der Frage, woran man einen Fehler
+überhaupt erkennt. **Jeder Fehler des Plugins kam mit HTTP 200**, in sieben Formen, an 26
+Routen als Prosa ohne Kennzeichen. Daraus folgte fast alles andere: „Variable renamed",
+nachdem das Umbenennen geworfen hatte; jede Jump-Table-Adresse als Funktion, weil
+„No function found …" eine nicht leere Liste ist; eine gescheiterte Funktionssuche als
+Liste aller Funktionen, 300 s gecacht; Decompiler-Fehlertext als C-Code; jeder Lesefehler
+als „Speicher nicht gemappt"; ein Resolver, der jeden Fehlschlag zweimal schickte, Schreiben
+eingeschlossen. Und wieder hielten Stubs es verdeckt: `OK` und `ERROR: …` als Antworten,
+die das Plugin nie sendet, „Scan limit exceeded" mit HTTP 413, Funktions-Datensätze mit
+`name`/`comment`.
+
+Die Abhilfe ist diesmal strukturell statt Stelle für Stelle: eine Konvention mit echten
+Status (API 2), ein Ort im Client, der sie anwendet, und die Regel, dass ein Fehler nie
+zu einem leeren Ergebnis wird. Ein Plugin ohne die Konvention wird abgelehnt statt erraten
+(Entscheidung des Nutzers, keine Rückwärtskompatibilität). Gegen das Wiederkehren: Tests
+gegen den Java-Quelltext (keine Fehlerprosa, jeder Writer setzt den Header) und ein
+Test-Transport (`plugin_http.py`), der wie das Plugin antwortet.
+
+## Arbeitsweise, die getragen hat
+
+- Bestandsaufnahme vor dem Umbau: zwei Agents (Plugin-Seite, Bridge-Seite) parallel zu
+  eigenen Live-Proben; die schwersten Behauptungen im Code nachgeprüft, bevor darauf
+  gebaut wurde. Alle geprüften stimmten.
+- Phasen nach Abhängigkeit: erst, was unabhängig von der Konvention falsch war (nur Bridge,
+  kein Reinstall), dann die Konvention mit einem Reinstall.
+- Live-Tests nur lesend oder als Dry-Run; ein Schreibtest an der eingefrorenen Kopie war in
+  dieser Sitzung nicht nötig. Der neue Live-Test fand eine übersehene ungeprüfte Adresse,
+  die keine Unit-Prüfung gesehen hatte.
+- Panne: `scripts/reference_run.py` schreibt per Default in die eingecheckte Baseline
+  `baseline/reference_run.jsonl` und hat sie überschrieben; wiederhergestellt, danach mit
+  `--usage-log` in eine Scratch-Datei. Siehe Hand-off.
+
+## Hand-off (2026-10-11)
+
+**Vor der nächsten Arbeit am ZK-Inkjet-Projekt:** die dortige Bridge mit aktuellem Code neu
+starten. Ein alter Bridge-Stand versteht die Fehlerstatus von Plugin 1.3.65 nicht. Die lokale,
+ignorierte `.env` in diesem Repo setzt `GHIDRA_MCP_ENABLE_WRITES=true`; eine aus diesem
+Verzeichnis gestartete Bridge schreibt also, wenn ein Tool `dry_run=false` bekommt.
+
+**Verhaltensänderungen, die Aufrufer merken können:**
+- `rename_function`, Prototyp und Variablentyp nur noch am Einsprungpunkt (vorher die
+  umgebende Funktion bei einer Adresse mitten im Rumpf).
+- `/set_function_prototype` schreibt keine Plate-Notiz „Setting prototype: …" mehr.
+- Ein Kommentar mit leerem Text löscht den Kommentar.
+- Mehrfach-Schreiber (`mmio_annotate_compact`, `jt_slot_process`) brechen beim ersten
+  gescheiterten Schreibzugriff mit dessen Fehler ab, statt nur weniger zu zählen.
+- `analyze_function_complete` hat kein `function.comment` mehr (war immer `null`).
+
+**Offen in diesem Repo**, in dieser Reihenfolge empfohlen:
+
+1. **`reference_run.py`-Default** auf eine nicht eingecheckte Datei umstellen oder die
+   Baseline nur mit ausdrücklichem Schalter überschreiben; den Lauf mit 60 171 Bytes als
+   neuen Vergleichsstand festhalten (der mit 59 804 liegt nicht als Datei vor).
+2. **R.24 Phase 3:** Paginierung ohne `has_more` (`""` für leer und hinter dem Ende), still
+   ignorierte Cursor, `readBytes length=0`, Wahrheitswerte als Strings, `check_dirty_state`
+   ohne Programm `ok`, `/disassembleAt` an Nicht-Instruktionen. Teils inkompatibel.
+3. **R.29** Zeichenbudget für `analyze_function_complete`: braucht einen Parameter, der
+   Schema-Sockel steht bei 8 494 von 8 500 -- erst anderswo kürzen.
+4. **R.22-Cache** nur nach einer Messung.
+5. **Skript-Adapter** (Entscheidung offen).
+6. Kleinkram: `save_program` mit `program_name: null` ohne Änderungen; Nutzen der
+   `jt_*`-Familie ungemessen; `jt_slot_process` nie live geschrieben;
+   `WRITE-ANSWER-TRUTHFUL` und der Übergang `LOADING`→`READY` nur im Stub geprüft (beides
+   bräuchte einen Schreibtest bzw. eine laufende Analyse).
+
+**Offen im ZK-Inkjet-Projekt** (unverändert, nicht hier zu entscheiden): Block `flash` auf
+0x00058000 verschieben (CL-TOOL-REC-121), die 96 Label-Dubletten bereinigen (CL-TOOL-REC-122).

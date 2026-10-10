@@ -192,6 +192,8 @@ The script resolves the latest public Ghidra release, builds the extension insid
 2. Restart Ghidra to load the extension.
 3. **Activate:** After restarting, go to **File → Configure → Developer/Configure**. Find `GhidraMCP` in the list (usually under the "Analysis" category) and **check the box** next to it to enable it. The plugin will not be active until you do this.
 
+**Bridge and plugin go together.** The bridge requires a plugin that speaks API 2 (structured errors: every failure is an HTTP 4xx/5xx with a JSON body, every response carries `X-GhidraMCP-API: 2`), i.e. an extension built from this repository at 1.3.65 or later. An older plugin is refused with `PLUGIN_TOO_OLD` and a hint to reinstall, rather than misread. After reinstalling, restart Ghidra *and* any running bridge.
+
 ---
 
 ## API overview
