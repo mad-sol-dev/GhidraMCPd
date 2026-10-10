@@ -182,7 +182,10 @@ This repo uses a `.plan/` workflow for deterministic task tracking:
 3. **Writes disabled**: Set `ENABLE_WRITES=true` explicitly to use rename/comment operations
 4. **Java 17 required**: Maven build expects JDK 17 (`maven.compiler.release=17`)
 5. **Extension activation**: After installing extension, must check the box in File → Configure to activate
-6. **Endpoint resolution**: GhidraClient tries multiple candidate names for backward compatibility
+6. **Endpoint resolution**: GhidraClient tries candidate names in order; every alias must be a real plugin route (`bridge/tests/unit/test_plugin_routes.py` enforces it)
+7. **Plugin version**: disassembly, MMIO, string xrefs and the function listing need structured (`fmt=json`) plugin responses, i.e. plugin 1.3.56 or newer; an older plugin yields `UNAVAILABLE`, not empty results. `apply_label` needs 1.3.57+. Check with `curl http://127.0.0.1:8080/plugin_version`; a freshly installed extension loads only after a Ghidra restart.
+8. **Stubs vs. plugin**: test stubs must return the shapes the plugin really produces (prose for `get_function_by_address`, `fmt=json` records for listings). Several bugs survived because stubs modelled fields the plugin never sends.
+9. **Live checks**: `bridge/tests/live/` runs against a running Ghidra serving the ZK-Inkjet program (checked by SHA-256). The open program is the frozen reference copy: read-only probes are fine; a write test is agreed with the user first and undone in Ghidra (Ctrl+Z, no save), then confirmed via `/check_dirty_state`.
 
 ## Documentation
 

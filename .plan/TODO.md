@@ -9,7 +9,7 @@
 - {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance
 - {R.26} Write endpoint `domain_file_id` validation against the active program (reject mismatches before mutating)
 
-Recommended next focus: land {R.22}/{R.23} to improve plugin performance and readiness gating before tackling remaining NEXT items.
+Recommended next focus (2026-10-10): R.23 -- first check what of IDLE/LOADING/READY, the status endpoint and bridge polling already exists (ProgramStatusTracker); then R.26, R.25. The R.22 cache only after a measurement.
 
 ## NEXT
 - {R.24} Port 8080 error response cleanup (consistent text/JSON conventions and bridge parsing alignment)

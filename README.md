@@ -205,6 +205,7 @@ Key categories:
 * **Memory & disassembly** – `read_*`, `disassemble_*`
 * **Advanced analysis** – `analyze_function_complete`, jump-table helpers
 * **Data & utilities** – `strings_compact`, `project_*`, `health`
+* **Gated writes** – `rename_function`, `set_comment`, `apply_label`, `datatypes_*`, `list_mutations` (dry-run by default, `GHIDRA_MCP_ENABLE_WRITES`)
 
 ---
 

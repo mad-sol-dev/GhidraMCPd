@@ -1453,6 +1453,12 @@ Messung und keine Behauptung.
 
 ## Hand-off: was offen ist
 
+> **Abgelöst** durch das Hand-off vom 2026-10-10 am Ende dieses Dokuments. Erledigt seither:
+> Push (alle Commits auf `origin/main`), Plugin-Rebuild, R.12 `apply_label`, `JT-PRENAME-PARSE`,
+> `ANALYZE-POOL-CONSTANTS`, `find_in_function` `fmt="text"`, `DOC-DEFAULT-DRIFT`. Unverändert
+> offen: das doppelte `fmt` von `analyze_function_complete` (nur die Beschreibung ist kürzer),
+> `save_program` mit `program_name: null`, der Nutzen der `jt_*`-Familie.
+
 **Vor dem Push** (nichts davon ist meine Entscheidung):
 
 1. `origin/main` steht auf `c292fdc` (9. Januar). **22 Commits ungepusht**,
@@ -1712,3 +1718,98 @@ MMIO-Registeradressen, ein „String" aus Maschinencode, drei verschwiegene bedi
 Calls, ein geratenes Argumentregister, eine Funktionsliste, die an zwei externen
 Thunks komplett scheiterte. Keiner davon kam aus einem Test der Suite; alle aus dem
 Vergleich alt gegen neu am laufenden Programm.
+
+
+---
+
+# Sitzungsabschluss (2026-10-10)
+
+Sitzung vom 2026-10-09/10, Commits `db7d982..bf9d3c2` (27) in diesem Repo, dazu `476d1b1`
+im ZK-Inkjet-Projekt. Alles gepusht. Plugin 1.3.60 installiert und live geprüft.
+
+## Was gemacht wurde
+
+| Thema | Commits | Ergebnis |
+|---|---|---|
+| Stufe 8a Loopback | `db7d982`, `62498c6` | Plugin nur auf `127.0.0.1`, per Skript mit Positivkontrolle abgenommen |
+| Stufe 8b Phantom-Tools | `d2ae916` | `write_bytes`/`project_rebase` entfernt; Routen-Test gegen das Plugin |
+| Plan-Tests | `7cc9917` | abgelaufener Lease, fehlende IDs; Suite wieder vollständig grün |
+| Stufe 8c Struktur | `b7f192b`, `2b74f7c`, `f870d55`, `2f37e87` | `fmt=json`-Disassemblat; mmio/analyze/strings lesen Ghidras Referenzen |
+| Stufe 8d Funktionsliste | `c0d2115`, `f453e30` | `/functionsInRange` als JSON; externe Thunks ohne erfundene Adresse |
+| Versionierung | `e49ea83` | aus einem Parallel-Chat; Routen-Test und `build_local.sh` nachgezogen |
+| R.12 `apply_label` | `6b06bcf`, `d7e158b`, `8d11a26` | Labels auch an MMIO; Skript dubliziert nicht mehr (zk: CL-TOOL-REC-122) |
+| `DEAD-ALIAS-FIRST` | `ce0abaf` | 15 tote Aliase raus; jede Anfrage trifft eine echte Route |
+| `MMIO-ZERO-TARGET` | `2d4db72` | bitweise Operation ohne Wert: `target null`, kein `address_abs` |
+| Antwortschema-Fehler | `704b5a5` | 52 Stellen `INTERNAL` statt `INVALID_REQUEST` |
+| `JT-PRENAME-PARSE` | `d873890` | gemeinsamer Prosa-Parser; `verify.name` erstmals echt |
+| `find_in_function` | `b3ef40b` | `fmt="text"`; JSON-`address` und `truncated` korrigiert |
+| `/renameData` | `5174f5a`, `3b15f0d` | meldet, was passiert ist; No-op ohne Transaktion |
+| `IMAGE-BASE-STALE` | `b3bad8d` | `project_info.layout_notes` |
+| `ANALYZE-POOL-CONSTANTS` | `4d78d89` | Abschnitt `constants` im Default-Dossier |
+| `DOC-DEFAULT-DRIFT` | `514b287` | Test Beschreibung gegen Schema/Code |
+| R.22 Korrektheit | `6d83916`, `bf9d3c2` | unbekannter Datentyp ist ein Fehler statt still `int` |
+
+## Zahlen
+
+    Referenzlauf (Default)   68 260 (vor 8c) -> 59 804 Bytes, 0 Fehler, Fingerabdruck geprüft
+                             find_in_function −9 713; constants +1 205; layout_notes +335
+    Schema-Sockel            8 691 -> 8 481 Token (35 Tools, Decke 8 500)
+    Tests                    565 -> 601 grün, 11 übersprungen (keine Bridge auf :8000)
+    Plugin                   unversioniert -> 1.3.60, Routen 51 -> 53
+
+## Der rote Faden, fortgesetzt
+
+Derselbe Befundtyp wie im August, diesmal an der Naht: **eine Antwort, die aussieht wie
+eine Aussage über die Firmware oder über das eigene Tun, und keine ist.** Fünf erfundene
+MMIO-Registeradressen; ein „String" aus Maschinencode; `verify.name` immer `null`;
+`comment_present` aus einem Feld, das es nicht gibt; „Rename data attempted"; ein
+unbekannter Datentyp als `int`; `address: null` bei jedem Treffer; `truncated: true` ohne
+Kürzung; eine Funktionsliste, die an zwei externen Thunks komplett scheiterte.
+
+Keiner dieser Fehler kam aus der Suite. Gefunden hat sie der **Vergleich alt gegen neu am
+laufenden Programm**, und in fast jedem Fall stand dahinter ein **Stub, der eine Form
+lieferte, die das Plugin nie erzeugt** (`name`/`comment`-Felder, Call-Ziele als Namen,
+String-Adressen im Text, tote Routen-Aliase). Das ist die wichtigste Lehre dieser Sitzung:
+ein Stub beweist nur sich selbst. Die Gegenmittel sind jetzt Tests, die gegen den
+Java-Quelltext oder gegen gemessene Antworten prüfen (`test_plugin_routes.py`,
+`listing_records.py`, die Prosa-Fixtures), und Live-Tests mit Gegenprobe gegen den alten Stand.
+
+Zweite Lehre, kleiner: **ein Prüfskript braucht dieselbe Prüfung wie der Code.** Das
+Loopback-Skript schlug gegen ein korrekt gebundenes Plugin an (IPv4-mapped), der erste
+Routen-Test sah `/plugin_version` nicht, die erste Alias-Bereinigung machte Tupel zu Strings,
+die erste Schemazählung übersah mehrzeilige Aufrufe. Jedes Mal fiel es auf, weil eine
+Zahl nicht zur Inventur passte.
+
+## Arbeitsweise, die getragen hat
+
+- Schreibtests an der eingefrorenen Kopie nur nach Absprache, mit eindeutigem Namen
+  (`R12_live_check`, `R58_live_check`, `R60_live_check`), danach Strg+Z in Ghidra und
+  Nachweis über `/check_dirty_state` und einen Lesezugriff.
+- Plugin-Commits vor dem Build, damit die installierte Version (`/plugin_version`) genau
+  einem Commit entspricht.
+- Vor jedem Push: Diff und Commit-Messages auf lokale Pfade und LAN-Adressen prüfen. Vor dem
+  ersten Push wurde die ungepushte History dafür umgeschrieben (Pfad, LAN-IP).
+
+## Hand-off (2026-10-10)
+
+**Vor der nächsten Arbeitssitzung am ZK-Inkjet-Projekt:** die dortige Bridge neu starten,
+sonst läuft sie mit altem Code. Plugin 1.3.60 ist installiert; alles ab 1.3.56 genügt der Bridge.
+
+**Offen in diesem Repo**, in dieser Reihenfolge empfohlen:
+
+1. **R.23** `open_program`-Bereitschaft. `ProgramStatusTracker` (IDLE/LOADING/READY) und
+   `/api/current_program.json` existieren; erst prüfen, was davon fehlt, dann bauen.
+2. **R.26** Schreib-Endpunkte prüfen `domain_file_id` gegen das aktive Programm.
+3. **R.25** `/info` zeigt, ob Schreiben freigegeben ist.
+4. **R.22 Cache** nur nach einer Messung, die ihn rechtfertigt.
+5. **Skript-Adapter** (eigene Stufe, Entscheidung offen): ein `run_script`-Tool, das nur
+   geprüfte, committete Skripte aus einem Repo-Ordner in einer Transaktion ausführt.
+6. Kleinkram: `save_program` meldet `program_name: null` ohne Änderungen; der Nutzen der
+   `jt_*`-Familie (914 Sockel-Token) ist ungemessen; `jt_slot_process` wurde nie live
+   geschrieben; die `/renameData`-No-op-Prüfung ist bestätigt, `apply_label` und
+   `/createLabel` auch.
+
+**Offen im ZK-Inkjet-Projekt** (nicht hier zu entscheiden): Block `flash` auf die
+Linkbasis 0x00058000 verschieben (CL-TOOL-REC-121; dort liegt ein ungetracktes
+`rebase_app_to_58000.py`), die 96 Label-Dubletten bereinigen (CL-TOOL-REC-122).
+
