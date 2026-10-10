@@ -38,11 +38,11 @@ class FakeSession:
         if path == "read_cstring":
             return FakeResponse("hello world\n")
         if path in {"rename_function_by_address", "renameFunctionByAddress"}:
-            return FakeResponse("OK\n")
+            return FakeResponse("Function renamed successfully")
         if path in {"set_decompiler_comment", "setDecompilerComment"}:
-            return FakeResponse("OK\n")
+            return FakeResponse("Comment set successfully")
         if path in {"set_disassembly_comment", "setDisassemblyComment"}:
-            return FakeResponse("OK\n")
+            return FakeResponse("Comment set successfully")
         if path in {"projectInfo", "project_info"}:
             return FakeResponse(
                 '{"program_name":"fake","image_base":"0x0","language_id":"test","compiler_spec_id":null,"entry_points":[],"memory_blocks":[],"imports_count":0,"exports_count":null}'

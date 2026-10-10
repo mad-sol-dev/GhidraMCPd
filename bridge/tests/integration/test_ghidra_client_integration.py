@@ -27,11 +27,11 @@ def _success_handler(request: httpx.Request) -> httpx.Response:
         payload = {"items": [{"address": "0x00002000", "context": "BL target"}], "has_more": False}
         return httpx.Response(200, json=payload)
     if path.endswith("/rename_function_by_address"):
-        return httpx.Response(200, text="OK\n")
+        return httpx.Response(200, text="Function renamed successfully")
     if path.endswith("/set_decompiler_comment"):
-        return httpx.Response(200, text="OK\n")
+        return httpx.Response(200, text="Comment set successfully")
     if path.endswith("/set_disassembly_comment"):
-        return httpx.Response(200, text="OK\n")
+        return httpx.Response(200, text="Comment set successfully")
     return httpx.Response(404, text="ERROR: not found\n")
 
 
@@ -58,12 +58,14 @@ def _failure_handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, text="n/a\n")
     if path.endswith("/get_function_by_address"):
         return httpx.Response(500, text="Internal error\n")
+    # What the plugin really says when a rename or comment fails: HTTP 200
+    # and prose.  These answers used to be "ERROR: ...", which it never sends.
     if path.endswith("/rename_function_by_address"):
-        return httpx.Response(200, text="ERROR: rename failed\n")
+        return httpx.Response(200, text="Failed to rename function")
     if path.endswith("/set_decompiler_comment"):
-        return httpx.Response(200, text="ERROR: comment failed\n")
+        return httpx.Response(200, text="Failed to set comment")
     if path.endswith("/set_disassembly_comment"):
-        return httpx.Response(200, text="ERROR: disasm failed\n")
+        return httpx.Response(200, text="Failed to set comment")
     return httpx.Response(404, text="ERROR: not found\n")
 
 
@@ -73,6 +75,7 @@ def test_ghidra_client_handles_failures() -> None:
     assert client.read_dword(0x1000) is None
     assert client.get_function_by_address(0x1000) is None
     assert client.rename_function(0x1000, "new") is False
+    assert client.last_error.reason == "Failed to rename function"
     assert client.set_decompiler_comment(0x1000, "note") is False
     assert client.set_disassembly_comment(0x1000, "note") is False
 

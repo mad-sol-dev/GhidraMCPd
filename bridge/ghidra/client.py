@@ -76,6 +76,11 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
 }
 
 
+#: The plugin's answers to a successful rename_function_by_address and
+#: set_*_comment; everything else, "Failed to ..." included, is a failure.
+RENAMED_ANSWER = "Function renamed successfully"
+COMMENT_SET_ANSWER = "Comment set successfully"
+
 #: Endpoint keys that change the program (or, for SAVE_PROGRAM, its file).
 #: Each request through one of them is checked first: the active program must
 #: be known, and must be the session's selection when there is one; the
@@ -1487,7 +1492,7 @@ class GhidraClient:
             data={"function_address": f"0x{address:08x}", "new_name": new_name},
         )
         response = self._post_resolver.resolve("RENAME_FUNCTION", requester)
-        return not _is_error(response)
+        return self._confirmed(response, RENAMED_ANSWER)
 
     def set_decompiler_comment(self, address: int, comment: str) -> bool:
         increment_counter("ghidra.decompiler_comment")
@@ -1498,7 +1503,7 @@ class GhidraClient:
             data={"address": f"0x{address:08x}", "comment": comment},
         )
         response = self._post_resolver.resolve("SET_DECOMPILER_COMMENT", requester)
-        return not _is_error(response)
+        return self._confirmed(response, COMMENT_SET_ANSWER)
 
     def set_disassembly_comment(self, address: int, comment: str) -> bool:
         increment_counter("ghidra.disassembly_comment")
@@ -1511,7 +1516,25 @@ class GhidraClient:
         response = self._post_resolver.resolve(
             "SET_DISASSEMBLY_COMMENT", requester
         )
-        return not _is_error(response)
+        return self._confirmed(response, COMMENT_SET_ANSWER)
+
+    def _confirmed(self, response: object, success: str) -> bool:
+        """True only for the plugin's success sentence.
+
+        The plugin answers a failed rename or comment with HTTP 200 and prose
+        ("Failed to rename function"), not with "ERROR:"; reading anything but
+        an error as success reported those as done (WRITE-ANSWER-TRUTHFUL).
+        """
+
+        if _is_error(response):
+            return False
+        text = "\n".join(response).strip() if isinstance(response, list) else ""
+        if text == success:
+            return True
+        self._last_error = RequestError(
+            status=200, reason=text or "empty answer from the plugin", retryable=False
+        )
+        return False
 
     def create_label(self, address: int, name: str, *, dry_run: bool) -> Optional[Mapping[str, Any]]:
         """Place a label at ``address`` through ``/createLabel`` (R.12).

@@ -276,3 +276,28 @@ def test_http_write_route_refuses_a_mismatch(plugin):
     assert error["code"] == "INVALID_REQUEST"
     assert "selected domain_file_id 'prog-2'" in error["message"]
     assert plugin.writes == []
+
+
+# --- WRITE-ANSWER-TRUTHFUL ----------------------------------------------------
+
+
+def test_the_success_sentences_are_the_plugins_own():
+    """The client counts only these answers as done; the plugin must send them."""
+
+    from bridge.ghidra.client import COMMENT_SET_ANSWER, RENAMED_ANSWER
+
+    source = PLUGIN_SOURCE.read_text(encoding="utf-8")
+    assert f'success ? "{RENAMED_ANSWER}" : "Failed to rename function"' in source
+    assert source.count(f'success ? "{COMMENT_SET_ANSWER}" : "Failed to set comment"') == 2
+
+
+def test_a_failed_rename_is_a_failure(plugin):
+    def handle(request):
+        if request.url.path == "/rename_function_by_address":
+            return httpx.Response(200, text="Failed to rename function")
+        return plugin.handle(request)
+
+    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+
+    assert client.rename_function(0x401000, "taken_name") is False
+    assert client.last_error.reason == "Failed to rename function"
