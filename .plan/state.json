@@ -471,9 +471,9 @@
       "updated_at": null
     },
     "R.25": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "31e4442",
+      "status": "done",
+      "updated_at": "2026-10-10T00:00:00+00:00"
     },
     "R.26": {
       "commit": "c608a50",

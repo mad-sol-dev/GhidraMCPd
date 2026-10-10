@@ -51,3 +51,4 @@
 - 2026-10-10 **R.23** — Zustand IDLE/LOADING/READY je Abfrage aus `isAnalyzing()` statt aus Ereignissen, kein erzwungenes `READY` nach 5 Minuten; `select_program` wartet begrenzt (10 s). Live mit Plugin 1.3.61 lesend geprüft _commit:ea2700a_
 - 2026-10-10 **R.26** — Schreibzugriffe gegen das aktive Programm geprüft, in der Bridge vor dem Senden und im Plugin am schreibenden Handler (409); Default-Auswahl bindet nicht _commit:c608a50_
 - 2026-10-10 **WRITE-ANSWER-TRUTHFUL** — „Failed to rename function"/„Failed to set comment" galten als Erfolg; nur die Erfolgssätze des Plugins zählen _commit:b5d961a_
+- 2026-10-10 **R.25** — `writes_enabled`/`writes_note` in `project_info` und `/api/health.json`, eine Formulierung für alle Schreibablehnungen, `save_program` bei abgeschalteten Writes gesperrt _commit:31e4442_

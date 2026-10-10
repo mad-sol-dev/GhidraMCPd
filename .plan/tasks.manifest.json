@@ -476,7 +476,7 @@
         "`/info` (and equivalents) expose write enablement plus guidance for turning writes on",
         "Docs call out defaults, gating, and user-facing messaging"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.26",
