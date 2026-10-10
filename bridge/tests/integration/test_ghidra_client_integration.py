@@ -5,15 +5,18 @@ import httpx
 from bridge.ghidra.client import GhidraClient
 
 
+# Both handlers answer the plugin's own route names.  They used to answer the
+# dead aliases /function_by_addr and /get_xrefs_to, which the plugin never had,
+# so the tests passed only because the resolver fell through to them.
 def _success_handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path
     if path.endswith("/read_dword"):
         return httpx.Response(200, text="00001000\n")
-    if path.endswith("/function_by_addr"):
+    if path.endswith("/get_function_by_address"):
         return httpx.Response(200, text="name: target\nentry_point: 0x00001000\n")
     if path.endswith("/disassemble"):
         return httpx.Response(200, text="00001000: PUSH {lr}\n00001004: BX LR\n")
-    if path.endswith("/get_xrefs_to"):
+    if path.endswith("/xrefs_to"):
         payload = {"items": [{"address": "0x00002000", "context": "BL target"}], "has_more": False}
         return httpx.Response(200, json=payload)
     if path.endswith("/rename_function_by_address"):
@@ -44,13 +47,13 @@ def _failure_handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path
     if path.endswith("/read_dword"):
         return httpx.Response(200, text="n/a\n")
-    if path.endswith("/function_by_addr"):
+    if path.endswith("/get_function_by_address"):
         return httpx.Response(500, text="Internal error\n")
-    if path.endswith("/rename_function_by_address") or path.endswith("/renameFunctionByAddress"):
+    if path.endswith("/rename_function_by_address"):
         return httpx.Response(200, text="ERROR: rename failed\n")
-    if path.endswith("/set_decompiler_comment") or path.endswith("/setDecompilerComment"):
+    if path.endswith("/set_decompiler_comment"):
         return httpx.Response(200, text="ERROR: comment failed\n")
-    if path.endswith("/set_disassembly_comment") or path.endswith("/setDisassemblyComment"):
+    if path.endswith("/set_disassembly_comment"):
         return httpx.Response(200, text="ERROR: disasm failed\n")
     return httpx.Response(404, text="ERROR: not found\n")
 

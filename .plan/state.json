@@ -556,7 +556,7 @@
     },
     "DEAD-ALIAS-FIRST": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "PLAN-TESTS-RED": {
       "commit": "pending",

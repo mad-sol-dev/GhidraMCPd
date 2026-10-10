@@ -819,7 +819,7 @@
       "title": "Tote Alias-Namen vorn in der Kandidatenliste kosten pro Aufruf eine 404",
       "area": "bridge",
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "dod": [
         "FUNC_BY_ADDR und GET_XREFS_TO beginnen mit einem Namen, den das Plugin bedient",
         "Gemessen: ein Aufruf erzeugt keine 404 mehr vorweg"

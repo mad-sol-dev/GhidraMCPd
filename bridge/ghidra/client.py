@@ -43,17 +43,15 @@ STRUCTURED_LISTING_UNSUPPORTED = (
 
 
 ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
-    "DISASSEMBLE": ("disassemble", "disassemble_function", "disasmByAddr"),
-    "FUNC_BY_ADDR": ("function_by_addr", "get_function_by_address", "functionMeta"),
-    "GET_XREFS_TO": ("get_xrefs_to", "xrefs_to"),
+    "DISASSEMBLE": ("disassemble", "disassemble_function"),
+    "FUNC_BY_ADDR": ("get_function_by_address",),
+    "GET_XREFS_TO": ("xrefs_to",),
     "DECOMPILE": (
         "decompile_function",
-        "decompileFunction",
         "decompile_by_addr",
-        "decompileByAddr",
     ),
     "OPEN_PROGRAM": ("open_program",),
-    "CURRENT_PROGRAM_STATUS": ("api/current_program.json", "current_program"),
+    "CURRENT_PROGRAM_STATUS": ("api/current_program.json",),
     "GOTO": ("goto",),
     "CHECK_DIRTY_STATE": ("check_dirty_state",),
     "SAVE_PROGRAM": ("save_program",),
@@ -62,22 +60,19 @@ ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
 POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "RENAME_FUNCTION": (
         "rename_function_by_address",
-        "renameFunctionByAddress",
     ),
     "SET_DECOMPILER_COMMENT": (
         "set_decompiler_comment",
-        "setDecompilerComment",
     ),
     "SET_DISASSEMBLY_COMMENT": (
         "set_disassembly_comment",
-        "setDisassemblyComment",
     ),
     "CREATE_LABEL": ("createLabel",),
-    "CREATE_STRUCTURE": ("createStructure", "create_structure"),
-    "UPDATE_STRUCTURE": ("updateStructure", "update_structure"),
-    "CREATE_UNION": ("createUnion", "create_union"),
-    "UPDATE_UNION": ("updateUnion", "update_union"),
-    "DELETE_DATATYPE": ("deleteDataType", "delete_datatype"),
+    "CREATE_STRUCTURE": ("createStructure",),
+    "UPDATE_STRUCTURE": ("updateStructure",),
+    "CREATE_UNION": ("createUnion",),
+    "UPDATE_UNION": ("updateUnion",),
+    "DELETE_DATATYPE": ("deleteDataType",),
 }
 
 
@@ -957,8 +952,8 @@ class GhidraClient:
         increment_counter("ghidra.xrefs")
         params = {"address": f"0x{address:08x}", "limit": int(limit)}
         payload = None
-        path_used = "get_xrefs_to"
-        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("get_xrefs_to",)):
+        path_used = "xrefs_to"
+        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("xrefs_to",)):
             payload = self._request_json_payload(
                 "GET",
                 candidate,
@@ -997,8 +992,8 @@ class GhidraClient:
             "filter": query,
         }
         payload = None
-        path_used = "get_xrefs_to"
-        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("get_xrefs_to",)):
+        path_used = "xrefs_to"
+        for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("xrefs_to",)):
             payload = self._request_json_payload(
                 "GET", candidate, key="GET_XREFS_TO", params=params, schema_key="xrefs"
             )

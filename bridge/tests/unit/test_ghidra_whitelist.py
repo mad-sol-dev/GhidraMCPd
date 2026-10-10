@@ -56,36 +56,21 @@ def test_requests_for_unknown_alias_are_blocked():
     assert result == ["ERROR: endpoint GET disasmByAddr not allowed"]
 
 
-def test_post_alias_resolver_falls_back_to_camel_case():
+def test_alias_resolver_falls_back_to_the_next_candidate():
+    """DISASSEMBLE still has two live routes; a 404 on the first tries the second."""
+
     requested_paths = []
 
     def handle(request: httpx.Request) -> httpx.Response:
         requested_paths.append(request.url.path)
-        if request.url.path.endswith("rename_function_by_address"):
+        if request.url.path.endswith("/disassemble"):
             return httpx.Response(404, text="Not Found")
-        return httpx.Response(200, text="")
+        return httpx.Response(200, text="00401000: nop")
 
-    whitelist = {
-        "POST": (
-            WhitelistEntry(
-                "POST",
-                "RENAME_FUNCTION",
-                ("rename_function_by_address", "renameFunctionByAddress"),
-            ),
-        )
-    }
+    client = GhidraClient("https://example.test/api", transport=_build_transport(handle))
 
-    client = GhidraClient(
-        "https://example.test/api",
-        whitelist=whitelist,
-        transport=_build_transport(handle),
-    )
-
-    assert client.rename_function(0x401000, "new_name") is True
-    assert requested_paths == [
-        "/api/rename_function_by_address",
-        "/api/renameFunctionByAddress",
-    ]
+    assert client.disassemble_function(0x401000) == ["00401000: nop"]
+    assert requested_paths == ["/api/disassemble", "/api/disassemble_function"]
 
 
 def test_default_whitelist_blocks_forbidden_get_calls():
@@ -145,27 +130,4 @@ def test_get_alias_resolution_is_cached():
         "/api/disassemble",
         "/api/disassemble_function",
         "/api/disassemble_function",
-    ]
-
-
-def test_post_alias_resolution_is_cached():
-    requested_paths = []
-
-    def handle(request: httpx.Request) -> httpx.Response:
-        requested_paths.append(request.url.path)
-        if request.url.path.endswith("rename_function_by_address"):
-            return httpx.Response(404, text="Not Found")
-        return httpx.Response(200, text="")
-
-    client = GhidraClient(
-        "https://example.test/api",
-        transport=_build_transport(handle),
-    )
-
-    assert client.rename_function(0x401000, "new_name") is True
-    assert client.rename_function(0x401000, "other_name") is True
-    assert requested_paths == [
-        "/api/rename_function_by_address",
-        "/api/renameFunctionByAddress",
-        "/api/renameFunctionByAddress",
     ]

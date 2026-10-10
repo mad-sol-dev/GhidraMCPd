@@ -6,10 +6,12 @@ This test reads the routes straight from ``GhidraMCPPlugin.java`` and checks
 them against ``DEFAULT_WHITELIST``, which ``GhidraClient._request_lines``
 enforces on every request -- no path reaches the plugin without being in it.
 
-The rule is per whitelist key, not per alias: a key needs at least one alias
-the plugin serves.  The resolver tries aliases in order and caches the first
-that answers, so an alias kept for an older plugin build costs a 404 and
-nothing else.  A key with no live alias is a tool that cannot work.
+Two rules.  A key with no live alias is a tool that cannot work (stage 8b).
+And every alias must be live: the resolver's cache dies with the client,
+which is built per tool call, so a dead alias first in line cost a 404 on
+every call -- measured as 2 of 19 requests of an analyze_function_complete
+dossier (DEAD-ALIAS-FIRST).  The aliases were kept for plugin builds older
+than this bridge can talk to anyway; they are gone, and this keeps them gone.
 """
 from __future__ import annotations
 
@@ -56,3 +58,15 @@ def test_every_whitelisted_key_has_a_plugin_route() -> None:
         if not routes.intersection(entry.aliases)
     )
     assert missing == []
+
+
+def test_every_alias_has_a_plugin_route() -> None:
+    routes = plugin_routes()
+    dead = sorted(
+        f"{method} {entry.key} {alias}"
+        for method, entries in DEFAULT_WHITELIST.items()
+        for entry in entries
+        for alias in entry.aliases
+        if alias not in routes
+    )
+    assert dead == []
