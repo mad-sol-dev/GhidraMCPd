@@ -20,6 +20,7 @@ import re
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 from ..ghidra.client import GhidraClient
+from ..utils.errors import UpstreamFailed
 from ..utils.hex import int_to_hex
 from .function_meta import read_function_name
 from .listing import structured_listing
@@ -313,7 +314,6 @@ def _normalize_function_meta(
 ) -> Tuple[Dict[str, object], int, Tuple[Optional[int], Optional[int]]]:
     name: Optional[str] = None
     entry = fallback_addr
-    comment: Optional[str] = None
     signature: Optional[str] = None
     range_start: Optional[int] = None
     range_end: Optional[int] = None
@@ -327,10 +327,6 @@ def _normalize_function_meta(
         parsed_entry = _parse_intish(entry_raw)
         if parsed_entry is not None:
             entry = parsed_entry
-
-        comment_raw = _pick_first(meta, ("comment", "Comment"))
-        if isinstance(comment_raw, str) and comment_raw.strip():
-            comment = comment_raw.strip()
 
         signature_raw = _pick_first(meta, ("signature", "Signature"))
         if isinstance(signature_raw, str) and signature_raw.strip():
@@ -347,7 +343,6 @@ def _normalize_function_meta(
         "entry_point": int_to_hex(entry),
         "address": int_to_hex(entry),
         "signature": signature,
-        "comment": comment,
     }
     if range_start is not None and range_end is not None:
         # start..end is the span the body reaches across, interior data
@@ -519,15 +514,24 @@ def _collect_decompile(
             "error": None,
         }, False
 
-    source = client.decompile_function(entry_point)
-    if not source:
+    # The decompiler failing is a fact about this section, not about the
+    # dossier: the plugin's reason goes into "error".  Its failure prose used
+    # to arrive as the "snippet", with error null.
+    try:
+        source = client.decompile_function(entry_point)
+        failure = None if source else "decompilation_unavailable"
+    except UpstreamFailed as exc:
+        if exc.code not in ("INTERNAL", "NOT_FOUND"):
+            raise
+        source, failure = None, f"decompilation_failed: {exc}"
+    if failure is not None:
         return (
             {
                 "enabled": True,
                 "snippet": None,
                 "lines": 0,
                 "truncated": False,
-                "error": "decompilation_unavailable",
+                "error": failure,
             },
             False,
         )

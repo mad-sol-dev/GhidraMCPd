@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 from bridge.features import labels, mutations
+from bridge.utils.errors import UpstreamFailed
 from bridge.ghidra.client import STRUCTURED_LISTING_UNSUPPORTED
 
 
@@ -103,9 +104,23 @@ def test_a_user_named_primary_is_kept_and_said_so():
 
 
 def test_ghidras_name_rule_is_reported_as_a_bad_request():
-    client = FakeClient(answer={"status": "error", "error": "invalid label name 'a b': contains spaces"})
+    class Refusing(FakeClient):
+        def create_label(self, address, name, *, dry_run):
+            # the plugin's HTTP 400 INVALID_REQUEST, as the client raises it
+            raise UpstreamFailed("invalid label name 'a b': contains spaces",
+                                 code="INVALID_REQUEST", status=400)
+
     with pytest.raises(labels.LabelRejected, match="invalid label name"):
-        labels.apply_label(client, address=0xB1006000, name="a b", dry_run=True)
+        labels.apply_label(Refusing(), address=0xB1006000, name="a b", dry_run=True)
+
+
+def test_any_other_plugin_failure_is_not_a_rejected_name():
+    class Failing(FakeClient):
+        def create_label(self, address, name, *, dry_run):
+            raise UpstreamFailed("rename failed: boom", code="INTERNAL", status=500)
+
+    with pytest.raises(UpstreamFailed, match="boom"):
+        labels.apply_label(Failing(), address=0xB1006000, name="ok_name", dry_run=True)
 
 
 def test_a_plugin_without_the_route_is_unavailable_not_success():
@@ -133,6 +148,7 @@ from urllib.parse import parse_qs  # noqa: E402
 import httpx  # noqa: E402
 
 from bridge.ghidra.client import GhidraClient  # noqa: E402
+from bridge.tests.plugin_http import plugin_transport  # noqa: E402
 
 
 #: What /api/current_program.json answers; every write checks it first (R.26).
@@ -149,7 +165,7 @@ def _client(status, body):
         seen.append(request)
         return httpx.Response(status, text=body)
 
-    return GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handler)), seen
+    return GhidraClient("http://ghidra.test/", transport=plugin_transport(handler)), seen
 
 
 def test_the_client_posts_address_name_and_an_explicit_dry_run_flag():
@@ -171,23 +187,19 @@ def test_a_text_answer_is_no_answer():
     assert client.last_error.reason == STRUCTURED_LISTING_UNSUPPORTED
 
 
-def test_a_missing_route_is_no_answer():
+def test_a_missing_route_is_a_plugin_too_old():
     client, _ = _client(404, "<h1>404 Not Found</h1>")
-    assert client.create_label(0xB1006000, "FMI_CTL", dry_run=True) is None
-    assert client.last_error is not None
+    with pytest.raises(UpstreamFailed) as raised:
+        client.create_label(0xB1006000, "FMI_CTL", dry_run=True)
+    assert raised.value.code == "PLUGIN_TOO_OLD"
 
 
-def test_a_refusal_is_an_answer_not_a_transport_failure():
-    """Found live: an invalid name came back as UNAVAILABLE.
+def test_a_refusal_is_a_rejected_name_not_a_transport_failure():
+    """Found live: an invalid name came back as UNAVAILABLE.  Under API 2 the
+    plugin answers HTTP 400 INVALID_REQUEST."""
 
-    The plugin answers HTTP 200 with {"error": ..., "status": "error"}, and the
-    generic request path turns any such body into a RequestError.
-    """
-
-    body = json.dumps({"error": "invalid label name 'a b': Symbol name contains invalid characters: a b",
-                       "status": "error"})
-    client, _ = _client(200, body)
-    answer = client.create_label(0xB1006000, "a b", dry_run=True)
-    assert answer["status"] == "error"
+    body = json.dumps({"status": "error", "code": "INVALID_REQUEST",
+                       "error": "invalid label name 'a b': Symbol name contains invalid characters: a b"})
+    client, _ = _client(400, body)
     with pytest.raises(labels.LabelRejected, match="invalid label name"):
         labels.apply_label(client, address=0xB1006000, name="a b", dry_run=True)

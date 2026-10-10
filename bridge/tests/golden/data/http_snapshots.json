@@ -18,14 +18,13 @@
       },
       "function": {
         "address": "0x00102004",
-        "comment": null,
         "entry_point": "0x00102004",
         "name": "sub_102004",
         "range": null,
         "signature": "undefined sub_102004(void)"
       },
       "meta": {
-        "estimate_tokens": 239,
+        "estimate_tokens": 235,
         "fields": [
           "constants",
           "features",

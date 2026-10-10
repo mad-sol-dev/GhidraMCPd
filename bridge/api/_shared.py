@@ -12,7 +12,7 @@ from ..adapters import ArchAdapter, load_optional_adapter, optional_adapter_name
 from ..adapters.arm_thumb import ARMThumbAdapter
 from ..adapters.fallback import FallbackAdapter
 from ..ghidra.client import GhidraClient, RequestError
-from ..utils.errors import ErrorCode, make_error
+from ..utils.errors import ErrorCode, UpstreamFailed, make_error, upstream_failure_error
 
 
 def envelope_ok(data: Dict[str, object]) -> Dict[str, object]:
@@ -59,6 +59,15 @@ def response_schema_error(schema: str, errors: Sequence[str]) -> Dict[str, objec
             "its arguments and this message.",
         ),
     )
+
+
+def upstream_failure_envelope(exc: UpstreamFailed, upstream: object = None) -> Dict[str, object]:
+    """A failed plugin request as the call's answer; see upstream_failure_error."""
+
+    error = dict(upstream_failure_error(exc))
+    if isinstance(upstream, RequestError):
+        error["upstream"] = upstream.as_dict()
+    return {"ok": False, "data": None, "errors": [error]}
 
 
 def write_refusal_envelope(refusal: RequestError) -> Dict[str, object]:

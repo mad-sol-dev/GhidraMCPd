@@ -1,14 +1,17 @@
 import httpx
+import pytest
 
 from bridge.ghidra.client import GhidraClient
 from bridge.ghidra.whitelist import WhitelistEntry
+from bridge.utils.errors import UpstreamFailed
+from bridge.tests.plugin_http import plugin_transport
 
 
 def _build_transport(on_request):
     def handler(request: httpx.Request) -> httpx.Response:
         return on_request(request)
 
-    return httpx.MockTransport(handler)
+    return plugin_transport(handler)
 
 
 def test_alias_resolution_uses_whitelist_key():
@@ -144,7 +147,8 @@ def test_a_failed_request_is_sent_once():
 
     client = GhidraClient("https://example.test/api", transport=_build_transport(handle))
 
-    assert client.disassemble_function(0x401000) == []
+    with pytest.raises(UpstreamFailed):
+        client.disassemble_function(0x401000)
     assert requested == ["/api/disassemble"]
 
 
@@ -160,6 +164,7 @@ def test_a_failed_write_is_not_resent():
 
     client = GhidraClient("https://example.test/api", transport=_build_transport(handle))
 
-    assert client.rename_function(0x401000, "x") is False
-    assert client.rename_function(0x401000, "y") is False
+    for name in ("x", "y"):
+        with pytest.raises(UpstreamFailed, match="timed out"):
+            client.rename_function(0x401000, name)
     assert requested == ["/api/rename_function_by_address", "/api/rename_function_by_address"]

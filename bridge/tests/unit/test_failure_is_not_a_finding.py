@@ -18,6 +18,7 @@ from bridge.api.tools import register_tools
 from bridge.ghidra.client import GhidraClient
 from bridge.utils.cache import get_search_cache
 from bridge.utils.program_context import PROGRAM_SELECTIONS
+from bridge.tests.plugin_http import plugin_transport
 
 STATUS = {"domain_file_id": "prog-1", "locked": False, "state": "READY",
           "state_duration_seconds": 1, "warnings": []}
@@ -36,7 +37,7 @@ def _client(routes: dict, seen: list | None = None) -> GhidraClient:
         status, body = answer if isinstance(answer, tuple) else (200, answer)
         return httpx.Response(status, text=body)
 
-    return GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    return GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
 
 
 def _tools(factory):

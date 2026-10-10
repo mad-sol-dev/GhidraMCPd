@@ -95,6 +95,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Properties;
@@ -126,6 +127,104 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         new PluginContextRegistry<>();
     private static final SharedHttpServerState SERVER_STATE = new SharedHttpServerState();
     private static final AtomicBoolean ROUTES_REGISTERED = new AtomicBoolean(false);
+
+    /**
+     * The answer convention the bridge relies on, sent as {@code X-GhidraMCP-API}
+     * on every response.  2 (R.24): every failure is an HTTP 4xx/5xx with one
+     * JSON body, {@code {"status":"error","code":...,"error":...}}; success
+     * bodies are unchanged.  The bridge refuses to work with a plugin that does
+     * not send it -- the old answers put failures in HTTP 200 prose.
+     */
+    static final int API_LEVEL = 2;
+    static final String API_HEADER = "X-GhidraMCP-API";
+
+    /** A failure: thrown anywhere below a handler, answered once by the dispatcher. */
+    static final class RouteError extends RuntimeException {
+        final int status;
+        final String code;
+
+        RouteError(int status, String code, String message) {
+            super(message == null || message.isEmpty() ? "unexpected error" : message);
+            this.status = status;
+            this.code = code;
+        }
+    }
+
+    /** The request is malformed: a missing or unparsable parameter, an invalid name. */
+    static RouteError badRequest(String message) {
+        return new RouteError(400, "INVALID_REQUEST", message);
+    }
+
+    /** What was asked about is not there: no function at the address, no such type. */
+    static RouteError notFound(String message) {
+        return new RouteError(404, "NOT_FOUND", message);
+    }
+
+    /** The request contradicts the program's state: the name exists, the type is of another kind. */
+    static RouteError conflict(String message) {
+        return new RouteError(409, "CONFLICT", message);
+    }
+
+    /** No program (or no tool, service) to answer with right now. */
+    static RouteError notReady(String message) {
+        return new RouteError(425, "NOT_READY", message);
+    }
+
+    /** No memory at the address: a fact about the program, not a failure. */
+    static RouteError unmapped(String message) {
+        return new RouteError(404, "UNMAPPED", message);
+    }
+
+    /** Ghidra failed doing what was asked; the message says how. */
+    static RouteError internalError(String message) {
+        return new RouteError(500, "INTERNAL", message);
+    }
+
+    /** A caught exception as the answer: a RouteError stays itself, anything else is INTERNAL. */
+    static RouteError asRouteError(Throwable e, String context) {
+        if (e instanceof RouteError) {
+            return (RouteError) e;
+        }
+        Throwable cause = (e instanceof InvocationTargetException && e.getCause() != null) ? e.getCause() : e;
+        if (cause instanceof RouteError) {
+            return (RouteError) cause;
+        }
+        String detail = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+        return internalError(context == null ? detail : context + ": " + detail);
+    }
+
+    /** Why a rename or label failed, as the status it deserves. */
+    static RouteError renameFailure(Exception e) {
+        if (e instanceof DuplicateNameException) {
+            return conflict(e.getMessage());
+        }
+        if (e instanceof InvalidInputException) {
+            return badRequest(e.getMessage());
+        }
+        return asRouteError(e, "rename failed");
+    }
+
+    /** Run on the Swing thread and rethrow what the task threw, a RouteError as itself. */
+    static void onSwing(Runnable task, String context) {
+        AtomicReference<RuntimeException> thrown = new AtomicReference<>();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                try {
+                    task.run();
+                } catch (RuntimeException e) {
+                    thrown.set(e);
+                }
+            });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw internalError(context + ": interrupted");
+        } catch (InvocationTargetException e) {
+            throw asRouteError(e, context);
+        }
+        if (thrown.get() != null) {
+            throw asRouteError(thrown.get(), context);
+        }
+    }
 
     @FunctionalInterface
     private interface PluginExchangeHandler {
@@ -494,9 +593,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private static void registerRoutes(HttpServer server) {
         // Answers without any tool or program, so the installed build can always be checked
         server.createContext("/plugin_version", exchange -> {
-            byte[] bytes = ("{\"version\":\"" + PLUGIN_VERSION + "\",\"status\":\"ok\"}")
-                .getBytes(StandardCharsets.UTF_8);
+            byte[] bytes = ("{\"version\":\"" + PLUGIN_VERSION + "\",\"api\":" + API_LEVEL
+                + ",\"status\":\"ok\"}").getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+            exchange.getResponseHeaders().set(API_HEADER, String.valueOf(API_LEVEL));
             exchange.sendResponseHeaders(200, bytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(bytes);
@@ -543,9 +643,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         registerWriteHandler(server, "/renameFunction", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
-            String response = plugin.renameFunction(params.get("oldName"), params.get("newName"))
-                    ? "Renamed successfully" : "Rename failed";
-            plugin.sendResponse(exchange, response);
+            plugin.renameFunction(params.get("oldName"), params.get("newName"));
+            plugin.sendResponse(exchange, "Renamed successfully");
         });
 
         registerWriteHandler(server, "/renameData", (plugin, exchange) -> {
@@ -690,24 +789,24 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
-            boolean success = plugin.setDecompilerComment(address, comment);
-            plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+            plugin.setDecompilerComment(address, comment);
+            plugin.sendResponse(exchange, "Comment set successfully");
         });
 
         registerWriteHandler(server, "/set_disassembly_comment", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
-            boolean success = plugin.setDisassemblyComment(address, comment);
-            plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
+            plugin.setDisassemblyComment(address, comment);
+            plugin.sendResponse(exchange, "Comment set successfully");
         });
 
         registerWriteHandler(server, "/rename_function_by_address", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String newName = params.get("new_name");
-            boolean success = plugin.renameFunctionByAddress(functionAddress, newName);
-            plugin.sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
+            plugin.renameFunctionByAddress(functionAddress, newName);
+            plugin.sendResponse(exchange, "Function renamed successfully");
         });
 
         registerWriteHandler(server, "/set_function_prototype", (plugin, exchange) -> {
@@ -715,55 +814,15 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String functionAddress = params.get("function_address");
             String prototype = params.get("prototype");
 
-            PrototypeResult result = plugin.setFunctionPrototype(functionAddress, prototype);
-
-            if (result.isSuccess()) {
-                String successMsg = "Function prototype set successfully";
-                if (!result.getErrorMessage().isEmpty()) {
-                    successMsg += "\n\nWarnings/Debug Info:\n" + result.getErrorMessage();
-                }
-                plugin.sendResponse(exchange, successMsg);
-            } else {
-                plugin.sendResponse(exchange, "Failed to set function prototype: " + result.getErrorMessage());
-            }
+            plugin.setFunctionPrototype(functionAddress, prototype);
+            plugin.sendResponse(exchange, "Function prototype set successfully");
         });
 
         registerWriteHandler(server, "/set_local_variable_type", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
-            String functionAddress = params.get("function_address");
-            String variableName = params.get("variable_name");
-            String newType = params.get("new_type");
-
-            StringBuilder responseMsg = new StringBuilder();
-            responseMsg.append("Setting variable type: ").append(variableName)
-                      .append(" to ").append(newType)
-                      .append(" in function at ").append(functionAddress).append("\n\n");
-
-            Program program = plugin.getCurrentProgram();
-            if (program != null) {
-                DataTypeManager dtm = program.getDataTypeManager();
-                DataType directType = plugin.findDataTypeByNameInAllCategories(dtm, newType);
-                if (directType != null) {
-                    responseMsg.append("Found type: ").append(directType.getPathName()).append("\n");
-                } else if (newType.startsWith("P") && newType.length() > 1) {
-                    String baseTypeName = newType.substring(1);
-                    DataType baseType = plugin.findDataTypeByNameInAllCategories(dtm, baseTypeName);
-                    if (baseType != null) {
-                        responseMsg.append("Found base type for pointer: ").append(baseType.getPathName()).append("\n");
-                    } else {
-                        responseMsg.append("Base type not found for pointer: ").append(baseTypeName).append("\n");
-                    }
-                } else {
-                    responseMsg.append("Type not found directly: ").append(newType).append("\n");
-                }
-            }
-
-            boolean success = plugin.setLocalVariableType(functionAddress, variableName, newType);
-
-            String successMsg = success ? "Variable type set successfully" : "Failed to set variable type";
-            responseMsg.append("\nResult: ").append(successMsg);
-
-            plugin.sendResponse(exchange, responseMsg.toString());
+            String typePath = plugin.setLocalVariableType(
+                params.get("function_address"), params.get("variable_name"), params.get("new_type"));
+            plugin.sendResponse(exchange, "Variable type set successfully: " + typePath);
         });
 
         registerProgramHandler(server, "/xrefs_to", (plugin, exchange) -> {
@@ -834,15 +893,15 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         });
 
         registerProgramHandler(server, "/project_info", (plugin, exchange) -> {
-            plugin.sendResponse(exchange, plugin.getProjectInfo());
+            plugin.sendJsonResponse(exchange, plugin.getProjectInfo());
         });
 
         registerProgramHandler(server, "/projectInfo", (plugin, exchange) -> {
-            plugin.sendResponse(exchange, plugin.getProjectInfo());
+            plugin.sendJsonResponse(exchange, plugin.getProjectInfo());
         });
 
         registerProjectHandler(server, "/project_files", (plugin, exchange) -> {
-            plugin.sendResponse(exchange, plugin.getProjectFiles());
+            plugin.sendJsonResponse(exchange, plugin.getProjectFiles());
         });
 
         registerProjectHandler(server, "/api/current_program.json", (plugin, exchange) -> {
@@ -954,10 +1013,22 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         try {
             handler.handle(plugin, exchange);
+        } catch (RouteError e) {
+            writeError(exchange, e);
         } catch (Exception e) {
             Msg.error(plugin, "Error handling request for " + exchange.getRequestURI(), e);
-            plugin.sendJsonResponse(exchange, plugin.errorResponse("Internal error: " + e.getMessage()));
+            writeError(exchange, asRouteError(e, "Internal error"));
         }
+    }
+
+    /** The one shape every failure has (API_LEVEL 2). */
+    private static void writeError(HttpExchange exchange, RouteError error) throws IOException {
+        writeJson(exchange, error.status, errorBody(error.code, error.getMessage(), null));
+    }
+
+    private static String errorBody(String code, String message, String extraFields) {
+        return "{\"status\":\"error\",\"code\":\"" + code + "\",\"error\":\""
+            + jsonEscapeStatic(message) + "\"" + (extraFields == null ? "" : "," + extraFields) + "}";
     }
 
     /**
@@ -984,6 +1055,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         StringBuilder sb = new StringBuilder();
         sb.append('{');
         appendJsonField(sb, "status", "error");
+        appendJsonField(sb, "code", "CONFLICT");
         appendJsonField(sb, "error", message);
         appendJsonField(sb, "requested_domain_file_id", requested.trim());
         appendJsonField(sb, "active_domain_file_id", active);
@@ -995,6 +1067,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private static void writeJson(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.getResponseHeaders().set(API_HEADER, String.valueOf(API_LEVEL));
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
@@ -1002,14 +1075,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     private static void writeUnavailable(HttpExchange exchange, boolean requireProgramContext) throws IOException {
-        String message = requireProgramContext
-            ? "{\"error\":\"No active tool with a program context\",\"status\":\"error\"}"
-            : "{\"error\":\"No active tool available\",\"status\":\"error\"}";
-        byte[] bytes = message.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
-        exchange.sendResponseHeaders(requireProgramContext ? 425 : 503, bytes.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(bytes);
+        if (requireProgramContext) {
+            writeJson(exchange, 425, errorBody("NOT_READY", "No active tool with a program context", null));
+        } else {
+            writeJson(exchange, 503, errorBody("UNAVAILABLE", "No active tool available", null));
         }
     }
 
@@ -1019,7 +1088,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String getAllFunctionNames(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         List<String> names = new ArrayList<>();
         for (ghidra.program.model.listing.Function f : program.getFunctionManager().getFunctions(true)) {
@@ -1030,7 +1099,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String getAllClassNames(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         Set<String> classNames = new HashSet<>();
         for (Symbol symbol : program.getSymbolTable().getAllSymbols(true)) {
@@ -1047,7 +1116,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String listSegments(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         List<String> lines = new ArrayList<>();
         for (MemoryBlock block : program.getMemory().getBlocks()) {
@@ -1058,7 +1127,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String listImports(String filter, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return jsonErrorEnvelope("No program loaded");
+        if (program == null) throw notReady("No program loaded");
 
         String normalized = (filter == null) ? "" : filter.toLowerCase();
         List<String> lines = new ArrayList<>();
@@ -1077,7 +1146,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String listExports(String filter, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return jsonErrorEnvelope("No program loaded");
+        if (program == null) throw notReady("No program loaded");
 
         SymbolTable table = program.getSymbolTable();
         SymbolIterator it = table.getAllSymbols(true);
@@ -1103,7 +1172,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String listNamespaces(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         Set<String> namespaces = new HashSet<>();
         for (Symbol symbol : program.getSymbolTable().getAllSymbols(true)) {
@@ -1119,7 +1188,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String listDefinedData(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         List<String> lines = new ArrayList<>();
         for (MemoryBlock block : program.getMemory().getBlocks()) {
@@ -1143,7 +1212,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String searchFunctionsByName(String searchTerm, String cursorParam, int offset, int limit) {
         Program program = getCurrentProgram();
         if (program == null) {
-            return CursorPager.errorJson("No program loaded", this::jsonEscape);
+            throw notReady("No program loaded");
         }
 
         // Wildcard support: empty or "*" means return all functions
@@ -1179,7 +1248,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String decompileFunctionByName(String name) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
         DecompInterface decomp = new DecompInterface();
         decomp.openProgram(program);
         for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
@@ -1188,43 +1257,54 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                     decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
                 if (result != null && result.decompileCompleted()) {
                     return result.getDecompiledFunction().getC();
-                } else {
-                    return "Decompilation failed";
                 }
+                throw internalError("Decompilation failed"
+                    + (result != null && result.getErrorMessage() != null ? ": " + result.getErrorMessage() : ""));
             }
         }
-        return "Function not found";
+        throw notFound("No function named '" + name + "'");
     }
 
-    private boolean renameFunction(String oldName, String newName) {
+    /** Rename the first function named {@code oldName}; throws a RouteError saying why not. */
+    private void renameFunction(String oldName, String newName) {
         Program program = getCurrentProgram();
-        if (program == null) return false;
+        if (program == null) throw notReady("No program loaded");
+        if (oldName == null || oldName.isEmpty()) throw badRequest("oldName is required");
+        if (newName == null || newName.isEmpty()) throw badRequest("newName is required");
+        ghidra.program.model.listing.Function target = null;
+        for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
+            if (func.getName().equals(oldName)) {
+                target = func;
+                break;
+            }
+        }
+        if (target == null) throw notFound("No function named '" + oldName + "'");
+        ghidra.program.model.listing.Function func = target;
+        onSwing(() -> {
+            int tx = program.startTransaction("Rename function via HTTP");
+            boolean commit = false;
+            try {
+                func.setName(newName, SourceType.USER_DEFINED);
+                commit = true;
+            } catch (Exception e) {
+                throw renameFailure(e);
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "rename failed");
+    }
 
-        AtomicBoolean successFlag = new AtomicBoolean(false);
+    /** The address a parameter names, or a 400 that says which parameter and why. */
+    private Address requireAddress(Program program, String text, String param) {
+        if (text == null || text.isBlank()) throw badRequest(param + " is required");
+        Address addr = null;
         try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Rename function via HTTP");
-                try {
-                    for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
-                        if (func.getName().equals(oldName)) {
-                            func.setName(newName, SourceType.USER_DEFINED);
-                            successFlag.set(true);
-                            break;
-                        }
-                    }
-                }
-                catch (Exception e) {
-                    Msg.error(this, "Error renaming function", e);
-                }
-                finally {
-                    successFlag.set(program.endTransaction(tx, successFlag.get()));
-                }
-            });
+            addr = program.getAddressFactory().getAddress(text.trim());
+        } catch (Exception e) {
+            addr = null;
         }
-        catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute rename on Swing thread", e);
-        }
-        return successFlag.get();
+        if (addr == null) throw badRequest("invalid address for " + param + ": '" + text + "'");
+        return addr;
     }
 
     /**
@@ -1237,20 +1317,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String renameDataAtAddress(String addressStr, String newName) {
         Program program = getCurrentProgram();
-        if (program == null) return "ERROR: no program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "ERROR: address is required";
-        if (newName == null || newName.isEmpty()) return "ERROR: newName is required";
-
-        Address addr;
-        try {
-            addr = program.getAddressFactory().getAddress(addressStr);
-        } catch (Exception e) {
-            addr = null;
-        }
-        if (addr == null) return "ERROR: invalid address " + addressStr;
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
+        if (newName == null || newName.isEmpty()) throw badRequest("newName is required");
         if (program.getListing().getDefinedDataAt(addr) == null) {
-            return "ERROR: no defined data at " + addr
-                + "; /createLabel places a label at any address";
+            throw notFound("no defined data at " + addr
+                + "; /createLabel places a label at any address");
         }
         Symbol current = program.getSymbolTable().getPrimarySymbol(addr);
         if (current != null && current.getName().equals(newName)) {
@@ -1261,32 +1333,27 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         StringBuilder outcome = new StringBuilder();
         Address target = addr;
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Rename data");
-                boolean commit = false;
-                try {
-                    SymbolTable symTable = program.getSymbolTable();
-                    Symbol symbol = symTable.getPrimarySymbol(target);
-                    String oldName = symbol != null ? symbol.getName() : "(none)";
-                    if (symbol != null) {
-                        symbol.setName(newName, SourceType.USER_DEFINED);
-                    } else {
-                        symTable.createLabel(target, newName, SourceType.USER_DEFINED);
-                    }
-                    commit = true;
-                    outcome.append("Data renamed: ").append(oldName).append(" -> ")
-                        .append(newName).append(" at ").append(target);
-                } catch (Exception e) {
-                    outcome.append("ERROR: rename data failed: ").append(e.getMessage());
-                    Msg.error(this, "Rename data error", e);
-                } finally {
-                    program.endTransaction(tx, commit);
+        onSwing(() -> {
+            int tx = program.startTransaction("Rename data");
+            boolean commit = false;
+            try {
+                SymbolTable symTable = program.getSymbolTable();
+                Symbol symbol = symTable.getPrimarySymbol(target);
+                String oldName = symbol != null ? symbol.getName() : "(none)";
+                if (symbol != null) {
+                    symbol.setName(newName, SourceType.USER_DEFINED);
+                } else {
+                    symTable.createLabel(target, newName, SourceType.USER_DEFINED);
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            return "ERROR: rename data failed: " + e.getMessage();
-        }
+                commit = true;
+                outcome.append("Data renamed: ").append(oldName).append(" -> ")
+                    .append(newName).append(" at ").append(target);
+            } catch (Exception e) {
+                throw renameFailure(e);
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "rename data failed");
         return outcome.toString();
     }
 
@@ -1308,18 +1375,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String createLabelAt(String addressStr, String name, boolean dryRun) {
         Program program = getCurrentProgram();
-        if (program == null) return errorResponse("no program loaded");
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
         if (name == null || name.isEmpty()) return errorResponse("name parameter is required");
-
-        Address addr;
-        try {
-            addr = program.getAddressFactory().getAddress(addressStr);
-        } catch (Exception e) {
-            addr = null;
-        }
-        if (addr == null || !addr.isMemoryAddress()) {
-            return errorResponse("invalid address: " + addressStr);
+        if (!addr.isMemoryAddress()) {
+            return errorResponse("invalid address: " + addressStr + " is not a memory address");
         }
         try {
             SymbolUtilities.validateName(name);
@@ -1340,39 +1400,28 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         boolean created = false;
         boolean primary = primaryBefore != null && primaryBefore.getName().equals(name);
-        String failure = null;
         if (!dryRun && !alreadyThere) {
-            AtomicBoolean ok = new AtomicBoolean(false);
             AtomicBoolean isPrimary = new AtomicBoolean(false);
-            StringBuilder error = new StringBuilder();
             Address target = addr;
-            try {
-                SwingUtilities.invokeAndWait(() -> {
-                    int tx = program.startTransaction("Create label " + name);
-                    boolean commit = false;
-                    try {
-                        Symbol symbol = symbolTable.createLabel(target, name, SourceType.USER_DEFINED);
-                        isPrimary.set(symbol.isPrimary());
-                        ok.set(true);
-                        commit = true;
-                    } catch (Exception e) {
-                        error.append(e.getMessage());
-                    } finally {
-                        program.endTransaction(tx, commit);
-                    }
-                });
-            } catch (InterruptedException | InvocationTargetException e) {
-                error.append(e.getMessage());
-            }
-            created = ok.get();
+            onSwing(() -> {
+                int tx = program.startTransaction("Create label " + name);
+                boolean commit = false;
+                try {
+                    Symbol symbol = symbolTable.createLabel(target, name, SourceType.USER_DEFINED);
+                    isPrimary.set(symbol.isPrimary());
+                    commit = true;
+                } catch (Exception e) {
+                    throw renameFailure(e);
+                } finally {
+                    program.endTransaction(tx, commit);
+                }
+            }, "createLabel failed");
+            created = true;
             primary = isPrimary.get();
-            if (!created) {
-                failure = error.length() > 0 ? error.toString() : "createLabel failed";
-            }
         }
 
         StringBuilder sb = new StringBuilder("{");
-        sb.append("\"status\":\"").append(failure == null ? "ok" : "error").append('"');
+        sb.append("\"status\":\"ok\"");
         sb.append(",\"address\":\"").append(hexAddress(addr)).append('"');
         sb.append(",\"name\":\"").append(jsonEscape(name)).append('"');
         sb.append(",\"dry_run\":").append(dryRun);
@@ -1392,15 +1441,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             sb.append('"').append(jsonEscape(existing.get(i))).append('"');
         }
         sb.append(']');
-        if (failure != null) {
-            sb.append(",\"error\":\"").append(jsonEscape(failure)).append('"');
-        }
         return sb.append('}').toString();
     }
 
     private String renameVariableInFunction(String functionName, String oldVarName, String newVarName) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         DecompInterface decomp = new DecompInterface();
         decomp.openProgram(program);
@@ -1413,23 +1459,27 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
         }
 
+        if (functionName == null || functionName.isEmpty()) throw badRequest("functionName is required");
+        if (oldVarName == null || oldVarName.isEmpty()) throw badRequest("oldName is required");
+        if (newVarName == null || newVarName.isEmpty()) throw badRequest("newName is required");
         if (func == null) {
-            return "Function not found";
+            throw notFound("No function named '" + functionName + "'");
         }
 
         DecompileResults result = decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
         if (result == null || !result.decompileCompleted()) {
-            return "Decompilation failed";
+            throw internalError("Decompilation failed"
+                + (result != null && result.getErrorMessage() != null ? ": " + result.getErrorMessage() : ""));
         }
 
         HighFunction highFunction = result.getHighFunction();
         if (highFunction == null) {
-            return "Decompilation failed (no high function)";
+            throw internalError("Decompilation failed (no high function)");
         }
 
         LocalSymbolMap localSymbolMap = highFunction.getLocalSymbolMap();
         if (localSymbolMap == null) {
-            return "Decompilation failed (no local symbol map)";
+            throw internalError("Decompilation failed (no local symbol map)");
         }
 
         HighSymbol highSymbol = null;
@@ -1442,49 +1492,43 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 highSymbol = symbol;
             }
             if (symbolName.equals(newVarName)) {
-                return "Error: A variable with name '" + newVarName + "' already exists in this function";
+                throw conflict("A variable with name '" + newVarName + "' already exists in this function");
             }
         }
 
         if (highSymbol == null) {
-            return "Variable not found";
+            throw notFound("No variable named '" + oldVarName + "' in " + functionName);
         }
 
         boolean commitRequired = checkFullCommit(highSymbol, highFunction);
 
         final HighSymbol finalHighSymbol = highSymbol;
         final ghidra.program.model.listing.Function finalFunction = func;
-        AtomicBoolean successFlag = new AtomicBoolean(false);
-
-        try {
-            SwingUtilities.invokeAndWait(() -> {           
-                int tx = program.startTransaction("Rename variable");
-                try {
-                    if (commitRequired) {
-                        HighFunctionDBUtil.commitParamsToDatabase(highFunction, false,
-                            ReturnCommitOption.NO_COMMIT, finalFunction.getSignatureSource());
-                    }
-                    HighFunctionDBUtil.updateDBVariable(
-                        finalHighSymbol,
-                        newVarName,
-                        null,
-                        SourceType.USER_DEFINED
-                    );
-                    successFlag.set(true);
+        // It used to commit in finally whatever happened and report the commit's
+        // result as the rename's: "Variable renamed" after updateDBVariable threw.
+        onSwing(() -> {
+            int tx = program.startTransaction("Rename variable");
+            boolean commit = false;
+            try {
+                if (commitRequired) {
+                    HighFunctionDBUtil.commitParamsToDatabase(highFunction, false,
+                        ReturnCommitOption.NO_COMMIT, finalFunction.getSignatureSource());
                 }
-                catch (Exception e) {
-                    Msg.error(this, "Failed to rename variable", e);
-                }
-                finally {
-                    successFlag.set(program.endTransaction(tx, true));
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            String errorMsg = "Failed to execute rename on Swing thread: " + e.getMessage();
-            Msg.error(this, errorMsg, e);
-            return errorMsg;
-        }
-        return successFlag.get() ? "Variable renamed" : "Failed to rename variable";
+                HighFunctionDBUtil.updateDBVariable(
+                    finalHighSymbol,
+                    newVarName,
+                    null,
+                    SourceType.USER_DEFINED
+                );
+                commit = true;
+            } catch (Exception e) {
+                Msg.error(this, "Failed to rename variable", e);
+                throw renameFailure(e);
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "Failed to rename variable");
+        return "Variable renamed";
     }
 
     /**
@@ -1532,15 +1576,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String readDword(String addressStr) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             byte[] buffer = new byte[4];
             int read = program.getMemory().getBytes(addr, buffer);
             if (read < 4) {
-                return errorResponse("unable to read 4 bytes at " + addressStr);
+                throw unmapped("unable to read 4 bytes at " + addressStr);
             }
 
             long value = ((long) buffer[0] & 0xff)
@@ -1550,9 +1593,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
             return String.format("0x%08x", value);
         } catch (MemoryAccessException e) {
-            return errorResponse("memory access failed: " + e.getMessage());
+            throw unmapped("memory access failed: " + e.getMessage());
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -1561,8 +1604,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String readBytesHexdump(String addressStr, int length) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         int effectiveLength = clampLength(length, MAX_BYTE_READ);
         if (effectiveLength <= 0) {
@@ -1570,11 +1613,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             byte[] buffer = new byte[effectiveLength];
             int read = program.getMemory().getBytes(addr, buffer);
             if (read <= 0) {
-                return errorResponse("unable to read memory at " + addressStr);
+                throw unmapped("unable to read memory at " + addressStr);
             }
 
             String dump = formatHexDump(addr, buffer, read);
@@ -1583,11 +1625,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
             return dump;
         } catch (MemoryAccessException e) {
-            return errorResponse("memory access failed: " + e.getMessage());
+            throw unmapped("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
             return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -1596,8 +1638,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String readCString(String addressStr, int maxLen) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address is required");
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         int effectiveLen = clampLength(maxLen, MAX_CSTRING_LEN);
         if (effectiveLen <= 0) {
@@ -1605,7 +1647,6 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             StringBuilder builder = new StringBuilder();
             boolean terminated = false;
 
@@ -1628,11 +1669,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
             return builder.toString();
         } catch (MemoryAccessException e) {
-            return errorResponse("memory access failed: " + e.getMessage());
+            throw unmapped("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
             return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -1641,16 +1682,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String readDataWindow(String startStr, String endStr) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (startStr == null || endStr == null) return errorResponse("start and end are required");
+        if (program == null) throw notReady("No program loaded");
+        Address start = requireAddress(program, startStr, "start");
+        Address end = requireAddress(program, endStr, "end");
 
         try {
-            Address start = program.getAddressFactory().getAddress(startStr);
-            Address end = program.getAddressFactory().getAddress(endStr);
-
-            if (start == null || end == null) {
-                return errorResponse("invalid address range");
-            }
 
             if (start.compareTo(end) >= 0) {
                 return errorResponse("start must be less than end");
@@ -1670,7 +1706,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             byte[] buffer = new byte[bytesToRead];
             int read = program.getMemory().getBytes(start, buffer);
             if (read <= 0) {
-                return errorResponse("unable to read memory");
+                throw unmapped("unable to read memory at " + start);
             }
 
             String dump = formatHexDump(start, buffer, read);
@@ -1679,11 +1715,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
             return dump;
         } catch (MemoryAccessException e) {
-            return errorResponse("memory access failed: " + e.getMessage());
+            throw unmapped("memory access failed: " + e.getMessage());
         } catch (AddressOutOfBoundsException e) {
             return errorResponse("address out of bounds");
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -1743,14 +1779,13 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String getFunctionByAddress(String addressStr) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "Address is required";
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
 
-            if (func == null) return "No function found at address " + addressStr;
+            if (func == null) throw notFound("No function found at address " + addressStr);
 
             return String.format("Function: %s at %s\nSignature: %s\nEntry: %s\nBody: %s - %s",
                 func.getName(),
@@ -1760,7 +1795,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 func.getBody().getMinAddress(),
                 func.getBody().getMaxAddress());
         } catch (Exception e) {
-            return "Error getting function: " + e.getMessage();
+            throw asRouteError(e, "Error getting function");
         }
     }
 
@@ -1769,10 +1804,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String getCurrentAddress() {
         CodeViewerService service = tool.getService(CodeViewerService.class);
-        if (service == null) return "Code viewer service not available";
+        if (service == null) throw notReady("Code viewer service not available");
 
         ProgramLocation location = service.getCurrentLocation();
-        return (location != null) ? location.getAddress().toString() : "No current location";
+        if (location == null) throw notFound("No current location");
+        return location.getAddress().toString();
     }
 
     /**
@@ -1780,16 +1816,16 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String getCurrentFunction() {
         CodeViewerService service = tool.getService(CodeViewerService.class);
-        if (service == null) return "Code viewer service not available";
+        if (service == null) throw notReady("Code viewer service not available");
 
         ProgramLocation location = service.getCurrentLocation();
-        if (location == null) return "No current location";
+        if (location == null) throw notFound("No current location");
 
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionContaining(location.getAddress());
-        if (func == null) return "No function at current location: " + location.getAddress();
+        if (func == null) throw notFound("No function at current location: " + location.getAddress());
 
         return String.format("Function: %s at %s\nSignature: %s",
             func.getName(),
@@ -1807,19 +1843,16 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         Program program = getCurrentProgram();
         if (program == null) {
-            return errorResponse("No program loaded");
+            throw notReady("No program loaded");
         }
 
         CodeViewerService service = tool.getService(CodeViewerService.class);
         if (service == null) {
-            return errorResponse("Code viewer service not available");
+            throw notReady("Code viewer service not available");
         }
+        Address address = requireAddress(program, addressStr, "address");
 
         try {
-            Address address = program.getAddressFactory().getAddress(addressStr);
-            if (address == null) {
-                return errorResponse("Invalid address: " + addressStr);
-            }
 
             ProgramLocation location = new ProgramLocation(program, address);
             boolean success = service.goTo(location, true); // true = center on screen
@@ -1833,10 +1866,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 sb.append('}');
                 return sb.toString();
             } else {
-                return errorResponse("Failed to navigate to address: " + addressStr);
+                throw internalError("Failed to navigate to address: " + addressStr);
             }
         } catch (Exception e) {
-            return errorResponse("Error navigating to address: " + e.getMessage());
+            throw asRouteError(e, "Error navigating to address");
         }
     }
 
@@ -1845,7 +1878,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String listFunctions(int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
 
         List<String> entries = new ArrayList<>();
         for (ghidra.program.model.listing.Function func : program.getFunctionManager().getFunctions(true)) {
@@ -1872,23 +1905,24 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String decompileFunctionByAddress(String addressStr) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "Address is required";
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
-            if (func == null) return "No function found at or containing address " + addressStr;
+            if (func == null) throw notFound("No function found at or containing address " + addressStr);
 
             DecompInterface decomp = new DecompInterface();
             decomp.openProgram(program);
             DecompileResults result = decomp.decompileFunction(func, 30, new ConsoleTaskMonitor());
 
-            return (result != null && result.decompileCompleted()) 
-                ? result.getDecompiledFunction().getC() 
-                : "Decompilation failed";
+            if (result != null && result.decompileCompleted()) {
+                return result.getDecompiledFunction().getC();
+            }
+            throw internalError("Decompilation failed"
+                + (result != null && result.getErrorMessage() != null ? ": " + result.getErrorMessage() : ""));
         } catch (Exception e) {
-            return "Error decompiling function: " + e.getMessage();
+            throw asRouteError(e, "Error decompiling function");
         }
     }
 
@@ -1897,13 +1931,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String disassembleFunction(String addressStr) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "Address is required";
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
-            if (func == null) return "No function found at or containing address " + addressStr;
+            if (func == null) throw notFound("No function found at or containing address " + addressStr);
 
             StringBuilder result = new StringBuilder();
             Listing listing = program.getListing();
@@ -1927,338 +1960,174 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
             return result.toString();
         } catch (Exception e) {
-            return "Error disassembling function: " + e.getMessage();
+            throw asRouteError(e, "Error disassembling function");
         }
     }    
 
     /**
      * Set a comment using the specified comment type (PRE_COMMENT or EOL_COMMENT)
      */
-    private boolean setCommentAtAddress(String addressStr, String comment, int commentType, String transactionName) {
+    /** Set (or, with an empty comment, clear) a comment; throws a RouteError saying why not. */
+    private void setCommentAtAddress(String addressStr, String comment, int commentType, String transactionName) {
         Program program = getCurrentProgram();
-        if (program == null) return false;
-        if (addressStr == null || addressStr.isEmpty() || comment == null) return false;
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
+        if (comment == null) throw badRequest("comment is required (empty clears the comment)");
+        if (!program.getMemory().contains(addr)) throw unmapped("no memory at " + addr);
+        String value = comment.isEmpty() ? null : comment;
 
-        AtomicBoolean success = new AtomicBoolean(false);
-
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction(transactionName);
-                try {
-                    Address addr = program.getAddressFactory().getAddress(addressStr);
-                    program.getListing().setComment(addr, commentType, comment);
-                    success.set(true);
-                } catch (Exception e) {
-                    Msg.error(this, "Error setting " + transactionName.toLowerCase(), e);
-                } finally {
-                    success.set(program.endTransaction(tx, success.get()));
-                }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute " + transactionName.toLowerCase() + " on Swing thread", e);
-        }
-
-        return success.get();
+        onSwing(() -> {
+            int tx = program.startTransaction(transactionName);
+            boolean commit = false;
+            try {
+                program.getListing().setComment(addr, commentType, value);
+                commit = true;
+            } catch (Exception e) {
+                Msg.error(this, "Error setting " + transactionName.toLowerCase(), e);
+                throw asRouteError(e, transactionName + " failed");
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, transactionName + " failed");
     }
 
     /**
      * Set a comment for a given address in the function pseudocode
      */
-    private boolean setDecompilerComment(String addressStr, String comment) {
-        return setCommentAtAddress(addressStr, comment, CodeUnit.PRE_COMMENT, "Set decompiler comment");
+    private void setDecompilerComment(String addressStr, String comment) {
+        setCommentAtAddress(addressStr, comment, CodeUnit.PRE_COMMENT, "Set decompiler comment");
     }
 
     /**
      * Set a comment for a given address in the function disassembly
      */
-    private boolean setDisassemblyComment(String addressStr, String comment) {
-        return setCommentAtAddress(addressStr, comment, CodeUnit.EOL_COMMENT, "Set disassembly comment");
+    private void setDisassemblyComment(String addressStr, String comment) {
+        setCommentAtAddress(addressStr, comment, CodeUnit.EOL_COMMENT, "Set disassembly comment");
     }
 
     /**
-     * Class to hold the result of a prototype setting operation
+     * Rename the function that starts at an address; throws a RouteError saying why not.
+     *
+     * <p>Entry points only: it used getFunctionContaining, so an address in the
+     * middle of a function renamed the function around it and answered success.
      */
-    private static class PrototypeResult {
-        private final boolean success;
-        private final String errorMessage;
-
-        public PrototypeResult(boolean success, String errorMessage) {
-            this.success = success;
-            this.errorMessage = errorMessage;
-        }
-
-        public boolean isSuccess() {
-            return success;
-        }
-
-        public String getErrorMessage() {
-            return errorMessage;
-        }
-    }
-
-    /**
-     * Rename a function by its address
-     */
-    private boolean renameFunctionByAddress(String functionAddrStr, String newName) {
+    private void renameFunctionByAddress(String functionAddrStr, String newName) {
         Program program = getCurrentProgram();
-        if (program == null) return false;
-        if (functionAddrStr == null || functionAddrStr.isEmpty() || 
-            newName == null || newName.isEmpty()) {
-            return false;
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, functionAddrStr, "function_address");
+        if (newName == null || newName.isEmpty()) throw badRequest("new_name is required");
+        ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
+        if (func == null) {
+            ghidra.program.model.listing.Function around =
+                program.getFunctionManager().getFunctionContaining(addr);
+            throw notFound("No function starts at " + addr
+                + (around != null ? " (it lies inside " + around.getName() + " at " + around.getEntryPoint() + ")" : ""));
         }
 
-        AtomicBoolean success = new AtomicBoolean(false);
-
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                performFunctionRename(program, functionAddrStr, newName, success);
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute rename function on Swing thread", e);
-        }
-
-        return success.get();
-    }
-
-    /**
-     * Helper method to perform the actual function rename within a transaction
-     */
-    private void performFunctionRename(Program program, String functionAddrStr, String newName, AtomicBoolean success) {
-        int tx = program.startTransaction("Rename function by address");
-        try {
-            Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
-
-            if (func == null) {
-                Msg.error(this, "Could not find function at address: " + functionAddrStr);
-                return;
+        onSwing(() -> {
+            int tx = program.startTransaction("Rename function by address");
+            boolean commit = false;
+            try {
+                func.setName(newName, SourceType.USER_DEFINED);
+                commit = true;
+            } catch (Exception e) {
+                throw renameFailure(e);
+            } finally {
+                program.endTransaction(tx, commit);
             }
-
-            func.setName(newName, SourceType.USER_DEFINED);
-            success.set(true);
-        } catch (Exception e) {
-            Msg.error(this, "Error renaming function by address", e);
-        } finally {
-            program.endTransaction(tx, success.get());
-        }
+        }, "Failed to rename function");
     }
 
     /**
      * Set a function's prototype with proper error handling using ApplyFunctionSignatureCmd
      */
-    private PrototypeResult setFunctionPrototype(String functionAddrStr, String prototype) {
-        // Input validation
+    /**
+     * Apply a C prototype to the function that starts at an address; throws a
+     * RouteError saying why not.
+     *
+     * <p>It used to commit a plate comment "Setting prototype: ..." in its own
+     * transaction before parsing -- also when the prototype was then rejected.
+     * That write was never asked for and is gone.
+     */
+    private void setFunctionPrototype(String functionAddrStr, String prototype) {
         Program program = getCurrentProgram();
-        if (program == null) return new PrototypeResult(false, "No program loaded");
-        if (functionAddrStr == null || functionAddrStr.isEmpty()) {
-            return new PrototypeResult(false, "Function address is required");
-        }
-        if (prototype == null || prototype.isEmpty()) {
-            return new PrototypeResult(false, "Function prototype is required");
-        }
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, functionAddrStr, "function_address");
+        if (prototype == null || prototype.isEmpty()) throw badRequest("prototype is required");
+        ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
+        if (func == null) throw notFound("No function starts at " + addr);
 
-        final StringBuilder errorMessage = new StringBuilder();
-        final AtomicBoolean success = new AtomicBoolean(false);
-
+        DataTypeManager dtm = program.getDataTypeManager();
+        ghidra.app.services.DataTypeManagerService dtms =
+            tool.getService(ghidra.app.services.DataTypeManagerService.class);
+        ghidra.program.model.data.FunctionDefinitionDataType sig;
         try {
-            SwingUtilities.invokeAndWait(() -> 
-                applyFunctionPrototype(program, functionAddrStr, prototype, success, errorMessage));
-        } catch (InterruptedException | InvocationTargetException e) {
-            String msg = "Failed to set function prototype on Swing thread: " + e.getMessage();
-            errorMessage.append(msg);
-            Msg.error(this, msg, e);
-        }
-
-        return new PrototypeResult(success.get(), errorMessage.toString());
-    }
-
-    /**
-     * Helper method that applies the function prototype within a transaction
-     */
-    private void applyFunctionPrototype(Program program, String functionAddrStr, String prototype, 
-                                       AtomicBoolean success, StringBuilder errorMessage) {
-        try {
-            // Get the address and function
-            Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
-
-            if (func == null) {
-                String msg = "Could not find function at address: " + functionAddrStr;
-                errorMessage.append(msg);
-                Msg.error(this, msg);
-                return;
-            }
-
-            Msg.info(this, "Setting prototype for function " + func.getName() + ": " + prototype);
-
-            // Store original prototype as a comment for reference
-            addPrototypeComment(program, func, prototype);
-
-            // Use ApplyFunctionSignatureCmd to parse and apply the signature
-            parseFunctionSignatureAndApply(program, addr, prototype, success, errorMessage);
-
+            sig = new ghidra.app.util.parser.FunctionSignatureParser(dtm, dtms).parse(null, prototype);
         } catch (Exception e) {
-            String msg = "Error setting function prototype: " + e.getMessage();
-            errorMessage.append(msg);
-            Msg.error(this, msg, e);
+            throw badRequest("cannot parse prototype '" + prototype + "': " + e.getMessage());
         }
-    }
+        if (sig == null) throw badRequest("cannot parse prototype '" + prototype + "'");
 
-    /**
-     * Add a comment showing the prototype being set
-     */
-    private void addPrototypeComment(Program program, ghidra.program.model.listing.Function func, String prototype) {
-        int txComment = program.startTransaction("Add prototype comment");
-        try {
-            program.getListing().setComment(
-                func.getEntryPoint(), 
-                CodeUnit.PLATE_COMMENT, 
-                "Setting prototype: " + prototype
-            );
-        } finally {
-            program.endTransaction(txComment, true);
-        }
-    }
-
-    /**
-     * Parse and apply the function signature with error handling
-     */
-    private void parseFunctionSignatureAndApply(Program program, Address addr, String prototype,
-                                              AtomicBoolean success, StringBuilder errorMessage) {
-        // Use ApplyFunctionSignatureCmd to parse and apply the signature
-        int txProto = program.startTransaction("Set function prototype");
-        try {
-            // Get data type manager
-            DataTypeManager dtm = program.getDataTypeManager();
-
-            // Get data type manager service
-            ghidra.app.services.DataTypeManagerService dtms = 
-                tool.getService(ghidra.app.services.DataTypeManagerService.class);
-
-            // Create function signature parser
-            ghidra.app.util.parser.FunctionSignatureParser parser = 
-                new ghidra.app.util.parser.FunctionSignatureParser(dtm, dtms);
-
-            // Parse the prototype into a function signature
-            ghidra.program.model.data.FunctionDefinitionDataType sig = parser.parse(null, prototype);
-
-            if (sig == null) {
-                String msg = "Failed to parse function prototype";
-                errorMessage.append(msg);
-                Msg.error(this, msg);
-                return;
+        onSwing(() -> {
+            int tx = program.startTransaction("Set function prototype");
+            boolean commit = false;
+            try {
+                ghidra.app.cmd.function.ApplyFunctionSignatureCmd cmd =
+                    new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(addr, sig, SourceType.USER_DEFINED);
+                if (!cmd.applyTo(program, new ConsoleTaskMonitor())) {
+                    throw badRequest("prototype not applied: " + cmd.getStatusMsg());
+                }
+                commit = true;
+            } catch (RouteError e) {
+                throw e;
+            } catch (Exception e) {
+                throw asRouteError(e, "Error applying function signature");
+            } finally {
+                program.endTransaction(tx, commit);
             }
-
-            // Create and apply the command
-            ghidra.app.cmd.function.ApplyFunctionSignatureCmd cmd = 
-                new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(
-                    addr, sig, SourceType.USER_DEFINED);
-
-            // Apply the command to the program
-            boolean cmdResult = cmd.applyTo(program, new ConsoleTaskMonitor());
-
-            if (cmdResult) {
-                success.set(true);
-                Msg.info(this, "Successfully applied function signature");
-            } else {
-                String msg = "Command failed: " + cmd.getStatusMsg();
-                errorMessage.append(msg);
-                Msg.error(this, msg);
-            }
-        } catch (Exception e) {
-            String msg = "Error applying function signature: " + e.getMessage();
-            errorMessage.append(msg);
-            Msg.error(this, msg, e);
-        } finally {
-            program.endTransaction(txProto, success.get());
-        }
+        }, "Failed to set function prototype");
     }
 
     /**
      * Set a local variable's type using HighFunctionDBUtil.updateDBVariable
      */
-    private boolean setLocalVariableType(String functionAddrStr, String variableName, String newType) {
-        // Input validation
-        Program program = getCurrentProgram();
-        if (program == null) return false;
-        if (functionAddrStr == null || functionAddrStr.isEmpty() || 
-            variableName == null || variableName.isEmpty() ||
-            newType == null || newType.isEmpty()) {
-            return false;
-        }
-
-        AtomicBoolean success = new AtomicBoolean(false);
-
-        try {
-            SwingUtilities.invokeAndWait(() -> 
-                applyVariableType(program, functionAddrStr, variableName, newType, success));
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to execute set variable type on Swing thread", e);
-        }
-
-        return success.get();
-    }
-
     /**
-     * Helper method that performs the actual variable type change
+     * Set a local variable's type; throws a RouteError saying why not.
+     *
+     * <p>Every failure used to be logged and answered with one sentence in the
+     * last line of an otherwise successful-looking body.
      */
-    private void applyVariableType(Program program, String functionAddrStr, 
-                                  String variableName, String newType, AtomicBoolean success) {
-        try {
-            // Find the function
-            Address addr = program.getAddressFactory().getAddress(functionAddrStr);
-            ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
+    private String setLocalVariableType(String functionAddrStr, String variableName, String newType) {
+        Program program = getCurrentProgram();
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, functionAddrStr, "function_address");
+        if (variableName == null || variableName.isEmpty()) throw badRequest("variable_name is required");
+        if (newType == null || newType.isEmpty()) throw badRequest("new_type is required");
 
-            if (func == null) {
-                Msg.error(this, "Could not find function at address: " + functionAddrStr);
-                return;
+        ghidra.program.model.listing.Function func = program.getFunctionManager().getFunctionAt(addr);
+        if (func == null) throw notFound("No function starts at " + addr);
+        DecompileResults results = decompileFunction(func, program);
+        if (results == null) throw internalError("Could not decompile " + func.getName());
+        ghidra.program.model.pcode.HighFunction highFunction = results.getHighFunction();
+        if (highFunction == null) throw internalError("No high function for " + func.getName());
+        HighSymbol symbol = findSymbolByName(highFunction, variableName);
+        if (symbol == null) throw notFound("No variable named '" + variableName + "' in " + func.getName());
+        DataType dataType = resolveDataType(program.getDataTypeManager(), newType);
+        if (dataType == null) throw notFound("unknown data type '" + newType + "'");
+
+        onSwing(() -> {
+            int tx = program.startTransaction("Set variable type");
+            boolean commit = false;
+            try {
+                HighFunctionDBUtil.updateDBVariable(symbol, symbol.getName(), dataType, SourceType.USER_DEFINED);
+                commit = true;
+            } catch (Exception e) {
+                throw asRouteError(e, "Error setting variable type");
+            } finally {
+                program.endTransaction(tx, commit);
             }
-
-            DecompileResults results = decompileFunction(func, program);
-            if (results == null || !results.decompileCompleted()) {
-                return;
-            }
-
-            ghidra.program.model.pcode.HighFunction highFunction = results.getHighFunction();
-            if (highFunction == null) {
-                Msg.error(this, "No high function available");
-                return;
-            }
-
-            // Find the symbol by name
-            HighSymbol symbol = findSymbolByName(highFunction, variableName);
-            if (symbol == null) {
-                Msg.error(this, "Could not find variable '" + variableName + "' in decompiled function");
-                return;
-            }
-
-            // Get high variable
-            HighVariable highVar = symbol.getHighVariable();
-            if (highVar == null) {
-                Msg.error(this, "No HighVariable found for symbol: " + variableName);
-                return;
-            }
-
-            Msg.info(this, "Found high variable for: " + variableName + 
-                     " with current type " + highVar.getDataType().getName());
-
-            // Find the data type
-            DataTypeManager dtm = program.getDataTypeManager();
-            DataType dataType = resolveDataType(dtm, newType);
-
-            if (dataType == null) {
-                Msg.error(this, "Could not resolve data type: " + newType);
-                return;
-            }
-
-            Msg.info(this, "Using data type: " + dataType.getName() + " for variable " + variableName);
-
-            // Apply the type change in a transaction
-            updateVariableType(program, symbol, dataType, success);
-
-        } catch (Exception e) {
-            Msg.error(this, "Error setting variable type: " + e.getMessage());
-        }
+        }, "Failed to set variable type");
+        return dataType.getPathName();
     }
 
     /**
@@ -2296,29 +2165,6 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
-     * Apply the type update in a transaction
-     */
-    private void updateVariableType(Program program, HighSymbol symbol, DataType dataType, AtomicBoolean success) {
-        int tx = program.startTransaction("Set variable type");
-        try {
-            // Use HighFunctionDBUtil to update the variable with the new type
-            HighFunctionDBUtil.updateDBVariable(
-                symbol,                // The high symbol to modify
-                symbol.getName(),      // Keep original name
-                dataType,              // The new data type
-                SourceType.USER_DEFINED // Mark as user-defined
-            );
-
-            success.set(true);
-            Msg.info(this, "Successfully set variable type using HighFunctionDBUtil");
-        } catch (Exception e) {
-            Msg.error(this, "Error setting variable type: " + e.getMessage());
-        } finally {
-            program.endTransaction(tx, success.get());
-        }
-    }
-
-    /**
      * Get all references to a specific address (xref to)
      */
     private String getXrefsTo(String addressStr, int offset, int limit) {
@@ -2327,11 +2173,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
     private String getXrefsTo(String addressStr, int offset, int limit, String filter) {
         Program program = getCurrentProgram();
-        if (program == null) return jsonErrorEnvelope("No program loaded");
-        if (addressStr == null || addressStr.isEmpty()) return jsonErrorEnvelope("Address is required");
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ReferenceManager refManager = program.getReferenceManager();
 
             ReferenceIterator refIter = refManager.getReferencesTo(addr);
@@ -2363,7 +2208,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 return sb.toString();
             });
         } catch (Exception e) {
-            return jsonErrorEnvelope("Error getting references to address: " + e.getMessage());
+            throw asRouteError(e, "Error getting references to address");
         }
     }
 
@@ -2372,11 +2217,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String getXrefsFrom(String addressStr, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (addressStr == null || addressStr.isEmpty()) return "Address is required";
+        if (program == null) throw notReady("No program loaded");
+        Address addr = requireAddress(program, addressStr, "address");
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
             ReferenceManager refManager = program.getReferenceManager();
             
             Reference[] references = refManager.getReferencesFrom(addr);
@@ -2402,7 +2246,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             
             return paginateList(refs, offset, limit);
         } catch (Exception e) {
-            return "Error getting references from address: " + e.getMessage();
+            throw asRouteError(e, "Error getting references from address");
         }
     }
 
@@ -2411,14 +2255,16 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String getFunctionXrefs(String functionName, int offset, int limit) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
-        if (functionName == null || functionName.isEmpty()) return "Function name is required";
+        if (program == null) throw notReady("No program loaded");
+        if (functionName == null || functionName.isEmpty()) throw badRequest("Function name is required");
 
         try {
             List<String> refs = new ArrayList<>();
+            boolean found = false;
             FunctionManager funcManager = program.getFunctionManager();
             for (ghidra.program.model.listing.Function function : funcManager.getFunctions(true)) {
                 if (function.getName().equals(functionName)) {
+                    found = true;
                     Address entryPoint = function.getEntryPoint();
                     ReferenceIterator refIter = program.getReferenceManager().getReferencesTo(entryPoint);
                     
@@ -2435,13 +2281,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 }
             }
             
-            if (refs.isEmpty()) {
-                return "No references found to function: " + functionName;
+            // An unknown function and one nobody calls used to give the same text.
+            if (!found) {
+                throw notFound("No function named '" + functionName + "'");
             }
             
             return paginateList(refs, offset, limit);
         } catch (Exception e) {
-            return "Error getting function references: " + e.getMessage();
+            throw asRouteError(e, "Error getting function references");
         }
     }
 
@@ -2450,11 +2297,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
  */
     private String listDefinedStrings(int offset, int limit, String filter) {
         Program program = getCurrentProgram();
-        if (program == null) return jsonErrorEnvelope("No program loaded");
+        if (program == null) throw notReady("No program loaded");
 
-        record StringEntry(String address, String literal) {}
+        // refs: references to the string's address, so strings_compact can say
+        // how often it is used; the bridge used to report 0 for every string.
+        record StringEntry(String address, String literal, int refs) {}
 
         List<StringEntry> lines = new ArrayList<>();
+        ReferenceManager refManager = program.getReferenceManager();
         DataIterator dataIt = program.getListing().getDefinedData(true);
 
         while (dataIt.hasNext()) {
@@ -2465,7 +2315,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
                 if (filter == null || value.toLowerCase().contains(filter.toLowerCase())) {
                     String escapedValue = escapeString(value);
-                    lines.add(new StringEntry(formatAddress(data.getAddress()), escapedValue));
+                    lines.add(new StringEntry(formatAddress(data.getAddress()), escapedValue,
+                        refManager.getReferenceCountTo(data.getAddress())));
                 }
             }
         }
@@ -2476,6 +2327,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             sb.append("\"address\":\"").append(jsonEscape(entry.address())).append('\"');
             sb.append(',');
             sb.append("\"literal\":\"").append(jsonEscape(entry.literal())).append('\"');
+            sb.append(",\"refs\":").append(entry.refs());
             sb.append('}');
             return sb.toString();
         });
@@ -2530,7 +2382,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         Program program = getCurrentProgram();
         if (program == null) {
-            return dtOpError("No program loaded");
+            throw notReady("No program loaded");
         }
 
         List<Map<String, String>> fields = parseFieldsJson(fieldsJson);
@@ -2544,36 +2396,30 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         // Check if datatype already exists
         DataType existing = dtm.getDataType(catPath, name);
         if (existing != null) {
-            return dtOpError("DataType already exists at path " + existing.getPathName());
+            throw conflict("DataType already exists at path " + existing.getPathName());
         }
 
-        final String finalCategory = category;
         StringBuilder result = new StringBuilder();
-        AtomicBoolean success = new AtomicBoolean(false);
 
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Create " + kind + " " + name);
-                try {
-                    DataType created;
-                    if ("union".equals(kind)) {
-                        created = createUnionType(dtm, catPath, name, fields);
-                    } else {
-                        created = createStructureType(dtm, catPath, name, fields);
-                    }
-                    result.append(serializeDataType(created, kind));
-                    success.set(true);
-                } catch (Exception e) {
-                    Msg.error(this, "Error creating " + kind + " " + name, e);
-                    result.append(dtOpError("Failed to create " + kind + ": " + e.getMessage()));
-                } finally {
-                    program.endTransaction(tx, success.get());
+        onSwing(() -> {
+            int tx = program.startTransaction("Create " + kind + " " + name);
+            boolean commit = false;
+            try {
+                DataType created;
+                if ("union".equals(kind)) {
+                    created = createUnionType(dtm, catPath, name, fields);
+                } else {
+                    created = createStructureType(dtm, catPath, name, fields);
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to create datatype on Swing thread", e);
-            return dtOpError("Swing thread error: " + e.getMessage());
-        }
+                result.append(serializeDataType(created, kind));
+                commit = true;
+            } catch (Exception e) {
+                Msg.error(this, "Error creating " + kind + " " + name, e);
+                throw dataTypeFailure(e, "Failed to create " + kind);
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "Failed to create " + kind);
 
         return result.toString();
     }
@@ -2629,7 +2475,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         Program program = getCurrentProgram();
         if (program == null) {
-            return dtOpError("No program loaded");
+            throw notReady("No program loaded");
         }
 
         List<Map<String, String>> fields = parseFieldsJson(fieldsJson);
@@ -2645,7 +2491,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
         DataType existing = dtm.getDataType(path);
         if (existing == null) {
-            return dtOpError("DataType not found at path: " + path);
+            throw notFound("DataType not found at path: " + path);
         }
 
         final String resolvedKind;
@@ -2654,34 +2500,33 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         } else if (existing instanceof Union) {
             resolvedKind = "union";
         } else {
-            return dtOpError("DataType at " + path + " is not a structure or union");
+            throw conflict("DataType at " + path + " is not a structure or union");
+        }
+        // /updateStructure on a union used to update it as a union
+        if (kind != null && !kind.equals(resolvedKind)) {
+            throw conflict("DataType at " + path + " is a " + resolvedKind + ", not a " + kind);
         }
 
         StringBuilder result = new StringBuilder();
-        AtomicBoolean success = new AtomicBoolean(false);
 
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Update " + resolvedKind + " " + existing.getName());
-                try {
-                    if (existing instanceof Structure) {
-                        updateStructureFields((Structure) existing, dtm, fields);
-                    } else {
-                        updateUnionFields((Union) existing, dtm, fields);
-                    }
-                    result.append(serializeDataType(existing, resolvedKind));
-                    success.set(true);
-                } catch (Exception e) {
-                    Msg.error(this, "Error updating " + resolvedKind, e);
-                    result.append(dtOpError("Failed to update: " + e.getMessage()));
-                } finally {
-                    program.endTransaction(tx, success.get());
+        onSwing(() -> {
+            int tx = program.startTransaction("Update " + resolvedKind + " " + existing.getName());
+            boolean commit = false;
+            try {
+                if (existing instanceof Structure) {
+                    updateStructureFields((Structure) existing, dtm, fields);
+                } else {
+                    updateUnionFields((Union) existing, dtm, fields);
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to update datatype on Swing thread", e);
-            return dtOpError("Swing thread error: " + e.getMessage());
-        }
+                result.append(serializeDataType(existing, resolvedKind));
+                commit = true;
+            } catch (Exception e) {
+                Msg.error(this, "Error updating " + resolvedKind, e);
+                throw dataTypeFailure(e, "Failed to update");
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "Failed to update");
 
         return result.toString();
     }
@@ -2740,7 +2585,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         Program program = getCurrentProgram();
         if (program == null) {
-            return dtOpError("No program loaded");
+            throw notReady("No program loaded");
         }
 
         DataTypeManager dtm = program.getDataTypeManager();
@@ -2749,33 +2594,37 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
         DataType existing = dtm.getDataType(path);
         if (existing == null) {
-            return dtOpError("DataType not found at path: " + path);
+            throw notFound("DataType not found at path: " + path);
         }
 
         final String dtPath = existing.getPathName();
-        final String dtKind = (existing instanceof Union) ? "union" : "structure";
-        AtomicBoolean success = new AtomicBoolean(false);
+        // kind is the client's word for what it expects; a mismatch is refused
+        // rather than deleting a type of another kind at that path
+        final String dtKind = (existing instanceof Union) ? "union"
+            : (existing instanceof Structure) ? "structure" : null;
+        if (dtKind == null) {
+            throw conflict("DataType at " + dtPath + " is neither a structure nor a union");
+        }
+        if (kind != null && !kind.isEmpty() && !kind.equalsIgnoreCase(dtKind)) {
+            throw conflict("DataType at " + dtPath + " is a " + dtKind + ", not a " + kind);
+        }
 
-        try {
-            SwingUtilities.invokeAndWait(() -> {
-                int tx = program.startTransaction("Delete " + dtKind + " " + existing.getName());
-                try {
-                    dtm.remove(existing, TaskMonitor.DUMMY);
-                    success.set(true);
-                } catch (Exception e) {
-                    Msg.error(this, "Error deleting datatype", e);
-                } finally {
-                    program.endTransaction(tx, success.get());
+        onSwing(() -> {
+            int tx = program.startTransaction("Delete " + dtKind + " " + existing.getName());
+            boolean commit = false;
+            try {
+                // remove() answers false when Ghidra refuses; that used to be ignored
+                if (!dtm.remove(existing, TaskMonitor.DUMMY)) {
+                    throw conflict("Ghidra refused to delete " + dtPath);
                 }
-            });
-        } catch (InterruptedException | InvocationTargetException e) {
-            Msg.error(this, "Failed to delete datatype on Swing thread", e);
-            return dtOpError("Swing thread error: " + e.getMessage());
-        }
-
-        if (!success.get()) {
-            return dtOpError("Failed to delete datatype at " + dtPath);
-        }
+                commit = true;
+            } catch (Exception e) {
+                Msg.error(this, "Error deleting datatype", e);
+                throw dataTypeFailure(e, "Failed to delete datatype at " + dtPath);
+            } finally {
+                program.endTransaction(tx, commit);
+            }
+        }, "Failed to delete datatype at " + dtPath);
 
         StringBuilder sb = new StringBuilder();
         sb.append("{\"ok\":true,\"datatype\":{");
@@ -2829,8 +2678,20 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return sb.toString();
     }
 
+    /** Always throws; see errorResponse. */
     private String dtOpError(String message) {
-        return "{\"ok\":false,\"error\":\"" + jsonEscape(message) + "\"}";
+        throw badRequest(message);
+    }
+
+    /** A data type operation's failure: a malformed field (bad number, unknown type) is the request's. */
+    private static RouteError dataTypeFailure(Exception e, String context) {
+        if (e instanceof RouteError) {
+            return (RouteError) e;
+        }
+        if (e instanceof IllegalArgumentException) {
+            return badRequest(context + ": " + e.getMessage());
+        }
+        return asRouteError(e, context);
     }
 
     private List<Map<String, String>> parseFieldsJson(String fieldsJson) {
@@ -3034,15 +2895,13 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
-     * A structure or union field's type, or an exception naming it.  Thrown
-     * inside the caller's transaction, it rolls the whole operation back and
-     * reaches the response as "Failed to create ...: unknown data type ...".
+     * A structure or union field's type, or a 400 naming it.  Thrown inside the
+     * caller's transaction, it rolls the whole operation back.
      */
     private DataType requireDataType(DataTypeManager dtm, String typeName, String fieldName) {
         DataType dataType = typeName == null ? null : resolveDataType(dtm, typeName);
         if (dataType == null) {
-            throw new IllegalArgumentException(
-                "unknown data type '" + typeName + "' for field '" + fieldName + "'");
+            throw badRequest("unknown data type '" + typeName + "' for field '" + fieldName + "'");
         }
         return dataType;
     }
@@ -3081,7 +2940,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         if (query != null) {
             String[] pairs = query.split("&");
             for (String p : pairs) {
-                String[] kv = p.split("=");
+                // limit 2: "comment=" is an empty value, not a missing one, and
+                // a value may itself contain "="
+                String[] kv = p.split("=", 2);
                 if (kv.length == 2) {
                     // URL decode parameter values
                     try {
@@ -3105,7 +2966,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         String bodyStr = new String(body, StandardCharsets.UTF_8);
         Map<String, String> params = new HashMap<>();
         for (String pair : bodyStr.split("&")) {
-            String[] kv = pair.split("=");
+            String[] kv = pair.split("=", 2);
             if (kv.length == 2) {
                 // URL decode parameter values
                 try {
@@ -3125,7 +2986,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String paginateList(List<String> items, int offset, int limit) {
         int start = Math.max(0, offset);
-        int end   = Math.min(items.size(), offset + limit);
+        // a negative limit made subList throw -- an INTERNAL for a bad request
+        int end   = Math.min(items.size(), start + Math.max(0, limit));
 
         if (start >= items.size()) {
             return ""; // no items in range
@@ -3155,19 +3017,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return sb.toString();
     }
 
+    /**
+     * A bad request.  Declared to return String so the many {@code return
+     * errorResponse(...)} sites read as before; it always throws.
+     */
     private String errorResponse(String message) {
-        String safeMessage = (message == null || message.isEmpty()) ? "unexpected error" : message;
-        return "{\"error\":\"" + jsonEscape(safeMessage) + "\",\"status\":\"error\"}";
-    }
-
-    private String jsonErrorEnvelope(String message) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"items\":[],\"has_more\":false");
-        if (message != null && !message.isEmpty()) {
-            sb.append(",\"error\":\"").append(jsonEscape(message)).append('\"');
-        }
-        sb.append('}');
-        return sb.toString();
+        throw badRequest(message);
     }
 
     /**
@@ -3207,10 +3062,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String handleSearchScalars(String valueStr, String cursorParam, int offset, int limit) {
         Program program = getCurrentProgram();
         if (program == null) {
-            return CursorPager.errorJson("No program loaded", this::jsonEscape);
+            throw notReady("No program loaded");
         }
         if (valueStr == null || valueStr.isEmpty()) {
-            return CursorPager.errorJson("value parameter is required", this::jsonEscape);
+            throw badRequest("value parameter is required");
         }
 
         int requestedLimit = limit > 0 ? limit : 100;
@@ -3293,9 +3148,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return CursorPager.toJson(page, this::jsonEscape);
 
         } catch (NumberFormatException e) {
-            return CursorPager.errorJson("invalid value format", this::jsonEscape);
+            throw badRequest("invalid value format: '" + valueStr + "'");
         } catch (Exception e) {
-            return CursorPager.errorJson(e.getMessage(), this::jsonEscape);
+            throw asRouteError(e, "scalar search failed");
         }
     }
 
@@ -3334,7 +3189,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String handleFunctionsInRange(String minStr, String maxStr, boolean extended) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
         if (minStr == null || minStr.isEmpty()) return errorResponse("min parameter is required");
         if (maxStr == null || maxStr.isEmpty()) return errorResponse("max parameter is required");
 
@@ -3380,7 +3235,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return results.isEmpty() ? "" : String.join("\n", results);
 
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3393,7 +3248,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String functionsInRangeJson(String minStr, String maxStr) {
         Program program = getCurrentProgram();
-        if (program == null) return errorResponse("no program loaded");
+        if (program == null) throw notReady("No program loaded");
         if (minStr == null || minStr.isEmpty()) return errorResponse("min parameter is required");
         if (maxStr == null || maxStr.isEmpty()) return errorResponse("max parameter is required");
 
@@ -3449,7 +3304,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
             return sb.append("]}").toString();
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3493,7 +3348,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String handleDisassembleAt(String addressStr, int count) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
         if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         // Cap count at 128
@@ -3530,7 +3385,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return lines.isEmpty() ? "" : String.join("\n", lines);
 
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3540,7 +3395,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String disassembleAtJson(String addressStr, int count) {
         Program program = getCurrentProgram();
-        if (program == null) return errorResponse("no program loaded");
+        if (program == null) throw notReady("No program loaded");
         if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         int effectiveCount = Math.min(Math.max(count, 1), 128);
@@ -3559,7 +3414,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
             return sb.append("]}").toString();
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3570,13 +3425,13 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String disassembleFunctionJson(String addressStr) {
         Program program = getCurrentProgram();
-        if (program == null) return errorResponse("no program loaded");
+        if (program == null) throw notReady("No program loaded");
         if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
             ghidra.program.model.listing.Function func = getFunctionForAddress(program, addr);
-            if (func == null) return errorResponse("no function found at or containing address " + addressStr);
+            if (func == null) throw notFound("no function found at or containing address " + addressStr);
 
             Address end = func.getBody().getMaxAddress();
             StringBuilder sb = new StringBuilder("{");
@@ -3596,7 +3451,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
             return sb.append("]}").toString();
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3741,7 +3596,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String readBytesBase64(String addressStr, int length) {
         Program program = getCurrentProgram();
-        if (program == null) return "No program loaded";
+        if (program == null) throw notReady("No program loaded");
         if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
         // Cap length at 4096
@@ -3757,7 +3612,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             int bytesRead = program.getMemory().getBytes(addr, buffer);
 
             if (bytesRead <= 0) {
-                return errorResponse("unable to read memory at address");
+                throw unmapped("unable to read memory at " + addressStr);
             }
 
             // If we read fewer bytes than requested, trim the buffer
@@ -3769,9 +3624,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return Base64.getEncoder().encodeToString(actualData);
 
         } catch (MemoryAccessException e) {
-            return errorResponse("memory access failed: " + e.getMessage());
+            throw unmapped("memory access failed: " + e.getMessage());
         } catch (Exception e) {
-            return errorResponse(e.getMessage());
+            throw asRouteError(e, null);
         }
     }
 
@@ -3808,6 +3663,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private void sendResponse(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
+        exchange.getResponseHeaders().set(API_HEADER, String.valueOf(API_LEVEL));
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
@@ -3817,6 +3673,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private void sendJsonResponse(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.getResponseHeaders().set(API_HEADER, String.valueOf(API_LEVEL));
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
@@ -3836,37 +3693,32 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
         // Check dirty state before switching programs
         if (!checkDirtyStateBeforeSwitch(onDirty, warnings)) {
-            return openProgramResponse("error",
-                "Cannot switch programs: current program has unsaved changes",
-                null, warnings);
+            throw conflict(withWarnings("Cannot switch programs: current program has unsaved changes", warnings));
         }
 
         Project project = tool.getProject();
         if (project == null) {
-            return errorResponse("No project loaded");
+            throw notReady("No project loaded");
         }
 
         ProjectData projectData = project.getProjectData();
         if (projectData == null) {
-            return errorResponse("Project data unavailable");
+            throw notReady("Project data unavailable");
         }
 
         DomainFile file = resolveDomainFile(projectData, domainFileIdParam, path, warnings);
         if (file == null) {
-            return errorResponse("File not found for provided path or ID");
+            throw notFound("File not found for provided path or ID");
         }
 
         ProgramManager pm = ensureProgramManager(file, warnings);
         if (pm == null) {
-            return openProgramResponse("error",
-                "ProgramManager service unavailable; launch a program-capable tool manually",
-                file, warnings);
+            throw notReady(withWarnings(
+                "ProgramManager service unavailable; launch a program-capable tool manually", warnings));
         }
 
         if (!invokeOpenProgram(pm, file, warnings)) {
-            return openProgramResponse("error",
-                "ProgramManager missing openProgram(DomainFile) support",
-                file, warnings);
+            throw internalError(withWarnings("Could not open " + file.getPathname(), warnings));
         }
 
         // Track the opened program even when it was already open and Ghidra
@@ -3989,11 +3841,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String saveCurrentProgram(String description) {
         Program program = getCurrentProgram();
         if (program == null) {
-            return errorResponse("No program currently loaded");
+            throw notReady("No program currently loaded");
         }
 
         if (!program.canSave()) {
-            return errorResponse("Program cannot be saved (not the owner or file is read-only)");
+            throw conflict("Program cannot be saved (not the owner or file is read-only)");
         }
 
         if (!program.isChanged()) {
@@ -4021,7 +3873,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             sb.append('}');
             return sb.toString();
         } catch (Exception e) {
-            return errorResponse("Failed to save program: " + e.getMessage());
+            throw asRouteError(e, "Failed to save program");
         }
     }
 
@@ -4109,6 +3961,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return null;
     }
 
+    private static String withWarnings(String message, List<String> warnings) {
+        return warnings.isEmpty() ? message : message + " (" + String.join("; ", warnings) + ")";
+    }
+
     private String openProgramResponse(String status, String message, DomainFile file,
             List<String> warnings) {
         StringBuilder sb = new StringBuilder();
@@ -4147,17 +4003,17 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String getProjectFiles() {
         Project project = tool.getProject();
         if (project == null) {
-            return errorResponse("No project loaded");
+            throw notReady("No project loaded");
         }
 
         ProjectData projectData = project.getProjectData();
         if (projectData == null) {
-            return errorResponse("Project data unavailable");
+            throw notReady("Project data unavailable");
         }
 
         DomainFolder rootFolder = projectData.getRootFolder();
         if (rootFolder == null) {
-            return errorResponse("Project root folder not found");
+            throw internalError("Project root folder not found");
         }
 
         List<String> entries = new ArrayList<>();
@@ -4235,7 +4091,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String getProjectInfo() {
         Program program = getCurrentProgram();
         if (program == null) {
-            return errorResponse("No program loaded");
+            throw notReady("No program loaded");
         }
 
         try {
@@ -4271,7 +4127,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
         catch (Exception ex) {
             Msg.error(this, "Failed to collect project info", ex);
-            return errorResponse("Failed to collect project info");
+            throw internalError("Failed to collect project info");
         }
     }
 
@@ -4509,6 +4365,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     private String jsonEscape(String input) {
+        return jsonEscapeStatic(input);
+    }
+
+    private static String jsonEscapeStatic(String input) {
         StringBuilder escaped = new StringBuilder();
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);

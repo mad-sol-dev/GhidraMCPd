@@ -417,12 +417,6 @@
                         "address": {
                           "type": "string"
                         },
-                        "comment": {
-                          "type": [
-                            "string",
-                            "null"
-                          ]
-                        },
                         "entry_point": {
                           "type": "string"
                         },

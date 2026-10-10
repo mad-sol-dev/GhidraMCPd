@@ -16,7 +16,6 @@
         "entry_point": {"type": "string"},
         "address": {"type": "string"},
         "signature": {"type": ["string", "null"]},
-        "comment": {"type": ["string", "null"]},
         "range": {
           "type": ["object", "null"],
           "additionalProperties": false,

@@ -10,6 +10,7 @@ class FakeResponse:
     def __init__(self, text: str, status_code: int = 200) -> None:
         self.text = text
         self.status_code = status_code
+        self.headers = {"X-GhidraMCP-API": "2"}
 
     @property
     def is_error(self) -> bool:  # pragma: no cover - property behavior is trivial

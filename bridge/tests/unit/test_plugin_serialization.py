@@ -7,6 +7,7 @@ from starlette.applications import Starlette
 
 from bridge.api.routes import make_routes
 from bridge.ghidra.client import GhidraClient
+from bridge.tests.plugin_http import plugin_transport
 
 
 class RecordingSemaphore(asyncio.Semaphore):
@@ -41,7 +42,7 @@ async def _exercise_serialization(caplog: pytest.LogCaptureFixture) -> None:
             return httpx.Response(404, text="not found\n")
         return httpx.Response(404, text="not found\n")
 
-    mock_transport = httpx.MockTransport(handler)
+    mock_transport = plugin_transport(handler)
 
     def factory() -> GhidraClient:
         return GhidraClient("http://ghidra/", transport=mock_transport)

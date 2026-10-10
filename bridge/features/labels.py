@@ -12,6 +12,7 @@ from typing import Dict, List, Mapping, Optional
 
 from ..ghidra.client import GhidraClient
 from ..utils.config import WRITES_DISABLED_NOTE
+from ..utils.errors import UpstreamFailed
 from ..utils.hex import int_to_hex
 from ..utils.logging import increment_counter, record_write_attempt
 from . import mutations
@@ -59,7 +60,13 @@ def apply_label(
     write = not dry_run and writes_enabled
     if write:
         record_write_attempt()
-    answer = client.create_label(address, name, dry_run=not write)
+    try:
+        answer = client.create_label(address, name, dry_run=not write)
+    except UpstreamFailed as exc:
+        # The plugin's 400: Ghidra's own rules refused the name or the address.
+        if exc.code == "INVALID_REQUEST":
+            raise LabelRejected(str(exc)) from exc
+        raise
     if answer is None:
         error = getattr(client, "last_error", None)
         reason = getattr(error, "reason", None) or "no answer"

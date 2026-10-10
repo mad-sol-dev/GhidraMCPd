@@ -33,6 +33,7 @@ from bridge.ghidra.client import (
     GhidraClient,
 )
 from bridge.utils.program_context import PROGRAM_SELECTIONS
+from bridge.tests.plugin_http import plugin_transport
 
 PLUGIN_SOURCE = (
     Path(__file__).resolve().parents[3]
@@ -100,7 +101,7 @@ def plugin():
 
 
 def _client(plugin: FakePlugin, expected: str | None = None) -> GhidraClient:
-    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(plugin.handle))
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(plugin.handle))
     client.expected_program_id = expected
     return client
 
@@ -171,7 +172,7 @@ def test_reads_do_not_check_the_program(plugin):
         seen.append(request.url.path)
         return plugin.handle(request)
 
-    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
     client.get_function_by_address(0x401000)
 
     assert seen == ["/get_function_by_address"]
@@ -287,8 +288,9 @@ def test_the_success_sentences_are_the_plugins_own():
     from bridge.ghidra.client import COMMENT_SET_ANSWER, RENAMED_ANSWER
 
     source = PLUGIN_SOURCE.read_text(encoding="utf-8")
-    assert f'success ? "{RENAMED_ANSWER}" : "Failed to rename function"' in source
-    assert source.count(f'success ? "{COMMENT_SET_ANSWER}" : "Failed to set comment"') == 2
+    # API 2: a failure throws a RouteError (an HTTP 4xx/5xx); success sends exactly this
+    assert f'plugin.sendResponse(exchange, "{RENAMED_ANSWER}");' in source
+    assert source.count(f'plugin.sendResponse(exchange, "{COMMENT_SET_ANSWER}");') == 2
 
 
 def test_a_failed_rename_is_a_failure(plugin):
@@ -297,7 +299,7 @@ def test_a_failed_rename_is_a_failure(plugin):
             return httpx.Response(200, text="Failed to rename function")
         return plugin.handle(request)
 
-    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
 
     assert client.rename_function(0x401000, "taken_name") is False
     assert client.last_error.reason == "Failed to rename function"

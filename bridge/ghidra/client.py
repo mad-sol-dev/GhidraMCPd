@@ -86,6 +86,21 @@ _FUNCTION_LINE = re.compile(r"^.+ at [0-9a-fA-F]+$")
 RENAMED_ANSWER = "Function renamed successfully"
 COMMENT_SET_ANSWER = "Comment set successfully"
 
+#: The plugin's answer convention this bridge speaks (X-GhidraMCP-API).  At 2,
+#: every failure is an HTTP 4xx/5xx with {"status":"error","code","error"};
+#: older plugins answered failures in HTTP 200 prose, which this bridge no
+#: longer tries to recognise (R.24).
+PLUGIN_API_HEADER = "X-GhidraMCP-API"
+REQUIRED_PLUGIN_API = 2
+PLUGIN_TOO_OLD = (
+    "the Ghidra plugin predates API 2 (structured errors); install the "
+    "current GhidraMCP extension from this repository and restart Ghidra"
+)
+
+#: Answers to a read that are facts about the program, not failures: nothing
+#: is there.  Everything else the plugin refuses raises UpstreamFailed.
+ABSENT_CODES = frozenset({"NOT_FOUND", "UNMAPPED"})
+
 #: Endpoint keys that change the program (or, for SAVE_PROGRAM, its file).
 #: Each request through one of them is checked first: the active program must
 #: be known, and must be the session's selection when there is one; the
@@ -136,6 +151,12 @@ class EndpointResolver:
             if not _route_missing(result):
                 self._cache[key] = candidate
                 return result
+        if _route_missing(result):
+            raise UpstreamFailed(
+                f"the plugin has none of the routes {', '.join('/' + c for c in candidates)}; {PLUGIN_TOO_OLD}",
+                code="PLUGIN_TOO_OLD",
+                status=404,
+            )
         return result
 
 
@@ -157,10 +178,12 @@ class EndpointRequester:
 
     def request(self, path: str) -> List[str]:
         if self.method == "GET":
-            return self.client._request_lines("GET", path, key=self.key, params=self.params)
+            return self.client._request_lines(
+                "GET", path, key=self.key, params=self.params, route_may_be_missing=True
+            )
         if self.method == "POST":
             return self.client._request_lines(
-                "POST", path, key=self.key, data=self.data
+                "POST", path, key=self.key, data=self.data, route_may_be_missing=True
             )
         raise ValueError(f"Unsupported method {self.method}")
 
@@ -168,11 +191,7 @@ class EndpointRequester:
 def _route_missing(result: object) -> bool:
     """The plugin has no such route: the JDK server's own 404, which is not JSON."""
 
-    return (
-        isinstance(result, RequestError)
-        and result.status == 404
-        and not result.reason.lstrip().startswith("{")
-    )
+    return isinstance(result, RequestError) and result.code == "ROUTE_MISSING"
 
 
 def _is_error(lines: object) -> bool:
@@ -233,9 +252,16 @@ class RequestError:
     status: Optional[int]
     reason: str
     retryable: bool
+    #: The plugin's error code (API 2), when it sent one.
+    code: Optional[str] = None
 
     def as_dict(self) -> Dict[str, object]:
-        return {"status": self.status, "reason": self.reason, "retryable": self.retryable}
+        payload: Dict[str, object] = {
+            "status": self.status, "reason": self.reason, "retryable": self.retryable,
+        }
+        if self.code is not None:
+            payload["code"] = self.code
+        return payload
 
 
 @dataclass(slots=True)
@@ -316,10 +342,11 @@ class GhidraClient:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "required": ["address", "literal"],
+                                "required": ["address", "literal", "refs"],
                                 "properties": {
                                     "address": {"type": "string"},
                                     "literal": {"type": "string"},
+                                    "refs": {"type": "integer", "minimum": 0},
                                 },
                                 "additionalProperties": False,
                             },
@@ -378,7 +405,19 @@ class GhidraClient:
         key: Optional[str] = None,
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
+        route_may_be_missing: bool = False,
     ) -> List[str] | RequestError:
+        """The answer's lines, or a RequestError for an answer that says "not there".
+
+        Under API 2 the plugin's status decides: a read answered 404 NOT_FOUND
+        or UNMAPPED is a fact and comes back as a RequestError for the caller
+        to treat as absent.  Any other failure -- another error status, any
+        failed write, a transport error, a plugin that does not speak API 2 --
+        raises UpstreamFailed, so it cannot be mistaken for an empty result.
+        A missing route (the JDK server's HTML 404) is returned only to the
+        resolver (``route_may_be_missing``), which then tries the next alias.
+        """
+
         self._last_error = None
         if not self._is_allowed(method, key=key, path=path):
             logger.error("Attempted to call non-whitelisted endpoint %s %s", method, path)
@@ -428,7 +467,11 @@ class GhidraClient:
                         "error": str(exc),
                     },
                 )
-                return self._last_error
+                raise UpstreamFailed(
+                    f"{method} /{path} failed: {exc}",
+                    status=self._last_error.status,
+                    retryable=retryable,
+                ) from exc
         duration_ms = (perf_counter() - start) * 1000.0
         logger.info(
             "ghidra.request",
@@ -439,41 +482,56 @@ class GhidraClient:
                 "duration_ms": duration_ms,
             },
         )
-        if response.is_error:
-            retryable = int(response.status_code) >= 500 if response.status_code is not None else False
-            reason = response.text.strip()
-            if response.status_code == 409 and key in WRITE_ENDPOINT_KEYS:
-                try:
-                    reason = str(json.loads(reason).get("error") or reason)
-                except (json.JSONDecodeError, AttributeError):
-                    pass
-                if reason.startswith(WRITE_REFUSED_PREFIX):
-                    return self._refuse_write(RequestError(status=409, reason=reason, retryable=False))
-            self._last_error = RequestError(
-                status=int(response.status_code) if response.status_code is not None else None,
-                reason=reason,
-                retryable=retryable,
+        status = int(response.status_code)
+        body = response.text
+        if status == 404 and not body.lstrip().startswith("{"):
+            # The JDK server's own 404: the plugin has no such route at all.
+            missing = RequestError(
+                status=404, reason=f"the plugin has no route /{path}", retryable=False, code="ROUTE_MISSING"
             )
-            return self._last_error
+            self._last_error = missing
+            if route_may_be_missing:
+                return missing
+            raise UpstreamFailed(f"{missing.reason}; {PLUGIN_TOO_OLD}", code="PLUGIN_TOO_OLD", status=404)
+        api = response.headers.get(PLUGIN_API_HEADER, "")
+        if not api.strip().isdigit() or int(api) < REQUIRED_PLUGIN_API:
+            self._last_error = RequestError(
+                status=None, reason=PLUGIN_TOO_OLD, retryable=False, code="PLUGIN_TOO_OLD"
+            )
+            raise UpstreamFailed(PLUGIN_TOO_OLD, code="PLUGIN_TOO_OLD")
+        if response.is_error:
+            code: Optional[str] = None
+            reason = body.strip()
+            try:
+                error_body = json.loads(body)
+            except json.JSONDecodeError:
+                error_body = None
+            if isinstance(error_body, Mapping):
+                reason = str(error_body.get("error") or reason)
+                code = str(error_body["code"]) if error_body.get("code") else None
+            if status == 409 and key in WRITE_ENDPOINT_KEYS and reason.startswith(WRITE_REFUSED_PREFIX):
+                return self._refuse_write(
+                    RequestError(status=409, reason=reason, retryable=False, code=code)
+                )
+            retryable = status >= 500 or status == 425
+            self._last_error = RequestError(status=status, reason=reason, retryable=retryable, code=code)
+            if method.upper() == "GET" and code in ABSENT_CODES:
+                return self._last_error
+            raise UpstreamFailed(reason, code=code, status=status, retryable=retryable)
         self._last_error = None
-        text = response.text
+        text = body
         try:
             payload = json.loads(text)
         except json.JSONDecodeError:
             payload = None
         # A page envelope ({"items": [...], "error": ...}) is left to the page
         # parsers: searchScalars sends found items *with* an error when its
-        # inspection cap stops it, and folding the whole page into an error
-        # threw those items away.
+        # inspection cap stops it.  Any other 200 carrying "error" is not an
+        # API 2 answer and is a failure.
         if isinstance(payload, Mapping) and "error" in payload and "items" not in payload:
             message = str(payload.get("error"))
-            retryable = int(response.status_code) >= 500 if response.status_code is not None else False
-            self._last_error = RequestError(
-                status=int(response.status_code) if response.status_code is not None else None,
-                reason=message,
-                retryable=retryable,
-            )
-            return self._last_error
+            self._last_error = RequestError(status=status, reason=message, retryable=False)
+            raise UpstreamFailed(message, status=status)
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
 
@@ -494,7 +552,10 @@ class GhidraClient:
     def _write_target(self) -> str | RequestError:
         """The domain_file_id a write may go to, or why it may not be sent."""
 
-        status = self.get_current_program_status()
+        try:
+            status = self.get_current_program_status()
+        except UpstreamFailed:
+            status = None
         if not isinstance(status, Mapping):
             return RequestError(
                 status=None,
@@ -1160,7 +1221,7 @@ class GhidraClient:
             address = str(raw.get("address", "")).strip()
             literal_val = raw.get("literal", "")
             literal = str(literal_val)
-            results.append({"address": address, "literal": literal})
+            results.append({"address": address, "literal": literal, "refs": int(raw.get("refs", 0))})
         return results
 
     def list_strings(
@@ -1191,6 +1252,7 @@ class GhidraClient:
                 {
                     "address": str(raw.get("address", "")).strip(),
                     "literal": str(raw.get("literal", "")),
+                    "refs": int(raw.get("refs", 0)),
                 }
             )
         # The plugin knows whether more pages follow; it does not know the
@@ -1526,11 +1588,6 @@ class GhidraClient:
                 "dry_run": "true" if dry_run else "false",
             },
         )
-        if isinstance(lines, RequestError) and lines.status is not None and lines.status < 400:
-            # An HTTP 200 carrying {"error": ...}: the plugin answered and
-            # refused -- an invalid name, say.  _request_lines folds that into a
-            # RequestError; for this route it is the answer, not a failure.
-            return {"status": "error", "error": lines.reason}
         if _is_error(lines):
             if self._last_error is None:
                 self._last_error = RequestError(

@@ -25,7 +25,14 @@ from ...utils.logging import (
     increment_counter,
     request_scope,
 )
-from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
+from .._shared import (
+    envelope_error,
+    envelope_ok,
+    envelope_response,
+    error_response,
+    response_schema_error,
+    upstream_failure_envelope,
+)
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -373,7 +380,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
             except UpstreamFailed as exc:
-                return error_response(ErrorCode.UNAVAILABLE, str(exc))
+                return envelope_response(upstream_failure_envelope(exc))
             valid, errors = validate_payload("search_functions.v1.json", payload)
             if valid:
                 return envelope_response(envelope_ok(payload))

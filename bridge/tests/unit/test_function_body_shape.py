@@ -21,6 +21,7 @@ from bridge.api.validators import validate_payload
 from bridge.features import function_range
 from bridge.features.listing import ListingUnavailable
 from bridge.ghidra.client import GhidraClient
+from bridge.tests.plugin_http import plugin_transport
 
 
 def _client(body: str) -> GhidraClient:
@@ -31,7 +32,7 @@ def _client(body: str) -> GhidraClient:
         return httpx.Response(200, text=body)
 
     handler.requests = []
-    transport = httpx.MockTransport(handler)
+    transport = plugin_transport(handler)
     client = GhidraClient("http://ghidra.test/", transport=transport)
     client.last_requests = handler.requests
     return client

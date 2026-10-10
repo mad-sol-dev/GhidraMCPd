@@ -33,7 +33,8 @@
             "properties": {
               "status": {"type": ["integer", "null"]},
               "reason": {"type": "string"},
-              "retryable": {"type": "boolean"}
+              "retryable": {"type": "boolean"},
+              "code": {"type": "string"}
             }
           }
         }

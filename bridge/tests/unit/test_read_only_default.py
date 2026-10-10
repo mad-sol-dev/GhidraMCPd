@@ -23,6 +23,7 @@ from bridge.api.tools import register_tools
 from bridge.features import datatypes, jt, labels, mmio
 from bridge.utils.config import WRITES_DISABLED_NOTE, WRITES_ENABLE_HOWTO, writes_status
 from bridge.utils.program_context import PROGRAM_SELECTIONS
+from bridge.tests.plugin_http import plugin_transport
 
 
 REPO = Path(__file__).resolve().parents[3]
@@ -174,7 +175,7 @@ def test_health_reports_write_enablement(enabled):
     from bridge.ghidra.client import GhidraClient
 
     def factory():
-        transport = httpx.MockTransport(lambda request: httpx.Response(200, text="{}"))
+        transport = plugin_transport(lambda request: httpx.Response(200, text="{}"))
         client = GhidraClient("http://ghidra.test/", transport=transport)
         return client
 

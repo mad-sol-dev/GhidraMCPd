@@ -64,6 +64,7 @@ from ._shared import (
     envelope_ok,
     inject_client,
     response_schema_error,
+    upstream_failure_envelope,
     write_refusal_envelope,
 )
 from .validators import validate_payload
@@ -113,7 +114,11 @@ def _maybe_autoopen_program(
         open_kwargs["path"] = path
     if on_dirty is not None:
         open_kwargs["on_dirty"] = on_dirty
-    payload = client.open_program(domain_file_id, **open_kwargs)
+    try:
+        payload = client.open_program(domain_file_id, **open_kwargs)
+    except UpstreamFailed as exc:
+        # returned, not raised: the caller restores the session's selection
+        return [], upstream_failure_envelope(exc, getattr(client, "last_error", None))
     if payload is None:
         upstream = getattr(getattr(client, "last_error", None), "as_dict", lambda: None)()
         return (
@@ -394,27 +399,25 @@ def register_tools(
         def wrapper(*args, **kwargs):
             client_arg = kwargs.get("client") if "client" in kwargs else (args[0] if args else None)
             should_require_ready = require_ready if require_ready is not None else lock_usage
-            if should_require_ready and client_arg is not None:
-                readiness = _ensure_program_ready(client_arg)
-                if readiness is not None:
-                    return readiness
-
-            mark_used_for_context(server, lock_usage=lock_usage)
-            if isinstance(client_arg, GhidraClient):
-                client_arg.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(
-                    _current_requestor()
-                )
             try:
+                # the readiness check is a plugin request too: a plugin that
+                # does not speak API 2 fails here first
+                if should_require_ready and client_arg is not None:
+                    readiness = _ensure_program_ready(client_arg)
+                    if readiness is not None:
+                        return readiness
+
+                mark_used_for_context(server, lock_usage=lock_usage)
+                if isinstance(client_arg, GhidraClient):
+                    client_arg.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(
+                        _current_requestor()
+                    )
                 result = fn(*args, **kwargs)
             except UpstreamFailed as exc:
-                # A failed request ends the call as UNAVAILABLE, never as an
-                # empty result that reads like a statement about the program.
-                upstream = getattr(client_arg, "last_error", None)
-                return envelope_error(
-                    ErrorCode.UNAVAILABLE,
-                    str(exc),
-                    upstream_error=upstream.as_dict() if isinstance(upstream, RequestError) else None,
-                )
+                # A failed request ends the call with the plugin's own verdict,
+                # never as an empty result that reads like a statement about
+                # the program.
+                return upstream_failure_envelope(exc, getattr(client_arg, "last_error", None))
             refusal = getattr(client_arg, "write_refusal", None)
             if isinstance(refusal, RequestError):
                 return write_refusal_envelope(refusal)
@@ -790,12 +793,6 @@ def register_tools(
                     upstream_error=upstream,
                 )
 
-            if response.get("status") == "error":
-                return envelope_error(
-                    ErrorCode.INVALID_REQUEST,
-                    response.get("message", "Navigation failed"),
-                )
-
             return envelope_ok({
                 "address": response.get("address"),
                 "message": response.get("message", "Navigated successfully")
@@ -871,12 +868,6 @@ def register_tools(
                     upstream_error=upstream,
                 )
 
-            if response.get("status") == "error":
-                return envelope_error(
-                    ErrorCode.INVALID_REQUEST,
-                    response.get("message", "Failed to check dirty state"),
-                )
-
             return envelope_ok({
                 "changed": response.get("changed") == "true",
                 "can_save": response.get("can_save") == "true",
@@ -916,12 +907,6 @@ def register_tools(
                     ErrorCode.UNAVAILABLE,
                     "Failed to save program.",
                     upstream_error=upstream,
-                )
-
-            if response.get("status") == "error":
-                return envelope_error(
-                    ErrorCode.INVALID_REQUEST,
-                    response.get("error", "Failed to save program"),
                 )
 
             saved = response.get("saved") == "true"
@@ -2187,7 +2172,7 @@ def register_tools(
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
         except UpstreamFailed as exc:
-            return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
+            return upstream_failure_envelope(exc)
 
         valid, errors = validate_payload("search_functions.v1.json", data)
         if not valid:

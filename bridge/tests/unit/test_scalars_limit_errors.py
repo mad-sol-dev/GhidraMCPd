@@ -16,6 +16,7 @@ from bridge.features import scalars
 from bridge.ghidra.client import GhidraClient
 from bridge.utils.cache import get_search_cache
 from bridge.utils.errors import UpstreamFailed
+from bridge.tests.plugin_http import plugin_transport
 
 CAP = "inspection cap of 500000 instructions reached before completing the page"
 
@@ -26,7 +27,7 @@ def _client(page: dict) -> GhidraClient:
             return httpx.Response(200, text=json.dumps(page))
         return httpx.Response(404, text="<h1>404 Not Found</h1>")
 
-    return GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    return GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
 
 
 @pytest.fixture(autouse=True)
@@ -67,7 +68,7 @@ def test_an_empty_body_is_not_an_empty_page():
     def handle(request):
         return httpx.Response(200, text="")
 
-    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
 
     with pytest.raises(UpstreamFailed, match="empty body"):
         scalars.search_scalars(client, value=0x10, query="0x10", limit=5, page=1)
@@ -85,7 +86,7 @@ def test_with_context_passes_the_cap_on():
             return httpx.Response(200, text="002af9c0: 1000A0E3 mov r0,#0x10")
         return httpx.Response(404, text="<h1>404 Not Found</h1>")
 
-    client = GhidraClient("http://ghidra.test/", transport=httpx.MockTransport(handle))
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(handle))
     result = batch_ops.search_scalars_with_context(client, value=0x10, context_lines=0, limit=5)
 
     assert result["truncated"] is True

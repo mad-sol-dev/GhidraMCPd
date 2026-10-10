@@ -14,7 +14,12 @@ from ...ghidra.client import GhidraClient, RequestError
 from ...utils.errors import ErrorCode, UpstreamFailed
 from ...utils.program_context import PROGRAM_SELECTIONS, requestor_from_request
 from ..validators import validate_payload
-from .._shared import envelope_response, error_response, write_refusal_envelope
+from .._shared import (
+    envelope_response,
+    error_response,
+    upstream_failure_envelope,
+    write_refusal_envelope,
+)
 
 JsonBody = Tuple[Dict[str, object] | None, JSONResponse | None]
 RouteHandler = Callable[[Request, GhidraClient], Awaitable[JSONResponse]]
@@ -75,7 +80,7 @@ def build_with_client(
                     try:
                         response = await func(request, client)
                     except UpstreamFailed as exc:
-                        return error_response(ErrorCode.UNAVAILABLE, str(exc))
+                        return envelope_response(upstream_failure_envelope(exc, client.last_error))
                 refusal = getattr(client, "write_refusal", None)
                 if isinstance(refusal, RequestError):
                     return envelope_response(write_refusal_envelope(refusal))

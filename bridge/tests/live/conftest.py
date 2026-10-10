@@ -11,6 +11,7 @@ import os
 import pytest
 
 from bridge.ghidra.client import GhidraClient
+from bridge.utils.errors import UpstreamFailed
 
 GHIDRA_URL = os.getenv("GHIDRA_SERVER_URL", "http://127.0.0.1:8080/")
 
@@ -37,6 +38,10 @@ def _probe() -> tuple[Optional[dict], str]:
 
     try:
         info = client.get_project_info()
+    except UpstreamFailed as exc:
+        # Ghidra answered; what it answered is the reason (e.g. a plugin that
+        # predates API 2), not "no instance".
+        return None, f"Ghidra at {GHIDRA_URL} cannot be used: {exc}"
     except Exception as exc:  # noqa: BLE001
         return None, f"no Ghidra instance at {GHIDRA_URL} ({type(exc).__name__})"
     finally:

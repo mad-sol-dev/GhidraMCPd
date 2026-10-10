@@ -478,7 +478,6 @@ All three routes share the standard per-request write guard. Each successful wri
     },
     "function": {
       "address": "string",
-      "comment": "string",
       "entry_point": "string",
       "name": "string",
       "range": {

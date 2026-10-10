@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from bridge.ghidra.client import GhidraClient
+from bridge.tests.plugin_http import plugin_error, plugin_transport
+from bridge.utils.errors import UpstreamFailed
 
 
 # Both handlers answer the plugin's own route names.  They used to answer the
@@ -36,7 +39,7 @@ def _success_handler(request: httpx.Request) -> httpx.Response:
 
 
 def test_ghidra_client_happy_path() -> None:
-    client = GhidraClient("http://ghidra/", transport=httpx.MockTransport(_success_handler))
+    client = GhidraClient("http://ghidra/", transport=plugin_transport(_success_handler))
 
     assert client.read_dword(0x1000) == 0x1000
     meta = client.get_function_by_address(0x1000)
@@ -51,40 +54,64 @@ def test_ghidra_client_happy_path() -> None:
 
 
 def _failure_handler(request: httpx.Request) -> httpx.Response:
+    """Failures as the plugin sends them under API 2: a status and one JSON body."""
+
     path = request.url.path
     if path.endswith("/api/current_program.json"):
         return httpx.Response(200, json=_STATUS)
     if path.endswith("/read_dword"):
-        return httpx.Response(200, text="n/a\n")
+        return plugin_error(404, "UNMAPPED", "memory access failed: Unable to read bytes at ram:7f000000")
     if path.endswith("/get_function_by_address"):
-        return httpx.Response(500, text="Internal error\n")
-    # What the plugin really says when a rename or comment fails: HTTP 200
-    # and prose.  These answers used to be "ERROR: ...", which it never sends.
+        return plugin_error(404, "NOT_FOUND", "No function found at address 0x00001000")
     if path.endswith("/rename_function_by_address"):
-        return httpx.Response(200, text="Failed to rename function")
-    if path.endswith("/set_decompiler_comment"):
-        return httpx.Response(200, text="Failed to set comment")
-    if path.endswith("/set_disassembly_comment"):
-        return httpx.Response(200, text="Failed to set comment")
-    return httpx.Response(404, text="ERROR: not found\n")
+        return plugin_error(409, "CONFLICT", "name already exists: FUN_00001000")
+    if path.endswith("/set_decompiler_comment") or path.endswith("/set_disassembly_comment"):
+        return plugin_error(404, "UNMAPPED", "no memory at 00001000")
+    if path.endswith("/decompile_function"):
+        return plugin_error(500, "INTERNAL", "Decompilation failed: timeout")
+    return httpx.Response(404, text="<h1>404 Not Found</h1>No context found for request")
 
 
-def test_ghidra_client_handles_failures() -> None:
-    client = GhidraClient("http://ghidra/", transport=httpx.MockTransport(_failure_handler))
+def test_absent_is_an_answer() -> None:
+    """A read answered NOT_FOUND or UNMAPPED is a fact: nothing there."""
 
-    assert client.read_dword(0x1000) is None
+    client = GhidraClient("http://ghidra/", transport=plugin_transport(_failure_handler))
+
+    assert client.read_dword(0x7F000000) is None
+    assert client.last_error.code == "UNMAPPED"
     assert client.get_function_by_address(0x1000) is None
-    assert client.rename_function(0x1000, "new") is False
-    assert client.last_error.reason == "Failed to rename function"
-    assert client.set_decompiler_comment(0x1000, "note") is False
-    assert client.set_disassembly_comment(0x1000, "note") is False
+    assert client.last_error.code == "NOT_FOUND"
+
+
+def test_failures_raise_with_the_plugins_code() -> None:
+    client = GhidraClient("http://ghidra/", transport=plugin_transport(_failure_handler))
+
+    with pytest.raises(UpstreamFailed) as raised:
+        client.rename_function(0x1000, "new")
+    assert (raised.value.code, raised.value.status) == ("CONFLICT", 409)
+    # a failed write is never "absent", not even a 404
+    with pytest.raises(UpstreamFailed) as raised:
+        client.set_decompiler_comment(0x1000, "note")
+    assert raised.value.code == "UNMAPPED"
+    with pytest.raises(UpstreamFailed, match="Decompilation failed"):
+        client.decompile_function(0x1000)
+
+
+def test_a_plugin_without_api_2_is_refused() -> None:
+    client = GhidraClient("http://ghidra/", transport=plugin_transport(_success_handler, api=None))
+
+    with pytest.raises(UpstreamFailed) as raised:
+        client.read_dword(0x1000)
+    assert raised.value.code == "PLUGIN_TOO_OLD"
+    assert "install" in str(raised.value)
 
 
 def test_ghidra_client_timeouts_are_reported() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("timed out", request=request)
 
-    client = GhidraClient("http://ghidra/", transport=httpx.MockTransport(handler), timeout=0.01)
+    client = GhidraClient("http://ghidra/", transport=plugin_transport(handler), timeout=0.01)
 
-    assert client.read_dword(0x1000) is None
-    assert client.rename_function(0x1000, "name") is False
+    with pytest.raises(UpstreamFailed) as raised:
+        client.read_dword(0x1000)
+    assert raised.value.retryable is True
