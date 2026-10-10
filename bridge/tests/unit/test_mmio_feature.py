@@ -161,3 +161,29 @@ def test_a_plugin_without_structured_listing_is_reported_not_emptied():
 
     with pytest.raises(ListingUnavailable, match="without JSON"):
         mmio.annotate(OldPlugin([]), function_addr=0x400000)
+
+
+def test_a_bitwise_op_on_a_register_has_no_value_and_no_address():
+    """MMIO-ZERO-TARGET: "and r0,r0,r1" came out as target 0x00000000."""
+
+    client = DummyClient([
+        _insn("0x002af9e4", "and", registers=("r0",)),
+        _insn("0x002afa24", "orr", imm="0x600000"),
+        _insn("0x002af9dc", "ldr", ref=("0xb0000214", "READ", False)),
+    ])
+
+    payload = mmio.annotate(client, function_addr=0x2AF9C0)
+
+    samples = {s["addr"]: s for s in payload["samples"]}
+    assert samples["0x002af9e4"] == {"addr": "0x002af9e4", "op": "AND", "target": None}
+    # A mask is not an address either.
+    assert samples["0x002afa24"] == {"addr": "0x002afa24", "op": "OR", "target": "0x00600000"}
+    assert samples["0x002af9dc"]["address_abs"] == "0xb0000214"
+
+
+def test_a_comment_names_no_value_it_does_not_have():
+    client = DummyClient([_insn("0x002af9e4", "and", registers=("r0",))])
+
+    mmio.annotate(client, function_addr=0x2AF9C0, dry_run=False, writes_enabled=True)
+
+    assert client.comments == [(0x002AF9E4, "MMIO bitwise AND")]

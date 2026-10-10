@@ -568,7 +568,7 @@
     },
     "MMIO-ZERO-TARGET": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     }
   }
 }

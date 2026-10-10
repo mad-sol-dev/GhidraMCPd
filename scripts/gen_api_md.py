@@ -675,25 +675,29 @@ CURATED_SECTIONS = dedent(
     {
       "ok": true,
       "data": {
-        "function": "0x0002df2c",
-        "reads": 10,
-        "writes": 9,
-        "bitwise_or": 2,
-        "bitwise_and": 1,
+        "function": "0x002af9c0",
+        "reads": 7,
+        "writes": 21,
+        "bitwise_or": 5,
+        "bitwise_and": 4,
         "toggles": 0,
         "annotated": 0,
         "samples": [
           {
-            "addr": "0x0002df30",
+            "addr": "0x002af9dc",
             "op": "READ",
-            "target": "0x00000018",
-            "address_abs": "0x00000018"
+            "target": "0xb0000214",
+            "address_abs": "0xb0000214"
           },
           {
-            "addr": "0x0002df34",
+            "addr": "0x002afa24",
             "op": "OR",
-            "target": "0x00004000",
-            "address_abs": "0x00004000"
+            "target": "0x00600000"
+          },
+          {
+            "addr": "0x002af9e4",
+            "op": "AND",
+            "target": null
           }
         ],
         "notes": ["dry-run requested: annotations were not applied"]
@@ -706,10 +710,8 @@ CURATED_SECTIONS = dedent(
 
     - `addr`: instruction address where the operation occurs
     - `op`: operation type (READ, WRITE, OR, AND, TOGGLE)
-    - `target`: immediate value extracted from the instruction
-    - `address_abs`: **absolute address** for the operation
-      - If `target` is a valid address (non-zero), uses `target`
-      - Otherwise falls back to `addr` (the instruction address)
+    - `target`: for READ/WRITE the address accessed, taken from Ghidra's reference; for OR/AND/TOGGLE the mask value, or `null` when the operand is a register
+    - `address_abs`: READ/WRITE only, the address accessed; absent for bitwise operations
     - `annotated`: number of comments actually written (0 when `dry_run: true`)
     - `notes`: array of informational messages
 

@@ -69,12 +69,17 @@
             ]
           },
           "target": {
-            "type": "string",
-            "pattern": "^0x[0-9a-fA-F]+$"
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "description": "READ/WRITE: the address accessed. OR/AND/TOGGLE: the mask value, or null when the operand is a register."
           },
           "address_abs": {
             "type": "string",
-            "pattern": "^0x[0-9a-fA-F]+$"
+            "pattern": "^0x[0-9a-fA-F]+$",
+            "description": "READ/WRITE only: the address accessed. Absent for bitwise operations, which have no address."
           }
         }
       }

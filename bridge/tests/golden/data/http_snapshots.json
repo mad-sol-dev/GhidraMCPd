@@ -280,19 +280,16 @@
       "samples": [
         {
           "addr": "0x00007008",
-          "address_abs": "0x00000002",
           "op": "OR",
           "target": "0x00000002"
         },
         {
           "addr": "0x0000700c",
-          "address_abs": "0xfffffffd",
           "op": "AND",
           "target": "0xfffffffd"
         },
         {
           "addr": "0x00007010",
-          "address_abs": "0x00000001",
           "op": "TOGGLE",
           "target": "0x00000001"
         }

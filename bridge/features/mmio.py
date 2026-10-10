@@ -25,15 +25,25 @@ class _Operation:
     op: str
     target: Optional[int]
 
-    def to_sample(self) -> Dict[str, str]:
-        # address_abs is the absolute address: target if available, otherwise addr
-        address_abs = self.target if (self.target is not None and self.target != 0) else self.addr
-        return {
+    def to_sample(self) -> Dict[str, Optional[str]]:
+        """One sample line.
+
+        For READ/WRITE ``target`` is the address accessed, repeated as
+        ``address_abs``.  For OR/AND/TOGGLE it is the mask value, or None when
+        the operand is a register (``and r0,r0,r1``); there is no address, so
+        no ``address_abs``.  Both used to be filled regardless: a missing value
+        came out as 0x00000000 -- "AND with zero" -- and address_abs fell back
+        to the instruction address, or carried the mask as if it were one.
+        """
+
+        sample: Dict[str, Optional[str]] = {
             "addr": int_to_hex(self.addr),
             "op": self.op,
-            "target": int_to_hex(self.target) if self.target is not None else "0x00000000",
-            "address_abs": int_to_hex(address_abs),
+            "target": int_to_hex(self.target) if self.target is not None else None,
         }
+        if self.op in ("READ", "WRITE") and self.target is not None:
+            sample["address_abs"] = int_to_hex(self.target)
+        return sample
 
 
 def _bitwise_op(mnemonic: str) -> Optional[str]:
@@ -206,18 +216,17 @@ def annotate(
 
 
 def _format_comment(operation: _Operation) -> str:
-    target = int_to_hex(operation.target) if operation.target is not None else "0x00000000"
-    if operation.op == "READ":
-        action = "read"
-    elif operation.op == "WRITE":
-        action = "write"
-    elif operation.op == "OR":
-        action = "bitwise OR"
-    elif operation.op == "AND":
-        action = "bitwise AND"
-    else:
-        action = "toggle"
-    return f"MMIO {action} target {target}"
+    action = {
+        "READ": "read",
+        "WRITE": "write",
+        "OR": "bitwise OR",
+        "AND": "bitwise AND",
+    }.get(operation.op, "toggle")
+    if operation.target is None:
+        # A register operand: there is no value to name, and "0x00000000"
+        # would claim one.
+        return f"MMIO {action}"
+    return f"MMIO {action} target {int_to_hex(operation.target)}"
 
 
 __all__ = ["annotate", "WritesDisabledError"]

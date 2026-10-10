@@ -862,7 +862,7 @@
       "title": "mmio meldet bitweise Operationen ohne Immediate als target 0x0",
       "area": "bridge",
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "dod": [
         "Eine Operation ohne Immediate traegt kein erfundenes target",
         "Schemaaenderung bewusst, beide Projekte geprueft"
