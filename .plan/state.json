@@ -476,9 +476,9 @@
       "updated_at": null
     },
     "R.26": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "c608a50",
+      "status": "done",
+      "updated_at": "2026-10-10T00:00:00+00:00"
     },
     "R.27": {
       "commit": null,
@@ -520,6 +520,10 @@
     },
     "DOC-DEFAULT-DRIFT": {
       "commit": "pending",
+      "status": "done"
+    },
+    "WRITE-ANSWER-TRUTHFUL": {
+      "commit": "b5d961a",
       "status": "done"
     },
     "DISASM-SILENT-SKIP": {

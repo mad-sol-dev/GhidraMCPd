@@ -490,7 +490,7 @@
         "Mismatches rejected before performing mutations, with structured errors",
         "Tests cover matching, mismatching, and missing domain_file_id cases"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.27",
@@ -660,6 +660,20 @@
       "status": "done",
       "notes": [
         "20013 Bytes im Referenzlauf, strukturell unveraendert seit Stufe 0. Der groesste verbliebene Sparposten."
+      ]
+    },
+    {
+      "id": "WRITE-ANSWER-TRUTHFUL",
+      "title": "Gescheiterte Umbenennung/Kommentar nicht als Erfolg melden",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "Nur die Erfolgssaetze des Plugins gelten als erledigt, alles andere ist ein Fehler mit der Antwort als Grund",
+        "Stubs antworten mit den Saetzen, die das Plugin wirklich sendet; ein Test prueft sie gegen den Java-Quelltext"
+      ],
+      "status": "done",
+      "notes": [
+        "Gefunden beim Schreiben von R.26. Die Stubs antworteten OK und ERROR: ..., was das Plugin nie sendet."
       ]
     },
     {
