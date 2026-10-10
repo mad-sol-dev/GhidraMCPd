@@ -2044,3 +2044,28 @@ das Weiterlaufen von `/disassembleAt`; deshalb meldet es künftig den echten Sta
 meldet; `paginateList`-Routen bleiben. Aufteilung in Teil A (nur Bridge, zuerst) und Teil B
 (Plugin, ein Reinstall) in `.plan/TODO.md` unter R.24-PHASE3.
 
+### Teil A erledigt (2026-10-11, nur Bridge)
+
+Sieben Commits, `3bc4e63` bis `4d57f8e`:
+
+- `changed`/`can_save`/`saved` werden als `"true"`/`true` und `"false"`/`false` gelesen,
+  jeder andere Wert ist ein Fehler. Damit kann das Plugin in Teil B auf echte Booleans gehen.
+- Gekappte Referenzlisten sagen es: Es wird eins mehr als das Limit angefragt.
+  `string_xrefs_compact` bekommt `truncated` (`count` = gezeigte Aufrufer), die
+  Xref-Zusammenfassung von `analyze_function_complete` `inbound_truncated`/`outbound_truncated`,
+  `features.notes` nennen das Limit, `meta.truncated` berücksichtigt die Xrefs. Live: Der
+  String an 0x00400000 hat genau 20 Referenzen, beim Default-Limit 20; die alte Antwort war von
+  einer gekappten nicht zu unterscheiden.
+- `search_functions(context_lines)`: Ein Fehler beim Kontextfenster bleibt ein Fehler.
+- `collect` hält die Grenzen der eigenen Tools (`length`, `count`, `context_lines`).
+- `search_scalars_with_context` gibt keinen Cursor mehr aus, den es nicht annimmt; der
+  Docstring nannte ein `page`, das es nicht gibt. Schema-Sockel 8 494 → 8 485.
+- `reference_run.py`: Der Fingerabdruck prüft den HTTP-Status.
+- Stubs wie das Plugin: Cursor `v1.…` (Helfer `plugin_cursor` in `plugin_http.py`, verankert an
+  einem Live-Cursor), `readBytes` mindestens 1 Byte, ohne Programm 425 `NOT_READY`.
+
+Live: 59/59 grün, Referenzlauf 40/40 ohne Fehler, 60 171 → 60 193 Bytes (die neuen Felder),
+Programm danach unverändert (`check_dirty_state`). Offen bleibt Teil B. Im selben Zuge nicht
+angefasst: `analyze_function_complete.strings` ist ebenfalls bei `limit` gekappt, zeigt aber
+`limit` mit an.
+
