@@ -57,7 +57,7 @@ def test_find_in_disassembly_basic() -> None:
     matches = result["matches"]["disassembly"]
     assert len(matches) == 1
     assert matches[0]["line_number"] == 2
-    assert matches[0]["address"] == "0x401004"
+    assert matches[0]["address"] == "0x00401004"
     assert "0x251" in matches[0]["matched_text"]
 
 
@@ -325,3 +325,82 @@ def test_special_regex_chars_escaped_in_literal_mode() -> None:
 
     assert result["summary"]["total_matches"] == 1
     assert "[R1" in result["matches"]["disassembly"][0]["matched_text"]
+
+
+# --- fmt="text", address, truncated (FIND-IN-FUNCTION-TEXT) -------------------
+
+from bridge.features.search_function import find_in_function as _find  # noqa: E402
+
+
+class _ListingStub:
+    def __init__(self, disasm, decompiled=""):
+        self._disasm = disasm
+        self._decompiled = decompiled
+
+    def disassemble_function(self, address):
+        return list(self._disasm)
+
+    def decompile_function(self, address):
+        return self._decompiled
+
+
+_FN = [  # 0x002AF9C0 as the plugin renders it
+    "002af9d8: mov r0,#0xb0000000",
+    "002af9dc: ldr r0,[r0,#0x214]",
+    "002af9e0: ldr r1,[0x2afb34]",
+    "002af9e4: and r0,r0,r1",
+    "002af9e8: mov r1,#0xb0000000",
+    "002af9ec: str r0,[r1,#0x214]",
+    "002af9f0: ldr r0,[0x2afb38]",
+    "002af9f4: cmp r5,r0",
+    "002af9f8: bne 0x002afa38",
+    "002af9fc: mov r1,r5",
+    "002afa00: mov r0,#0x3",
+    "002afa04: bl 0x002a1c48",
+    "002afa08: mov r4,r0",
+    "002afa0c: ldr r1,[0x2afb3c]",
+]
+
+
+def test_text_merges_overlapping_windows_and_marks_gaps():
+    data = _find(_ListingStub(_FN), address=0x2AF9C0, query="ldr", mode="disasm",
+                 context_lines=1, fmt="text")
+
+    assert data["lines"]["disassembly"] == [
+        "002af9d8: mov r0,#0xb0000000",
+        "002af9dc: ldr r0,[r0,#0x214]",
+        "002af9e0: ldr r1,[0x2afb34]",
+        "002af9e4: and r0,r0,r1",
+        "--",
+        "002af9ec: str r0,[r1,#0x214]",
+        "002af9f0: ldr r0,[0x2afb38]",
+        "002af9f4: cmp r5,r0",
+        "--",
+        "002afa08: mov r4,r0",
+        "002afa0c: ldr r1,[0x2afb3c]",
+    ]
+    assert "matches" not in data
+    assert data["summary"]["disassembly_matches"] == 4
+
+
+def test_json_carries_the_address_it_used_to_leave_null():
+    data = _find(_ListingStub(_FN), address=0x2AF9C0, query="bne", mode="disasm", fmt="json")
+    assert data["matches"]["disassembly"][0]["address"] == "0x002af9f8"
+
+
+def test_truncated_means_matches_were_left_out():
+    exactly = _find(_ListingStub(_FN), address=0x2AF9C0, query="ldr", mode="disasm", limit=4)
+    assert exactly["summary"]["truncated"] is False
+    assert exactly["summary"]["disassembly_found"] == 4
+
+    cut = _find(_ListingStub(_FN), address=0x2AF9C0, query="ldr", mode="disasm", limit=3)
+    assert cut["summary"]["truncated"] is True
+    assert cut["summary"]["disassembly_found"] == 4
+    assert cut["summary"]["disassembly_matches"] == 3
+
+
+def test_decompile_windows_are_separated_too():
+    code = "\n".join(["int f(void) {", "  a = 1;", "  b = 2;", "  c = 3;", "  d = 4;", "  return a;", "}"])
+    data = _find(_ListingStub([], code), address=0x1000, query="a", mode="decompile",
+                 context_lines=0, fmt="text")
+    assert data["lines"]["decompile"] == ["  a = 1;", "--", "  return a;"]

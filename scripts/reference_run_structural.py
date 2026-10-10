@@ -189,6 +189,8 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
             "case_sensitive": False,
             "context_lines": 3,
             "limit": OLD_FIND_LIMIT,
+            # The JSON form the baseline measured; text became the default later.
+            "fmt": "json",
         },
     ),
     (
@@ -201,6 +203,8 @@ CALLS: Tuple[Tuple[str, Dict[str, Any]], ...] = (
             "case_sensitive": False,
             "context_lines": 3,
             "limit": OLD_FIND_LIMIT,
+            # The JSON form the baseline measured; text became the default later.
+            "fmt": "json",
         },
     ),
     (

@@ -657,7 +657,7 @@
         "Kontextzeilen als gerenderte Zeilen statt Objekte, wie disassemble_at",
         "json bleibt Default auf HTTP, text auf MCP -- wie in Stufe 3 entschieden"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "20013 Bytes im Referenzlauf, strukturell unveraendert seit Stufe 0. Der groesste verbliebene Sparposten."
       ]

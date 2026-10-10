@@ -2137,6 +2137,7 @@ def register_tools(
         case_sensitive: bool = False,
         context_lines: int = 3,
         limit: int = 20,
+        fmt: str = "text",
     ) -> Dict[str, object]:
         """Search a function's disassembly or decompilation for a pattern.
 
@@ -2151,6 +2152,7 @@ def register_tools(
             case_sensitive: default false.
             context_lines: lines each side of a match, default 3, max 16.
             limit: matches per mode, default 20, max 200.
+            fmt: 'text' (default; merged windows, '--' between) or 'json'.
 
         Example: find_in_function('0x002af9c0', 'ldr') to locate the constant
         pool a function loads from."""
@@ -2169,6 +2171,7 @@ def register_tools(
                     case_sensitive=case_sensitive,
                     context_lines=context_lines,
                     limit=limit,
+                    fmt=str(fmt).strip().lower(),
                 )
         except ValueError as exc:
             return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))

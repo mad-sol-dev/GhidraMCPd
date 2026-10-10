@@ -516,7 +516,7 @@
     },
     "FIND-IN-FUNCTION-TEXT": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "DOC-DEFAULT-DRIFT": {
       "commit": "pending",
