@@ -337,8 +337,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         void onProgramClosed(Program closed) {
             synchronized (lock) {
                 if (program == closed) {
-                    program = null;
-                    warnings = new ArrayList<>();
+                    track(null);
                 }
             }
         }
@@ -346,10 +345,21 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         private void trackProgram(Program tracked) {
             synchronized (lock) {
                 if (program != tracked) {
-                    warnings = new ArrayList<>();
+                    track(tracked);
                 }
-                program = tracked;
             }
+        }
+
+        /**
+         * The duration counts from here or from the snapshot that first saw a
+         * change -- a switch to LOADING between two reads is seen late, so the
+         * duration is a lower bound.
+         */
+        private void track(Program tracked) {
+            program = tracked;
+            warnings = new ArrayList<>();
+            lastState = currentState(tracked);
+            stateTransitionTime = System.currentTimeMillis();
         }
     }
 

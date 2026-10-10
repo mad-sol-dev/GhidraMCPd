@@ -360,7 +360,7 @@ def register_tools(
             recovery = []
             if state == "LOADING":
                 recovery.append(
-                    f"Ghidra has been running auto-analysis for {duration_seconds} s; "
+                    f"Ghidra has been running auto-analysis for at least {duration_seconds} s; "
                     "large binaries can take minutes. Progress shows in Ghidra's status bar."
                 )
                 recovery.append("Retry once get_current_program reports state READY.")
