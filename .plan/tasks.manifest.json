@@ -313,7 +313,7 @@
         "Name collisions handled (see the script's make_unique_name)",
         "rename_function and set_comment already exist and are unaffected"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "Blocked in practice, not merely unimplemented: labelling MMIO registers at 0xB1006xxx was needed and could not be done through the plugin.",
         "Root cause (verified 2026-08-20): the plugin's only createLabel() call is a fallback inside renameDataAtAddress(), guarded by listing.getDefinedDataAt(addr) != null. An unmapped MMIO register has no defined data, so the whole block is skipped. The /renameData handler ignores the outcome and always answers 'Rename data attempted'. The bridge exposes neither the endpoint nor any label tool.",

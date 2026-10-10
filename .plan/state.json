@@ -411,8 +411,8 @@
       "updated_at": null
     },
     "R.12": {
-      "commit": null,
-      "status": "todo",
+      "commit": "pending",
+      "status": "done",
       "updated_at": null
     },
     "R.13": {

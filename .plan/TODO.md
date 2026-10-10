@@ -19,7 +19,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
-- {R.12} Write-path utilities — **`apply_label` fehlt und blockiert real**: das Plugin kann kein Label an einer Adresse ohne definierte Daten setzen (createLabel nur als Zweig in `renameDataAtAddress` hinter `getDefinedDataAt != null`), `/renameData` meldet trotzdem Erfolg, und die Bridge bietet nichts davon an. Workaround: `scripts/ghidra/import_mmio_labels.py`. Braucht Plugin-Rebuild. `rename_function`/`set_comment` existieren bereits.
 - {R.13} Extension ZIP packaging + install checklist + CI/script smoke-test hook
 - {R.17} AGENTS.md guidance for ghidra-bridge usage and prompting defaults
 - {R.18} Cookbook snippets for USB/update/boot/MMIO workflows using MCP tools only
@@ -43,6 +42,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {R.12} `apply_label`: Plugin-Route `POST /createLabel` und Tool mit `dry_run`-Default und Schreibsperre; setzt Labels auch ohne definierte Daten (MMIO). Live verifiziert 2026-10-10 mit Plugin 1.3.57 an 0xB1006000 (anlegen, zurücklesen, kein Duplikat beim zweiten Mal; danach in Ghidra zurückgenommen, Programm ohne ungespeicherte Änderungen). `scripts/ghidra/import_mmio_labels.py` dupliziert bei erneutem Lauf nicht mehr (zk-inkjet CL-TOOL-REC-122: alle 96 importierten Register stehen dort doppelt).
 - [x] {STAGE-8} Naht Plugin↔Bridge: 8a Loopback-Bind, 8b Phantom-Tools entfernt, 8c Disassemblat als Struktur (mmio/analyze/strings lesen Felder), 8d `/functionsInRange` als JSON. Abgenommen 2026-10-10 mit Plugin 1.3.56, Ergebnisse in `ghidramcpd-rework.md`, Stufe 8.
 - [x] {MMIO-STALE-BASE} `mmio_annotate_compact` liest Adressen aus Ghidras Referenzen (Stufe 8c). An 0x002AF9C0 alle 28 Zugriffe = Ghidras Referenzen, die fünf alten Fehladressen korrigiert; Live-Test `bridge/tests/live/test_mmio_stale_base_live.py`, gegen den alten Stand rot.
 - [x] {PLAN-TESTS-RED} `bridge/tests/plan` wieder grün: `STAGE-8`, `IMAGE-BASE-STALE`, `DEAD-ALIAS-FIRST` in `state.json` und Manifest nachgetragen, `AGENT_LOCK`-Lease auf `main` bis 2026-10-23 verlängert. Der Lease-Test schlägt nach Ablauf erneut an — so gebaut, kein Fehler.

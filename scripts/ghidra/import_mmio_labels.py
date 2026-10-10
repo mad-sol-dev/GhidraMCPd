@@ -1,16 +1,20 @@
 # Ghidra script: import MMIO register labels from a register JSON.
 #
-# Why this exists as a script rather than an MCP tool
-# ---------------------------------------------------
-# The bridge has no way to place a label at an arbitrary address.  The Ghidra
-# plugin's only createLabel() call sits inside renameDataAtAddress(), behind
-# `listing.getDefinedDataAt(addr) != null` -- so it does nothing at an address
-# with no defined data, which is exactly what an unmapped MMIO register is.  The
-# /renameData endpoint that reaches it returns "Rename data attempted" without
-# checking, so the failure is silent, and the bridge does not expose it at all.
+# Why this exists as a script
+# ---------------------------
+# It was the only way to label an MMIO register: the plugin's one createLabel()
+# call sat inside renameDataAtAddress(), behind `getDefinedDataAt(addr) != null`,
+# which an unmapped register never passes, and /renameData answered "Rename data
+# attempted" either way.  Since R.12 the apply_label tool (plugin 1.3.57+) does
+# this for single addresses and is the normal way; the script remains a bulk
+# import from the register JSON.
 #
-# See .plan task R.12 (apply_label).  Once that exists, this script becomes a
-# convenience rather than the only way.
+# A rerun no longer duplicates.  Until 2026-10-10 make_unique_name() appended
+# _<ADDR> whenever the same name was already at the same address, so a second
+# run doubled every label: all 96 registers in the ZK-Inkjet app database carry
+# NAME and NAME_B100xxxx (zk-inkjet TRUTH.csv, CL-TOOL-REC-122).  Ghidra allows
+# one name at several addresses, so no suffix is ever needed; a name already at
+# its address is simply skipped.
 #
 # Input: a JSON file of the form
 #   {"entries": [{"address": "0xB1006000", "register_name": "FMI_CTL"}, ...]}
@@ -35,10 +39,8 @@ def in_target_range(addr):
     return 0xB1006000 <= addr <= 0xB1006FFF
 
 
-def make_unique_name(symtab, addr, addr_val, name):
-    if symtab.getSymbol(name, addr, None) is None:
-        return name
-    return "%s_%08X" % (name, addr_val)
+def already_labelled(symtab, addr, name):
+    return symtab.getSymbol(name, addr, None) is not None
 
 
 def run():
@@ -52,6 +54,7 @@ def run():
 
     symtab = program.getSymbolTable()
     created = 0
+    present = 0
     skipped = 0
 
     for ent in entries:
@@ -69,14 +72,16 @@ def run():
             continue
 
         addr = toAddr(addr_val)
-        name = make_unique_name(symtab, addr, addr_val, reg_name)
+        if already_labelled(symtab, addr, reg_name):
+            present += 1
+            continue
         try:
-            symtab.createLabel(addr, name, SourceType.USER_DEFINED)
+            symtab.createLabel(addr, reg_name, SourceType.USER_DEFINED)
             created += 1
         except Exception:
             skipped += 1
 
-    print("Import complete: created=%d skipped=%d" % (created, skipped))
+    print("Import complete: created=%d already_present=%d skipped=%d" % (created, present, skipped))
 
 
 run()
