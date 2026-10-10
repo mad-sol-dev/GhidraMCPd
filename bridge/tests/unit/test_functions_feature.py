@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
+import pytest
+
 from bridge.features import functions
+from bridge.utils.errors import UpstreamFailed
 
 
 class DummyClient:
@@ -147,3 +150,14 @@ def test_simple_rank_preserves_context_ordering() -> None:
     assert names == ["match_main", "match_helper"]
     windows = [item["context"]["window"] for item in ranked["items"]]
     assert all(window["before"] == 2 and window["after"] == 2 for window in windows)
+
+
+def test_a_failed_context_read_is_an_error_not_an_empty_window() -> None:
+    class FailingContext(DummyClient):
+        def disassemble_at(self, address: int, count: int) -> List[dict[str, str]]:
+            raise UpstreamFailed("disassembly failed", code="INTERNAL", status=500)
+
+    client = FailingContext(["alpha @ 0x00001000"])
+
+    with pytest.raises(UpstreamFailed):
+        functions.search_functions(client, query="", limit=1, page=1, context_lines=1)

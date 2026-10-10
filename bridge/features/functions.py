@@ -286,10 +286,9 @@ def search_functions(
             disassembly: List[Dict[str, str]] = []
             if callable(disassemble) and address_int is not None:
                 context_start = max(0, address_int - window_before * 4)
-                try:
-                    raw_context = disassemble(context_start, max(1, instruction_count))
-                except Exception:  # pragma: no cover - defensive guard
-                    raw_context = []
+                # A failed read propagates: an empty window would read as
+                # "nothing there" (UpstreamFailed becomes the tool's error).
+                raw_context = disassemble(context_start, max(1, instruction_count))
                 disassembly = _normalize_disassembly(raw_context)
             enriched["context"] = {
                 "window": {
