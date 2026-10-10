@@ -677,6 +677,18 @@
       ]
     },
     {
+      "id": "R.24-PHASE3",
+      "title": "R.24 Phase 3: Mehrdeutigkeiten bei Paginierung, Cursorn und Lesungen",
+      "area": "plugin, bridge",
+      "depends_on": ["R.24"],
+      "dod": [
+        "Leere Liste und hinter dem Ende unterscheidbar (has_more an den paginateList-Routen)",
+        "Ungueltiger Cursor ist ein Fehler, kein stiller Neustart",
+        "readBytes length=0 ist ein Fehler; kurze Lesungen markiert; Wahrheitswerte als JSON-Booleans"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "R.24-PHASE1",
       "title": "R.24 Phase 1: Bridge meldet gescheiterte Anfragen nicht als Befund",
       "area": "bridge",
