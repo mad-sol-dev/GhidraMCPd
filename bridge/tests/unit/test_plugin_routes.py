@@ -22,12 +22,17 @@ PLUGIN_SOURCE = (
     Path(__file__).resolve().parents[3]
     / "src/main/java/com/lauriewired/GhidraMCPPlugin.java"
 )
-ROUTE_PATTERN = re.compile(r'register(?:Program|Project)Handler\(\s*server,\s*"/([^"]+)"')
+#: Both ways the plugin registers a route: through its two helpers, and
+#: directly (``/plugin_version`` needs no program context and skips them).
+ROUTE_PATTERN = re.compile(
+    r'(?:register(?:Program|Project)Handler\(\s*server,\s*|server\.createContext\(\s*)"/([^"]+)"'
+)
 
 # The extraction is only trustworthy if it finds what is known to be there.
-# 51 is the count of register*Handler calls on 2026-10-09; a change in the
-# plugin moves it, and then this number is updated deliberately.
-EXPECTED_ROUTE_COUNT = 51
+# 51 register*Handler calls on 2026-10-09, plus /plugin_version (e49ea83),
+# which the first version of this pattern did not see.  A change in the
+# plugin moves the number, and then it is updated deliberately.
+EXPECTED_ROUTE_COUNT = 52
 
 
 def plugin_routes() -> set[str]:
@@ -38,7 +43,7 @@ def test_route_extraction_finds_known_routes() -> None:
     routes = plugin_routes()
     assert len(routes) == EXPECTED_ROUTE_COUNT, sorted(routes)
     # one program route, one project route, one with a nested path
-    assert {"disassembleAt", "open_program", "api/current_program.json"} <= routes
+    assert {"disassembleAt", "open_program", "api/current_program.json", "plugin_version"} <= routes
 
 
 def test_every_whitelisted_key_has_a_plugin_route() -> None:

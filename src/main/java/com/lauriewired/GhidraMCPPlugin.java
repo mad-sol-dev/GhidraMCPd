@@ -854,7 +854,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             // Opt-in, so an older bridge that does not ask keeps the exact
             // format it parses today.
             boolean extended = "extended".equals(qparams.get("fields"));
-            plugin.sendResponse(exchange, plugin.handleFunctionsInRange(min, max, extended));
+            if ("json".equals(qparams.get("fmt"))) {
+                plugin.sendJsonResponse(exchange, plugin.functionsInRangeJson(min, max));
+            } else {
+                plugin.sendResponse(exchange, plugin.handleFunctionsInRange(min, max, extended));
+            }
         });
 
         registerProgramHandler(server, "/disassembleAt", (plugin, exchange) -> {
@@ -3212,6 +3216,75 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             // Already sorted by address (forward iteration)
             return results.isEmpty() ? "" : String.join("\n", results);
 
+        } catch (Exception e) {
+            return errorResponse(e.getMessage());
+        }
+    }
+
+    /**
+     * {@code /functionsInRange?fmt=json}: the extended fields as data, so the
+     * bridge stops splitting "name @ addr size span=..." apart (rework stage
+     * 8d).  Optional fields appear only where they say something, exactly as
+     * in the text form: a thunk target for a thunk, chunks for a body Ghidra
+     * holds in more than one range.
+     */
+    private String functionsInRangeJson(String minStr, String maxStr) {
+        Program program = getCurrentProgram();
+        if (program == null) return errorResponse("no program loaded");
+        if (minStr == null || minStr.isEmpty()) return errorResponse("min parameter is required");
+        if (maxStr == null || maxStr.isEmpty()) return errorResponse("max parameter is required");
+
+        try {
+            Address minAddr = program.getAddressFactory().getAddress(minStr);
+            Address maxAddr = program.getAddressFactory().getAddress(maxStr);
+            if (minAddr == null || maxAddr == null) {
+                return errorResponse("invalid address range");
+            }
+            if (minAddr.compareTo(maxAddr) > 0) {
+                return errorResponse("min must be less than or equal to max");
+            }
+
+            FunctionIterator functions =
+                program.getFunctionManager().getFunctions(new AddressSet(minAddr, maxAddr), true);
+            StringBuilder sb = new StringBuilder("{\"functions\":[");
+            boolean first = true;
+            while (functions.hasNext()) {
+                ghidra.program.model.listing.Function func = functions.next();
+                AddressSetView body = func.getBody();
+                if (!first) sb.append(',');
+                first = false;
+                sb.append("{\"name\":\"").append(jsonEscape(func.getName())).append('"');
+                sb.append(",\"address\":\"").append(hexAddress(func.getEntryPoint())).append('"');
+                sb.append(",\"size\":").append(body.getNumAddresses());
+                if (body.getMinAddress() != null && body.getMaxAddress() != null) {
+                    sb.append(",\"span\":{\"start\":\"").append(hexAddress(body.getMinAddress()))
+                        .append("\",\"end\":\"").append(hexAddress(body.getMaxAddress())).append("\"}");
+                }
+                if (func.isThunk()) {
+                    sb.append(",\"thunk\":true");
+                    ghidra.program.model.listing.Function thunked = func.getThunkedFunction(true);
+                    // An external target has no address in this program; its
+                    // offset in the EXTERNAL space would read as a real one
+                    // (0x00000001).  The thunk stays a thunk, without a target.
+                    if (thunked != null && !thunked.isExternal()
+                            && thunked.getEntryPoint().isMemoryAddress()) {
+                        sb.append(",\"thunk_to\":\"").append(hexAddress(thunked.getEntryPoint())).append('"');
+                    }
+                }
+                List<AddressRange> ranges = new ArrayList<>();
+                body.getAddressRanges().forEach(ranges::add);
+                if (ranges.size() > 1) {
+                    sb.append(",\"chunks\":[");
+                    for (int i = 0; i < ranges.size(); i++) {
+                        if (i > 0) sb.append(',');
+                        sb.append("{\"start\":\"").append(hexAddress(ranges.get(i).getMinAddress()))
+                            .append("\",\"end\":\"").append(hexAddress(ranges.get(i).getMaxAddress())).append("\"}");
+                    }
+                    sb.append(']');
+                }
+                sb.append('}');
+            }
+            return sb.append("]}").toString();
         } catch (Exception e) {
             return errorResponse(e.getMessage());
         }

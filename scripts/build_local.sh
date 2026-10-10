@@ -20,7 +20,8 @@ cd "$ROOT"
 COMPILE_ONLY=0
 [ "${1:-}" = "--compile-only" ] && COMPILE_ONLY=1
 
-VERSION="$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)"
+# The same version Maven gets as -Drevision (see docs/development.md).
+VERSION="$("$ROOT/scripts/plugin_version.sh")"
 OUT="$ROOT/target"
 CLASSES="$OUT/local-classes"
 
@@ -67,7 +68,12 @@ fi
 # The jar carries src/main/resources alongside the classes, minus App.class,
 # with the hand-written manifest -- the same three rules the jar plugin applies.
 rm -f "$CLASSES"/com/lauriewired/App.class
-cp -r src/main/resources/extension.properties src/main/resources/Module.manifest "$CLASSES/"
+# Maven filters ${project.version} into these two; do the same, or the plugin
+# reports "unknown" and the Install Extensions description shows the placeholder.
+filter() { sed "s|\${project.version}|$VERSION|g" "$1" > "$2"; }
+filter src/main/resources/extension.properties "$CLASSES/extension.properties"
+filter src/main/resources/ghidramcp-version.properties "$CLASSES/ghidramcp-version.properties"
+cp src/main/resources/Module.manifest "$CLASSES/"
 jar --create --file "$OUT/GhidraMCP.jar" \
     --manifest src/main/resources/META-INF/MANIFEST.MF \
     -C "$CLASSES" .
@@ -75,7 +81,8 @@ jar --create --file "$OUT/GhidraMCP.jar" \
 STAGE="$OUT/local-zip/GhidraMCP"
 rm -rf "$OUT/local-zip"
 mkdir -p "$STAGE/lib"
-cp src/main/resources/extension.properties src/main/resources/Module.manifest "$STAGE/"
+filter src/main/resources/extension.properties "$STAGE/extension.properties"
+cp src/main/resources/Module.manifest "$STAGE/"
 cp "$OUT/GhidraMCP.jar" "$STAGE/lib/"
 
 ZIP="$OUT/GhidraMCP-$VERSION.zip"

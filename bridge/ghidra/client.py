@@ -33,11 +33,12 @@ logger = logging.getLogger("ghidra.bridge.client")
 
 T = TypeVar("T")
 
-#: ``last_error.reason`` when the plugin ignores ``fmt=json``.  Callers that may
-#: fall back for a missing *function* must still fail loudly on this.
+#: ``last_error.reason`` when the plugin ignores ``fmt=json`` (a build from
+#: before rework stage 8c/8d).  Callers that may fall back for a missing
+#: *function* must still fail loudly on this.
 STRUCTURED_LISTING_UNSUPPORTED = (
     "the Ghidra plugin answered without JSON; it predates structured "
-    "disassembly -- rebuild and reinstall the extension"
+    "responses -- rebuild and reinstall the extension"
 )
 
 
@@ -127,15 +128,6 @@ class EndpointRequester:
                 "POST", path, key=self.key, data=self.data
             )
         raise ValueError(f"Unsupported method {self.method}")
-
-
-def _parse_range(value: str) -> Optional[Dict[str, str]]:
-    """Parse an ``a-b`` address range as emitted by the plugin."""
-
-    start, sep, end = value.partition("-")
-    if not sep or not start or not end:
-        return None
-    return {"start": start, "end": end}
 
 
 def _is_error(lines: object) -> bool:
@@ -1268,71 +1260,58 @@ class GhidraClient:
 
         return result
 
-    def list_functions_in_range(self, address_min: int, address_max: int) -> List[Dict[str, Any]]:
+    def list_functions_in_range(
+        self, address_min: int, address_max: int
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Functions whose entry lies in ``[address_min, address_max]``.
+
+        Each entry has ``name``, ``address`` and ``size``, plus ``span``,
+        ``thunk_to`` and ``chunks`` where they say something.  Read from the
+        plugin's ``fmt=json`` answer (rework stage 8d) rather than split out of
+        ``name @ addr size span=...``.  None on failure, with ``last_error``
+        set -- an error is not an empty range.
         """
-        List all functions within an address range.
-        
-        Args:
-            address_min: Start address (inclusive)
-            address_max: End address (inclusive)
-            
-        Returns:
-            List of dicts with name, address, and size
-        """
+
         increment_counter("ghidra.list_functions_in_range")
-        lines = self._request_lines(
+        self._last_error = None
+        payload = self._request_json_payload(
             "GET",
             "functionsInRange",
             key="FUNCTIONS_IN_RANGE",
             params={
                 "min": f"0x{address_min:08x}",
                 "max": f"0x{address_max:08x}",
-                # A plugin that does not know this parameter ignores it and
-                # answers in the old format, which parses just the same.
-                "fields": "extended",
+                "fmt": "json",
             },
         )
-        if _is_error(lines):
-            return []
+        if payload is None:
+            if self._last_error is None:
+                self._last_error = RequestError(
+                    status=None, reason=STRUCTURED_LISTING_UNSUPPORTED, retryable=False
+                )
+            return None
+        functions = payload.get("functions")
+        if not isinstance(functions, list):
+            self._last_error = RequestError(
+                status=None, reason="function listing without a functions array", retryable=False
+            )
+            return None
         results: List[Dict[str, Any]] = []
-        for line in lines:
-            stripped = line.strip()
-            if not stripped:
+        for raw in functions:
+            if not isinstance(raw, Mapping):
                 continue
-            # "name @ address [size] [span=a-b] [thunk=addr] [chunks=a-b,c-d]"
-            if " @ " not in stripped:
-                continue
-            name_part, addr_part = stripped.split(" @ ", 1)
-            tokens = addr_part.split()
-            if not tokens:
-                continue
-            entry: Dict[str, Any] = {
-                "name": name_part.strip(),
-                "address": tokens[0],
-                "size": None,
-                "span": None,
-                "thunk_to": None,
-                "chunks": [],
-            }
-            for token in tokens[1:]:
-                if "=" in token:
-                    key, _, value = token.partition("=")
-                    if key == "span":
-                        entry["span"] = _parse_range(value)
-                    elif key == "thunk":
-                        entry["thunk_to"] = value
-                    elif key == "chunks":
-                        entry["chunks"] = [
-                            parsed
-                            for parsed in (_parse_range(part) for part in value.split(","))
-                            if parsed is not None
-                        ]
-                    continue
-                try:
-                    entry["size"] = int(token)
-                except ValueError:
-                    pass
-            results.append(entry)
+            size = raw.get("size")
+            results.append(
+                {
+                    "name": str(raw.get("name", "")),
+                    "address": str(raw.get("address", "")),
+                    "size": size if isinstance(size, int) and size > 0 else None,
+                    "span": raw.get("span") if isinstance(raw.get("span"), Mapping) else None,
+                    "thunk": raw.get("thunk") is True,
+                    "thunk_to": raw.get("thunk_to"),
+                    "chunks": [c for c in raw.get("chunks") or () if isinstance(c, Mapping)],
+                }
+            )
         return results
 
     def disassemble_at(self, address: int, count: int) -> List[Dict[str, Any]]:

@@ -4,6 +4,7 @@ from typing import Dict, List
 from ..ghidra.client import GhidraClient
 from ..utils.hex import int_to_hex, parse_hex
 from ..utils.logging import increment_counter
+from .listing import ListingUnavailable
 from .pagination import finalize_page
 
 
@@ -21,10 +22,14 @@ def _add_body_shape(item: Dict[str, object], entry: Dict[str, object]) -> None:
     """
 
     thunk_to = entry.get("thunk_to")
-    if thunk_to:
+    if entry.get("thunk") or thunk_to:
         # Ghidra names a thunk after the function it jumps to, so without this
         # two entries of the same name in one range look like a duplicate.
         item["is_thunk"] = True
+    if thunk_to:
+        # Absent for a thunk to an external function, which has no address in
+        # this program; the text format reported "0xEXTERNAL:00000001" there,
+        # and the response schema rejected the whole call.
         item["thunk_to"] = _hex(thunk_to)
 
     span = entry.get("span")
@@ -73,6 +78,14 @@ def list_functions_in_range(
     
     # Fetch all functions in range from Ghidra
     raw_results = client.list_functions_in_range(min_addr, max_addr)
+    if raw_results is None:
+        error = getattr(client, "last_error", None)
+        reason = getattr(error, "reason", None) or "function listing unavailable"
+        # Not an empty range: the text parser this replaces returned [] here,
+        # and "no functions" read as a statement about the firmware.
+        raise ListingUnavailable(
+            f"cannot list functions in [{int_to_hex(min_addr)},{int_to_hex(max_addr)}]: {reason}"
+        )
 
     # Canonical query representation for metadata parity with other search APIs
     query = f"[{int_to_hex(min_addr)},{int_to_hex(max_addr)}]"

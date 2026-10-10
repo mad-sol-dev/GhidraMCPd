@@ -2325,6 +2325,8 @@ def register_tools(
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+        except ListingUnavailable as exc:
+            return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
 
         valid, errors = validate_payload("list_functions_in_range.v1.json", data)
         if not valid:

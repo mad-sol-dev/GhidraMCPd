@@ -469,6 +469,8 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except ListingUnavailable as exc:
+                return error_response(ErrorCode.UNAVAILABLE, str(exc))
             except (ValueError, TypeError) as exc:
                 return error_response(ErrorCode.INVALID_REQUEST, str(exc))
             valid, errors = validate_payload("list_functions_in_range.v1.json", payload)
