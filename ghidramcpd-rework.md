@@ -1813,3 +1813,93 @@ sonst läuft sie mit altem Code. Plugin 1.3.60 ist installiert; alles ab 1.3.56 
 Linkbasis 0x00058000 verschieben (CL-TOOL-REC-121; dort liegt ein ungetracktes
 `rebase_app_to_58000.py`), die 96 Label-Dubletten bereinigen (CL-TOOL-REC-122).
 
+
+
+---
+
+# R.24 — Bestandsaufnahme der Plugin-Antworten (2026-10-10)
+
+Grundlage: alle 53 Routen im Java-Quelltext, jede Client-Methode und die Feature-Module,
+die Plugin-Text selbst lesen; dazu 245 lesende Live-Proben mit Plugin 1.3.63 (gültige,
+ungültige und nicht gemappte Eingaben je Route, Programm danach unverändert). Die
+schwersten Befunde sind im Code nachgeprüft (markiert mit ✓).
+
+## Plugin: wie Fehler aussehen
+
+**Jeder Fehler auf Handler-Ebene kommt mit HTTP 200.** Echte Fehlerstatus gibt es nur
+im Dispatcher: 425/503 (kein Werkzeug), 409 (R.26), und das 404 des JDK-Servers für
+unbekannte Pfade (HTML; Kontexte passen per Präfix, `/functionsX` landet bei `/functions`).
+Eine Ausnahme im Handler wird `{"error":"Internal error: …"}` — mit 200, auch auf
+Text-Routen.
+
+Sieben Fehlerformen nebeneinander:
+
+| # | Form | Routen |
+|---|---|---|
+| B | `{"error","status":"error"}` als `application/json` | 9 (`goto`, `open_program`, `save_program`, `createLabel`, …; Disassemblat-Routen nur mit `fmt=json`) |
+| C | dasselbe JSON als `text/plain` | 11 (`read_dword`, `read_bytes`, `read_cstring`, `data_window`, `readBytes`, `project_info`, `project_files`, Textmodi von `functionsInRange`/`disassembleAt`) |
+| D | Seiten-Umschlag `{"items":[],"has_more":false,"error":…}`, kein `status` | 6 (`imports`, `exports`, `xrefs_to`, `strings`, `searchFunctions`, `searchScalars` — letzteres auch Teilseite *mit* `error`) |
+| E | `{"ok":false,"error":…}` | 5 Datentyp-Routen |
+| F | voller Datensatz mit `"status":"error"` | `createLabel` (Anlegen gescheitert), `open_program` |
+| G | Prosa mit festem Präfix (`ERROR:`, `Failed to set function prototype:`) | 2 |
+| H | **freie Prosa ohne Marker** | **26** — `No function found at …`, `Decompilation failed`, `Error getting function: …`, `Failed to set comment`, `Rename failed`, `No program loaded`, … |
+
+Eine ungültige Adresse wird nicht geprüft: `getAddress` liefert `null`, und der Text der
+Java-NullPointerException wird zur Antwort (`Cannot invoke "…Address.addNoWrap(long)"
+because "addr" is null`, live an `read_dword`, `read_bytes`, `get_function_by_address`,
+`decompile_function`, `disassemble`).
+
+## Plugin: falsche Erfolgsmeldungen und Nebenwirkungen
+
+1. ✓ `/renameVariable` meldet `Variable renamed` und committet, auch wenn
+   `updateDBVariable` warf: `finally { successFlag.set(program.endTransaction(tx, true)); }`.
+2. ✓ `/deleteDataType` ignoriert den Rückgabewert von `dtm.remove(...)`; `kind` wird ignoriert,
+   jeder Nicht-Union heißt `"structure"`.
+3. ✓ `/set_function_prototype` committet die Plate-Notiz `Setting prototype: …` in eigener
+   Transaktion vor dem Parsen — auch wenn das Setzen scheitert.
+4. ✓ Leere Parameterwerte fallen beim Parsen weg (`kv.length == 2`): ein Kommentar lässt sich
+   nicht löschen, `comment=` wird zu `Failed to set comment`.
+5. `/set_local_variable_type`: Erfolg und Fehler unterscheiden sich nur in der letzten Zeile;
+   ohne `new_type` NullPointerException → 200 `Internal error`.
+6. `/rename_function_by_address` benennt bei einer Adresse mitten in der Funktion die
+   umgebende um und meldet Erfolg.
+7. `/function_xrefs`: unbekannte Funktion und Funktion ohne Referenzen geben denselben Text.
+8. `paginateList`-Routen geben `""` für „leer" und „hinter dem Ende", ohne `has_more`.
+9. `/disassembleAt` beginnt bei einer Nicht-Instruktion still bei der nächsten.
+10. `/readBytes`: `length=0` liest ein Byte; kurze Lesungen und die 4096-Kappung ohne Marker.
+11. Ungültige Cursor werden still ignoriert, die Seite beginnt neu (`searchFunctions`, `searchScalars`).
+
+## Bridge: wie sie Fehler erkennt
+
+- HTTP ≥ 400 und Transportfehler → `RequestError`.
+- Ein JSON-Objekt mit Schlüssel `error` → `RequestError(200)`, auch eine Teilseite mit Warnung
+  (die Treffer gehen verloren); die nachgelagerten `payload.get("error")`-Prüfungen sind dadurch tot.
+- `ERROR:` als erste Zeile → Fehler. Das Plugin sendet das an keiner Route, die die Bridge ruft.
+- Alles andere ist Daten. Prosa-Fehler erkennt nur `_confirmed` (WRITE-ANSWER-TRUTHFUL).
+- ✓ Der Resolver weicht bei **jedem** Fehler auf den nächsten Kandidaten aus und fragt dabei
+  den gecachten noch einmal: **ein fehlgeschlagener Aufruf geht zweimal raus, POST-Schreibaufrufe
+  eingeschlossen** (ein gelandetes Anlegen nach Timeout meldet dann „already exists").
+
+## Bridge: wo ein Fehler als Befund durchgeht (Rangfolge)
+
+1. ✓ `jt_slot_check`/`jt_scan`: der ARM/Thumb-Adapter hält jedes Ziel für eine Funktion —
+   `disassemble_function` liefert die Prosa „No function found …" als nicht leere Liste.
+2. ✓ `decompile_function` prüft nur `startswith("ERROR")`: „Decompilation failed",
+   „No function found …", „Error decompiling function: …" gehen als C-Code in
+   `analyze_function_complete` (Snippet, `error: None`) und `find_in_function`.
+3. ✓ `search_functions`: bei jedem Fehler Fallback auf `/functions?filter=…` — das Plugin kennt
+   `filter` nicht und liefert **alle** Funktionen als Treffer, 300 s gecacht.
+4. `search_scalars`: Fehler und die Inspektionsgrenze werden zu einem gültigen leeren Ergebnis
+   (`_LIMIT_ERROR_MARKERS` passt nicht zur Meldung des Plugins).
+5. `read_bytes`/`read_words`: Transport- oder Plugin-Fehler werden als „nicht gemappt" gemeldet —
+   eine Aussage über die Firmware.
+6. `disassemble_at`: jeder Fehler wird `[]` und bekommt die Notiz „keine Instruktionen definiert".
+7. Fehler-Leerlisten werden 300 s gecacht (strings, imports, exports, xrefs).
+8. `get_xrefs_to`: Fehler ist `[]` wie „keine Referenzen"; `has_more` geht verloren.
+9. Strikte Client-Schemas: ein zusätzliches Feld vom Plugin macht xrefs/strings/imports/exports
+   still leer.
+10. ✓ `analyze`: Callee-Namen immer `None` (liest `name`, das Plugin sendet `Function`).
+11. ✓ `strings_compact`/`search_strings`: `refs` immer 0 (aus Feldern, die das Plugin nicht sendet).
+12. „Error getting function: …" wird zu einem gültigen Metadaten-Dict (enthält einen Doppelpunkt).
+13. Falsche Gründe: leere/abgelehnte Antworten heißen „Plugin zu alt"; Plugin-Ablehnungen
+    (Datentyp existiert, Speichern nicht erlaubt) heißen Transportfehler/`UNAVAILABLE`.
