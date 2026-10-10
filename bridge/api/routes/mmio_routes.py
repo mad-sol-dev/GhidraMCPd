@@ -9,6 +9,7 @@ from starlette.routing import Route
 from ...features import mmio
 from ...features.listing import ListingUnavailable
 from ...ghidra.client import GhidraClient
+from ...utils.config import WRITES_ENABLE_HOWTO
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
@@ -39,8 +40,8 @@ def create_mmio_routes(deps: RouteDependencies) -> List[Route]:
             except mmio.WritesDisabledError:
                 return error_response(
                     ErrorCode.INVALID_REQUEST,
-                    "Writes are disabled while dry_run is false.",
-                    recovery=("Enable writes or run in dry_run mode.",),
+                    "Writes are disabled while dry_run is false; nothing was written.",
+                    recovery=(WRITES_ENABLE_HOWTO, "Or run with dry_run=true."),
                 )
             except ListingUnavailable as exc:
                 return error_response(ErrorCode.UNAVAILABLE, str(exc))

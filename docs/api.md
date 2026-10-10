@@ -1238,6 +1238,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `ghidra` | object | Yes |  |
   | `service` | string | Yes |  |
   | `writes_enabled` | boolean | Yes |  |
+  | `writes_note` | string | No |  |
 
   ```json
   {
@@ -1248,7 +1249,8 @@ All three routes share the standard per-request write guard. Each successful wri
       "status_code": 0
     },
     "service": "string",
-    "writes_enabled": false
+    "writes_enabled": false,
+    "writes_note": "string"
   }
   ```
 
@@ -1266,6 +1268,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `ghidra` | object | Yes |  |
   | `service` | string | Yes |  |
   | `writes_enabled` | boolean | Yes |  |
+  | `writes_note` | string | No |  |
 
   ```json
   {
@@ -1276,7 +1279,8 @@ All three routes share the standard per-request write guard. Each successful wri
       "status_code": 0
     },
     "service": "string",
-    "writes_enabled": false
+    "writes_enabled": false,
+    "writes_note": "string"
   }
   ```
 
@@ -1634,6 +1638,8 @@ All three routes share the standard per-request write guard. Each successful wri
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
   | `source_files` | array<object> | No |  |
+  | `writes_enabled` | boolean | Yes |  |
+  | `writes_note` | string | No |  |
 
   ```json
   {
@@ -1675,7 +1681,9 @@ All three routes share the standard per-request write guard. Each successful wri
         "patched": false,
         "size": 0
       }
-    ]
+    ],
+    "writes_enabled": false,
+    "writes_note": "string"
   }
   ```
 
@@ -1703,6 +1711,8 @@ All three routes share the standard per-request write guard. Each successful wri
   | `memory_blocks` | array<object> | Yes |  |
   | `program_name` | string | Yes |  |
   | `source_files` | array<object> | No |  |
+  | `writes_enabled` | boolean | Yes |  |
+  | `writes_note` | string | No |  |
 
   ```json
   {
@@ -1744,7 +1754,9 @@ All three routes share the standard per-request write guard. Each successful wri
         "patched": false,
         "size": 0
       }
-    ]
+    ],
+    "writes_enabled": false,
+    "writes_note": "string"
   }
   ```
 

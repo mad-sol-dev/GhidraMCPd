@@ -9,6 +9,7 @@ from starlette.routing import Route
 from ...ghidra.client import GhidraClient
 from ...features.project_layout import layout_notes
 from ...utils.errors import ErrorCode
+from ...utils.config import writes_status
 from ...utils.logging import request_scope
 from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
 from ..validators import validate_payload
@@ -40,6 +41,7 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
                     status=status,
                 )
             normalized = _normalise_project_info(payload)
+            normalized.update(writes_status(deps.enable_writes))
             return envelope_response(envelope_ok(normalized))
 
     @deps.with_client

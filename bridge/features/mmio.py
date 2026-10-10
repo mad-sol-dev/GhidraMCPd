@@ -6,7 +6,7 @@ import re
 from typing import Dict, Iterable, List, Mapping, Optional
 
 from ..ghidra.client import GhidraClient
-from ..utils.config import ENABLE_WRITES
+from ..utils.config import ENABLE_WRITES, WRITES_DISABLED_NOTE
 from ..utils.hex import int_to_hex
 from .listing import ListingUnavailable, structured_listing
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
@@ -145,7 +145,7 @@ def _collect_operations(
     return operations, skipped
 
 
-_NOTE_WRITES_DISABLED = "writes disabled: annotations were not applied"
+_NOTE_WRITES_DISABLED = WRITES_DISABLED_NOTE
 _NOTE_DRY_RUN = "dry-run requested: annotations were not applied"
 
 

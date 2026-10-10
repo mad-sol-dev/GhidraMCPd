@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from ...ghidra.client import GhidraClient
+from ...utils.config import writes_status
 from ...utils.logging import request_scope
 from .._shared import envelope_ok
 
@@ -69,7 +70,7 @@ def create_health_routes(
                         upstream["status_code"] = response.status_code
                     payload = {
                         "service": "ghidra-mcp-bridge",
-                        "writes_enabled": enable_writes,
+                        **writes_status(enable_writes),
                         "ghidra": upstream,
                     }
                     return JSONResponse(envelope_ok(payload))

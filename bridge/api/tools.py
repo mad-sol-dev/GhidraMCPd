@@ -34,7 +34,12 @@ from ..features.function_meta import read_function_name
 from ..features.project_layout import layout_notes
 from ..features.collect import execute_collect
 from ..ghidra.client import GhidraClient, RequestError
-from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
+from ..utils.config import (
+    ENABLE_WRITES,
+    MAX_WRITES_PER_REQUEST,
+    WRITES_ENABLE_HOWTO,
+    writes_status,
+)
 from ..utils.errors import ErrorCode
 from ..utils.logging import (
     SafetyLimitExceeded,
@@ -448,6 +453,19 @@ def register_tools(
 
         return decorator
 
+    def _writes_disabled_error() -> Dict[str, object]:
+        return envelope_error(
+            ErrorCode.INVALID_REQUEST,
+            "Writes are disabled; nothing was written.",
+            recovery=(WRITES_ENABLE_HOWTO,),
+        )
+
+    def _dry_run_hint() -> str:
+        # "set dry_run=false" alone would send the caller into a refusal
+        if enable_writes:
+            return "(set dry_run=false to execute)"
+        return "(writes are disabled, so dry_run=false would be refused too. " + WRITES_ENABLE_HOWTO + ")"
+
     def _current_requestor() -> object:
         return requestor_from_context(server)
 
@@ -481,6 +499,7 @@ def register_tools(
         compiler spec, entry points, memory blocks, import/export counts.
         source_files: SHA-256 as imported vs. now (patched=true: bytes were
         changed). Each block: file_offset and sha256 of its contents.
+        writes_enabled: can write tools write.
 
         Not for: locating anything -- it describes the container, not the
         contents. Takes no parameters."""
@@ -506,6 +525,7 @@ def register_tools(
                     upstream_error=upstream,
                 )
             normalized = _normalise_project_info(payload)
+            normalized.update(writes_status(enable_writes))
 
         valid, errors = validate_payload("project_info.v1.json", normalized)
         if not valid:
@@ -859,7 +879,7 @@ def register_tools(
     def save_program(client, description: str | None = None) -> Dict[str, object]:
         """Persist unsaved changes to the active program.
 
-        Requires ownership and a program that is not read-only.
+        Needs GHIDRA_MCP_ENABLE_WRITES=true, ownership, a writable program.
 
         Not for: exporting anything -- this writes into the Ghidra project, not
         to a file you can version.
@@ -875,6 +895,10 @@ def register_tools(
             logger=logger,
             extra={"tool": "save_program", "description": description},
         ):
+            # Saving writes the project file -- unsaved changes made by hand in
+            # Ghidra included -- so read-only covers it too (R.25).
+            if not enable_writes:
+                return _writes_disabled_error()
             response = client.save_program(description)
             if response is None:
                 upstream = client.last_error.as_dict() if client.last_error else None
@@ -1002,7 +1026,7 @@ def register_tools(
                     "success": False,
                     "address": address,
                     "new_name": new_name,
-                    "message": f"DRY RUN: Would rename function at {address} to '{new_name}' (set dry_run=false to execute)"
+                    "message": f"DRY RUN: Would rename function at {address} to '{new_name}' " + _dry_run_hint()
                 })
 
             # Check if writes are enabled
@@ -1015,11 +1039,7 @@ def register_tools(
                     applied=False,
                     reason="writes_disabled",
                 )
-                return envelope_error(
-                    ErrorCode.INVALID_REQUEST,
-                    "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
-                    recovery=("Enable writes in environment configuration.",),
-                )
+                return _writes_disabled_error()
 
             # Execute the rename
             success = client.rename_function(parsed_address, new_name)
@@ -1114,7 +1134,7 @@ def register_tools(
                     "address": address,
                     "comment": comment,
                     "comment_type": comment_type,
-                    "message": f"DRY RUN: Would set {comment_type} comment at {address} (set dry_run=false to execute)"
+                    "message": f"DRY RUN: Would set {comment_type} comment at {address} " + _dry_run_hint()
                 })
 
             # Check if writes are enabled
@@ -1128,11 +1148,7 @@ def register_tools(
                     reason="writes_disabled",
                     detail=comment_type,
                 )
-                return envelope_error(
-                    ErrorCode.INVALID_REQUEST,
-                    "Write operations are disabled. Set GHIDRA_MCP_ENABLE_WRITES=true to enable.",
-                    recovery=("Enable writes in environment configuration.",),
-                )
+                return _writes_disabled_error()
 
             # Execute the comment set operation
             if comment_type == "decompiler":

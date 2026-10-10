@@ -344,7 +344,8 @@
           "start": "0x00200000"
         }
       ],
-      "program_name": "golden_stub.bin"
+      "program_name": "golden_stub.bin",
+      "writes_enabled": true
     },
     "errors": [],
     "ok": true

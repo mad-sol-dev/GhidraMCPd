@@ -11,7 +11,8 @@
     "entry_points",
     "memory_blocks",
     "imports_count",
-    "exports_count"
+    "exports_count",
+    "writes_enabled"
   ],
   "properties": {
     "program_name": {
@@ -196,6 +197,14 @@
         "type": "string"
       },
       "description": "Present only when image_base or entry points lie outside every memory block."
+    },
+    "writes_enabled": {
+      "type": "boolean",
+      "description": "Whether write tools may write (GHIDRA_MCP_ENABLE_WRITES)."
+    },
+    "writes_note": {
+      "type": "string",
+      "description": "Present only while writes are off: how to turn them on."
     }
   }
 }

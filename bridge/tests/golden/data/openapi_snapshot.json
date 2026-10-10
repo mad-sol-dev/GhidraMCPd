@@ -2045,6 +2045,10 @@
                     },
                     "writes_enabled": {
                       "type": "boolean"
+                    },
+                    "writes_note": {
+                      "description": "Present only while writes are off: how to turn them on.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -2099,6 +2103,10 @@
                     },
                     "writes_enabled": {
                       "type": "boolean"
+                    },
+                    "writes_note": {
+                      "description": "Present only while writes are off: how to turn them on.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3029,6 +3037,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "writes_enabled": {
+                      "description": "Whether write tools may write (GHIDRA_MCP_ENABLE_WRITES).",
+                      "type": "boolean"
+                    },
+                    "writes_note": {
+                      "description": "Present only while writes are off: how to turn them on.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3039,7 +3055,8 @@
                     "entry_points",
                     "memory_blocks",
                     "imports_count",
-                    "exports_count"
+                    "exports_count",
+                    "writes_enabled"
                   ],
                   "title": "project_info.v1",
                   "type": "object"
@@ -3243,6 +3260,14 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "writes_enabled": {
+                      "description": "Whether write tools may write (GHIDRA_MCP_ENABLE_WRITES).",
+                      "type": "boolean"
+                    },
+                    "writes_note": {
+                      "description": "Present only while writes are off: how to turn them on.",
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3253,7 +3278,8 @@
                     "entry_points",
                     "memory_blocks",
                     "imports_count",
-                    "exports_count"
+                    "exports_count",
+                    "writes_enabled"
                   ],
                   "title": "project_info.v1",
                   "type": "object"

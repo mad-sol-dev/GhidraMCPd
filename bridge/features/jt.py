@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from ..adapters import ArchAdapter
 from ..ghidra.client import GhidraClient
 from ..utils.audit import record_jt_write
-from ..utils.config import ENABLE_WRITES
+from ..utils.config import ENABLE_WRITES, WRITES_DISABLED_NOTE
 from ..utils.errors import DetailCode
 from ..utils.hex import int_to_hex, slot_address
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
@@ -93,7 +93,7 @@ def slot_check(
     return result.to_dict()
 
 
-_NOTE_WRITES_DISABLED = "writes disabled: no modifications were performed"
+_NOTE_WRITES_DISABLED = WRITES_DISABLED_NOTE
 _NOTE_DRY_RUN = "dry-run requested: no modifications were performed"
 _NOTE_COMMENT_UNVERIFIABLE = (
     "comment not verified: the plugin has no route that reads a comment back; "

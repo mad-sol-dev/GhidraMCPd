@@ -14,13 +14,13 @@ from typing import (
 
 from ..ghidra.client import DataTypeOperationResult, GhidraClient
 from ..utils import audit
-from ..utils.config import ENABLE_WRITES
+from ..utils.config import ENABLE_WRITES, WRITES_DISABLED_NOTE
 from . import mutations
 from ..utils.logging import increment_counter, record_write_attempt
 
 
 _NOTE_DRY_RUN = "dry-run enabled: no data types modified"
-_NOTE_WRITES_DISABLED = "writes disabled (set GHIDRA_MCP_ENABLE_WRITES=1 to enable)"
+_NOTE_WRITES_DISABLED = WRITES_DISABLED_NOTE
 _ERR_WRITE_DISABLED = "WRITE_DISABLED"
 _ERR_WRITE_FAILED = "WRITE_FAILED"
 _VALID_KINDS = {"structure", "union"}

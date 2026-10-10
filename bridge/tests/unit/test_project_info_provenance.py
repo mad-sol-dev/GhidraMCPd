@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 
 from bridge.api.validators import validate_payload
+from bridge.utils.config import WRITES_ENABLE_HOWTO
 
 _SHA_A = "a" * 64
 _SHA_B = "b" * 64
@@ -52,6 +53,8 @@ def _payload() -> dict:
         ],
         "imports_count": 0,
         "exports_count": None,
+        "writes_enabled": False,
+        "writes_note": WRITES_ENABLE_HOWTO,
     }
 
 

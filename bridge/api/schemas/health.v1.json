@@ -7,6 +7,7 @@
   "properties": {
     "service": {"type": "string"},
     "writes_enabled": {"type": "boolean"},
+    "writes_note": {"type": "string", "description": "Present only while writes are off: how to turn them on."},
     "ghidra": {
       "type": "object",
       "additionalProperties": false,

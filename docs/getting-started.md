@@ -62,7 +62,9 @@ Set environment variables before starting the server to adjust safety limits, au
   - Base URL (including trailing slash) for the Ghidra Java plugin.  The Python bridge uses this to communicate with Ghidra.  Override this if your plugin is running on a different port.
   - The plugin binds to `127.0.0.1` only. Its port and bind address are Ghidra tool options (Edit → Tool Options → *GhidraMCP HTTP Server*: `Server Port`, `Bind Address`). The plugin has no authentication and the write guard lives in the bridge, so a non-loopback bind address exposes rename, comment and data-type routes to everyone who can reach it; the plugin logs a warning when started that way. `scripts/check_plugin_bind.sh [port]` checks that the running plugin answers on loopback and refuses the LAN address.
 - `GHIDRA_MCP_ENABLE_WRITES` (default `false`)
-  - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations.
+  - Disable or enable write operations globally. When `false` or when requests include `dry_run=true`, write handlers perform no mutations. `false` also blocks `save_program`, which would put unsaved changes into the project file.
+  - Unset, empty or anything but `1`/`true`/`yes`/`on` means off. A `.env` in the directory the bridge starts from is loaded first and can turn writes on; variables already set in the environment win over it.
+  - Visible to clients: `project_info` and `/api/health.json` report `writes_enabled`, and while writes are off also `writes_note` with how to turn them on. Every refusal or note of a write tool uses the same wording.
 - `GHIDRA_MCP_AUDIT_LOG`
   - Optional filesystem path for JSONL write audits. When unset, successful writes are not logged.
 - `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` (default `2`)

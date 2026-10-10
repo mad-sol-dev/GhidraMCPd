@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Dict, List, Mapping, Optional
 
 from ..ghidra.client import GhidraClient
+from ..utils.config import WRITES_DISABLED_NOTE
 from ..utils.hex import int_to_hex
 from ..utils.logging import increment_counter, record_write_attempt
 from . import mutations
@@ -18,7 +19,7 @@ from . import mutations
 __all__ = ["LabelRejected", "LabelUnavailable", "apply_label"]
 
 _NOTE_DRY_RUN = "dry-run requested: label not created"
-_NOTE_WRITES_DISABLED = "writes disabled (set GHIDRA_MCP_ENABLE_WRITES=1 to enable)"
+_NOTE_WRITES_DISABLED = WRITES_DISABLED_NOTE
 _NOTE_ALREADY_PRESENT = "a label of this name is already at this address; nothing to do"
 _NOTE_SECONDARY = (
     "created as a secondary label: a user-named symbol is primary here and "

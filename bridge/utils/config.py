@@ -34,6 +34,26 @@ ENABLE_WRITES: Final[bool] = _env_bool("GHIDRA_MCP_ENABLE_WRITES", default=False
 MAX_WRITES_PER_REQUEST: Final[int] = _env_int("GHIDRA_MCP_MAX_WRITES_PER_REQUEST", default=2)
 MAX_ITEMS_PER_BATCH: Final[int] = _env_int("GHIDRA_MCP_MAX_ITEMS_PER_BATCH", default=256)
 
+#: How to turn writes on, said the same way everywhere it is needed: in
+#: project_info and /api/health.json while writes are off, and in every
+#: refusal and note of a write tool (R.25).
+WRITES_ENABLE_HOWTO: Final[str] = (
+    "The bridge runs read-only by default. Restart it with "
+    "GHIDRA_MCP_ENABLE_WRITES=true to allow writes; each write tool still "
+    "needs dry_run=false."
+)
+WRITES_DISABLED_NOTE: Final[str] = "writes disabled: nothing was written. " + WRITES_ENABLE_HOWTO
+
+
+
+def writes_status(enabled: bool) -> dict[str, object]:
+    """``writes_enabled``, plus ``writes_note`` with the how-to while writes are off."""
+
+    if enabled:
+        return {"writes_enabled": True}
+    return {"writes_enabled": False, "writes_note": WRITES_ENABLE_HOWTO}
+
+
 _audit_log_env = os.getenv("GHIDRA_MCP_AUDIT_LOG", "").strip()
 AUDIT_LOG_PATH: Final[Optional[Path]] = (
     Path(_audit_log_env).expanduser() if _audit_log_env else None
@@ -45,4 +65,7 @@ __all__ = [
     "ENABLE_WRITES",
     "MAX_ITEMS_PER_BATCH",
     "MAX_WRITES_PER_REQUEST",
+    "WRITES_DISABLED_NOTE",
+    "WRITES_ENABLE_HOWTO",
+    "writes_status",
 ]
