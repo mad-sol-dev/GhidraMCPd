@@ -10,7 +10,7 @@ from ...features.collect import execute_collect
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_error, envelope_ok, envelope_response
+from .._shared import envelope_error, envelope_ok, envelope_response, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -191,7 +191,7 @@ def create_collect_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(response_payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("collect.v1.json", errors)
             )
 
     return [Route("/api/collect.json", collect_route, methods=["POST"])]

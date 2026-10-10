@@ -4,7 +4,7 @@ from __future__ import annotations
 import inspect
 import os
 from functools import wraps
-from typing import Callable, Dict
+from typing import Callable, Dict, Sequence
 
 from starlette.responses import JSONResponse
 
@@ -41,6 +41,24 @@ def envelope_error(
         "data": None,
         "errors": [error_payload],
     }
+
+
+def response_schema_error(schema: str, errors: Sequence[str]) -> Dict[str, object]:
+    """The bridge's own answer failed its schema: a server fault, not a bad request.
+
+    These sites used to answer INVALID_REQUEST, which sends the caller looking
+    through arguments that were fine -- COLLECT-METADATA-REJECTED presented as
+    exactly that.  The message names the schema, so the defect can be found.
+    """
+
+    return envelope_error(
+        ErrorCode.INTERNAL,
+        f"response failed its own schema {schema}: " + "; ".join(errors),
+        recovery=(
+            "The request was valid; this is a defect in the bridge. Report the tool, "
+            "its arguments and this message.",
+        ),
+    )
 
 
 def envelope_response(payload: Dict[str, object]) -> JSONResponse:

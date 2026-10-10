@@ -12,7 +12,7 @@ from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_ok, envelope_response, error_response, envelope_error
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -52,7 +52,7 @@ def create_mmio_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("mmio_annotate.v1.json", errors)
             )
 
     return [Route("/api/mmio_annotate.json", mmio_annotate_route, methods=["POST"])]

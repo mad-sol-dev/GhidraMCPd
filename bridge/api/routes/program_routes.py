@@ -17,7 +17,7 @@ from ...utils.program_context import (
     validate_program_id,
 )
 from ..tools import _maybe_autoopen_program
-from .._shared import envelope_error, envelope_ok, envelope_response
+from .._shared import envelope_error, envelope_ok, envelope_response, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -132,7 +132,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
             valid, errors = validate_payload("current_program.v1.json", payload)
             if not valid:
                 return envelope_response(
-                    envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                    response_schema_error("current_program.v1.json", errors)
                 )
             return envelope_response(envelope_ok(payload))
 
@@ -218,7 +218,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
         valid, errors = validate_payload("current_program.v1.json", payload)
         if not valid:
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("current_program.v1.json", errors)
             )
         return envelope_response(envelope_ok(payload))
 

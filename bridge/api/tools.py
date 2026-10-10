@@ -51,7 +51,7 @@ from ..utils.program_context import (
     requestor_from_context,
     validate_program_id,
 )
-from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client
+from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client, response_schema_error
 from .validators import validate_payload
 
 
@@ -498,7 +498,7 @@ def register_tools(
 
         valid, errors = validate_payload("project_info.v1.json", normalized)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("project_info.v1.json", errors)
         return envelope_ok(normalized)
 
     @server.tool()
@@ -537,7 +537,7 @@ def register_tools(
 
         valid, errors = validate_payload("project_overview.v1.json", response_payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("project_overview.v1.json", errors)
         return envelope_ok(response_payload)
 
     @server.tool()
@@ -634,7 +634,7 @@ def register_tools(
             payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("current_program.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -716,7 +716,7 @@ def register_tools(
             payload["warnings"] = warnings
         valid, errors = validate_payload("current_program.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("current_program.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -806,7 +806,7 @@ def register_tools(
 
         valid, errors = validate_payload("list_mutations.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("list_mutations.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -936,7 +936,7 @@ def register_tools(
                 return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("apply_label.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("apply_label.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1247,7 +1247,7 @@ def register_tools(
             "analyze_function_complete.v1.json", payload
         )
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("analyze_function_complete.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -1423,7 +1423,7 @@ def register_tools(
 
         valid, errors = validate_payload("collect.v1.json", response_payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("collect.v1.json", errors)
         return envelope_ok(response_payload)
 
     @server.tool()
@@ -1487,7 +1487,7 @@ def register_tools(
 
         valid, errors = validate_payload("datatypes_create.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("datatypes_create.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -1545,7 +1545,7 @@ def register_tools(
 
         valid, errors = validate_payload("datatypes_update.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("datatypes_update.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -1597,7 +1597,7 @@ def register_tools(
 
         valid, errors = validate_payload("datatypes_delete.v1.json", payload)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("datatypes_delete.v1.json", errors)
         return envelope_ok(payload)
 
     @server.tool()
@@ -1655,7 +1655,7 @@ def register_tools(
             )
         valid, errors = validate_payload("jt_slot_check.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("jt_slot_check.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1729,7 +1729,7 @@ def register_tools(
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
         valid, errors = validate_payload("jt_slot_process.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("jt_slot_process.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1786,7 +1786,7 @@ def register_tools(
             )
         valid, errors = validate_payload("jt_scan.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("jt_scan.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1830,7 +1830,7 @@ def register_tools(
                 return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("string_xrefs.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("string_xrefs.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1883,7 +1883,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_strings.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_strings.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1947,7 +1947,7 @@ def register_tools(
 
         valid, errors = validate_payload("strings_compact.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("strings_compact.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1992,7 +1992,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_imports.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_imports.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2039,7 +2039,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_exports.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_exports.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2093,7 +2093,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_xrefs_to.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_xrefs_to.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2155,7 +2155,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_functions.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_functions.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2266,7 +2266,7 @@ def register_tools(
             return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         valid, errors = validate_payload("mmio_annotate.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("mmio_annotate.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2323,7 +2323,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_scalars.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_scalars.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2378,7 +2378,7 @@ def register_tools(
 
         valid, errors = validate_payload("list_functions_in_range.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("list_functions_in_range.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2426,7 +2426,7 @@ def register_tools(
 
         valid, errors = validate_payload("disassemble_at.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("disassemble_at.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2473,7 +2473,7 @@ def register_tools(
 
         valid, errors = validate_payload("read_bytes.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("read_bytes.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2553,7 +2553,7 @@ def register_tools(
 
         valid, errors = validate_payload("disassemble_batch.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("disassemble_batch.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2610,7 +2610,7 @@ def register_tools(
 
         valid, errors = validate_payload("read_words.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("read_words.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -2674,7 +2674,7 @@ def register_tools(
 
         valid, errors = validate_payload("search_scalars_with_context.v1.json", data)
         if not valid:
-            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+            return response_schema_error("search_scalars_with_context.v1.json", errors)
         return envelope_ok(data)
 
 

@@ -9,7 +9,7 @@ from starlette.routing import Route
 from ...ghidra.client import GhidraClient
 from ...utils.errors import ErrorCode
 from ...utils.logging import request_scope
-from .._shared import envelope_ok, envelope_response, error_response, envelope_error
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -72,7 +72,7 @@ def create_project_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(response))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("project_overview.v1.json", errors)
             )
 
     return [

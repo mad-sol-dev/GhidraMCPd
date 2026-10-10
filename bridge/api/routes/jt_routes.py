@@ -13,7 +13,7 @@ from ...utils.config import MAX_WRITES_PER_REQUEST
 from ...utils.errors import ErrorCode
 from ...utils.hex import parse_hex
 from ...utils.logging import SafetyLimitExceeded, request_scope
-from .._shared import envelope_ok, envelope_response, error_response, envelope_error
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -51,7 +51,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("jt_slot_check.v1.json", errors)
             )
 
     @deps.with_client
@@ -87,7 +87,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("jt_slot_process.v1.json", errors)
             )
 
     @deps.with_client
@@ -117,7 +117,7 @@ def create_jt_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("jt_scan.v1.json", errors)
             )
 
     return [

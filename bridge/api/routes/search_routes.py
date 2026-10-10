@@ -25,7 +25,7 @@ from ...utils.logging import (
     increment_counter,
     request_scope,
 )
-from .._shared import envelope_ok, envelope_response, error_response, envelope_error
+from .._shared import envelope_ok, envelope_response, error_response, envelope_error, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
 
@@ -74,7 +74,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("string_xrefs.v1.json", errors)
             )
 
     @deps.with_client
@@ -111,7 +111,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_strings.v1.json", errors)
             )
 
     @deps.with_client
@@ -163,7 +163,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("strings_compact.v1.json", errors)
             )
 
     @deps.with_client
@@ -198,7 +198,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_imports.v1.json", errors)
             )
 
     @deps.with_client
@@ -233,7 +233,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_exports.v1.json", errors)
             )
 
     @deps.with_client
@@ -272,7 +272,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_xrefs_to.v1.json", errors)
             )
 
     @deps.with_client
@@ -376,7 +376,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_functions.v1.json", errors)
             )
 
     @deps.with_client
@@ -439,7 +439,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("search_scalars.v1.json", errors)
             )
 
     @deps.with_client
@@ -477,7 +477,7 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
             if valid:
                 return envelope_response(envelope_ok(payload))
             return envelope_response(
-                envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+                response_schema_error("list_functions_in_range.v1.json", errors)
             )
 
     return [

@@ -544,7 +544,7 @@
     },
     "RESPONSE-VALIDATION-MISLABELED": {
       "commit": "pending",
-      "status": "todo"
+      "status": "done"
     },
     "STAGE-8": {
       "commit": "c0d2115",

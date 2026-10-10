@@ -164,11 +164,15 @@ def test_project_overview_schema_failure_returns_envelope(monkeypatch) -> None:
     with TestClient(app) as client:
         response = client.get("/api/project_overview.json")
 
-    assert response.status_code == 400
+    # The request was fine; the bridge's own answer failed its schema.  This
+    # asserted 400/INVALID_REQUEST until RESPONSE-VALIDATION-MISLABELED, i.e. it
+    # pinned the caller being blamed for a server defect.
+    assert response.status_code == 500
     body = response.json()
     assert body["ok"] is False
     assert body["data"] is None
     errors = body["errors"]
     assert isinstance(errors, list) and errors
-    assert errors[0]["code"] == ErrorCode.INVALID_REQUEST.value
+    assert errors[0]["code"] == ErrorCode.INTERNAL.value
+    assert "project_overview.v1.json" in errors[0]["message"]
     assert "invalid schema" in errors[0]["message"]

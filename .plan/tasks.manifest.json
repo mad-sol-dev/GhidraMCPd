@@ -773,7 +773,7 @@
       "title": "A failed response validation is reported as INVALID_REQUEST",
       "area": "bridge",
       "depends_on": [],
-      "status": "todo",
+      "status": "done",
       "dod": [
         "A response that violates its own schema is reported with a code that names a server fault, not a bad request",
         "All 29 sites in bridge/api/tools.py move together",
