@@ -2008,3 +2008,39 @@ Verzeichnis gestartete Bridge schreibt also, wenn ein Tool `dry_run=false` bekom
 
 **Offen im ZK-Inkjet-Projekt** (unverändert, nicht hier zu entscheiden): Block `flash` auf
 0x00058000 verschieben (CL-TOOL-REC-121), die 96 Label-Dubletten bereinigen (CL-TOOL-REC-122).
+
+## Bestandsaufnahme R.24 Phase 3 (2026-10-11)
+
+Zwei Agents parallel (Plugin mit lesenden Live-Proben gegen 1.3.65, Bridge im Code); die
+tragenden Befunde nachgeprüft, live und im Code. Alle stimmten.
+
+**Versionsprüfung ohne Obergrenze.** Die Bridge lehnt nur `api < 2` ab
+(`client.py:497`). Ein Plugin mit API 3 würde angenommen und nach API-2-Regeln gelesen.
+Daran hängt Punkt 4: sendet das Plugin echte Booleans, meldet die Bridge (`== "true"`,
+`tools.py:872/912`) still `changed:false` und `saved:false`, und das Mutations-Ledger würde
+nie geleert.
+
+| # | Punkt | Plugin | Bridge | falsch beim Modell? |
+|---|---|---|---|---|
+| 1 | `paginateList` `""` für leer und hinter dem Ende | 9 Textrouten | nutzt keine (nicht auf der Whitelist) | nein |
+| 2 | ungültiger/fremder Cursor | fällt still auf `offset` zurück | reicht durch, sendet `offset=0` | ja, über HTTP-Routen und `collect` |
+| 3 | `readBytes length=0`, kurze Lesung | 0→1 Byte, >4096 still gekappt, kein Marker | erkennt kurze Lesungen selbst; `collect` prüft `length` nicht | gering (`collect`) |
+| 4 | Wahrheitswerte als Strings | `"changed":"false"` | `== "true"` | heute nicht; nach Plugin-Fix still falsch |
+| 5 | `check_dirty_state` ohne Programm `ok` | Zweig praktisch tot (Dispatcher antwortet 425) | behandelt 425 | nein |
+| 6 | `/disassembleAt` an Nicht-Instruktion | springt still weiter (an `0x10`: 2 MB) | `coverage` rechnet den Start nach | nein, außer Kontextfenster |
+
+Nebenbei, live und nachgeprüft: `string_xrefs_compact.count` ist die gekappte Länge;
+`analyze_function_complete` meldet gekappte inbound-Zahlen, `truncated` ignoriert Xrefs;
+`search_functions(context_lines)` macht aus einem Fehler ein leeres Disassemblat. Im Plugin:
+ungültige Ganzzahlen werden still zum Default; `searchScalars` am Inspektionslimit mit
+`has_more:false`; `/xrefs_from` an ungemappter Adresse 200 leer. Stubs abweichend: Cursor
+`"3"` statt `v1.…`, `readBytes` 0 → leer, `searchFunctions` ohne Programm 200 mit `error`.
+
+Die Kontextfenster der Scalar- und Funktionssuche beginnen bei Treffer minus n·4 und brauchen
+das Weiterlaufen von `/disassembleAt`; deshalb meldet es künftig den echten Start, statt mit
+404 abzulehnen.
+
+**Entscheidungen des Nutzers:** API 3 mit exakter Prüfung; `/disassembleAt` läuft weiter und
+meldet; `paginateList`-Routen bleiben. Aufteilung in Teil A (nur Bridge, zuerst) und Teil B
+(Plugin, ein Reinstall) in `.plan/TODO.md` unter R.24-PHASE3.
+
