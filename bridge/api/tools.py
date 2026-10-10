@@ -869,8 +869,8 @@ def register_tools(
                 )
 
             return envelope_ok({
-                "changed": response.get("changed") == "true",
-                "can_save": response.get("can_save") == "true",
+                "changed": response["changed"],
+                "can_save": response["can_save"],
                 "program_name": response.get("program_name"),
                 "message": response.get("message", "Dirty state checked")
             })
@@ -909,7 +909,7 @@ def register_tools(
                     upstream_error=upstream,
                 )
 
-            saved = response.get("saved") == "true"
+            saved = response["saved"]
             # The ledger resets only on an actual save: after a no-op the
             # mutations are still unwritten, and list_mutations must keep saying so.
             cleared = mutations.mark_saved() if saved else 0

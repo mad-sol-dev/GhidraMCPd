@@ -96,7 +96,7 @@ class _Client:
 
     def save_program(self, description=None):
         self.saves += 1
-        return {"status": "ok", "saved": "true", "program_name": "p", "message": "saved"}
+        return {"status": "ok", "saved": True, "program_name": "p", "message": "saved"}
 
     def close(self):
         pass

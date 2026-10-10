@@ -187,3 +187,59 @@ def test_every_response_writer_sets_the_api_header():
         body = source[source.index(writer):]
         body = body[: body.index("sendResponseHeaders")]
         assert "API_HEADER" in body, writer
+
+
+# --- flags: today's strings, tomorrow's booleans, nothing else -------------------
+
+
+def _dirty(changed, can_save="true"):
+    return httpx.Response(200, json={
+        "status": "ok", "program_name": "alpha", "changed": changed,
+        "can_save": can_save, "message": "m",
+    })
+
+
+@pytest.mark.parametrize("changed, expected", [
+    ("true", True), ("false", False),   # API 2 sends strings
+    (True, True), (False, False),       # a plugin with real booleans must not read as "clean"
+])
+def test_dirty_state_reads_both_forms_of_a_flag(changed, expected):
+    result = _tools({"check_dirty_state": _dirty(changed)})["check_dirty_state"].fn()
+
+    assert result["ok"] is True
+    assert result["data"]["changed"] is expected
+    assert result["data"]["can_save"] is True
+
+
+@pytest.mark.parametrize("changed", [None, "yes", 1, "True"])
+def test_dirty_state_refuses_a_flag_it_cannot_read(changed):
+    """Defaulting to false would report a dirty program as clean."""
+
+    result = _tools({"check_dirty_state": _dirty(changed)})["check_dirty_state"].fn()
+
+    assert result["ok"] is False
+    assert result["errors"][0]["code"] == "UNAVAILABLE"
+    assert "not a boolean" in str(result["errors"][0])
+
+
+@pytest.mark.parametrize("saved, expected", [("true", True), (True, True), ("false", False), (False, False)])
+def test_save_reads_both_forms_of_saved(saved, expected):
+    answer = httpx.Response(200, json={
+        "status": "ok", "saved": saved, "program_name": "alpha", "message": "m",
+    })
+
+    result = _tools({"save_program": answer})["save_program"].fn()
+
+    assert result["ok"] is True
+    assert result["data"]["saved"] is expected
+
+
+def test_save_refuses_a_saved_flag_it_cannot_read():
+    """Reading it as false would keep the ledger after a real save, and the reverse."""
+
+    answer = httpx.Response(200, json={"status": "ok", "program_name": "alpha", "message": "m"})
+
+    result = _tools({"save_program": answer})["save_program"].fn()
+
+    assert result["ok"] is False
+    assert "not a boolean" in str(result["errors"][0])

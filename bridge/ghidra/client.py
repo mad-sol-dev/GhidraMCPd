@@ -18,6 +18,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Sequence,
     TypeVar,
 )
 from urllib.parse import urljoin
@@ -541,6 +542,30 @@ class GhidraClient:
         if self._last_error is None:
             self._last_error = RequestError(status=None, reason=reason, retryable=False)
 
+    def _read_flags(
+        self, payload: Dict[str, Any], keys: Sequence[str], path: str
+    ) -> Optional[Dict[str, Any]]:
+        """The payload with ``keys`` as real booleans, or None if one is neither.
+
+        API 2 plugins send ``"true"``/``"false"``; JSON booleans are accepted too,
+        so a plugin that fixes the type is not misread as "false".  Anything
+        else is a failure: defaulting to false would report a dirty program as
+        clean, or a save as not done.
+        """
+
+        flags: Dict[str, Any] = dict(payload)
+        for key in keys:
+            value = payload.get(key)
+            if value is True or value == "true":
+                flags[key] = True
+            elif value is False or value == "false":
+                flags[key] = False
+            else:
+                logger.warning("%s answered %s=%r", path, key, value)
+                self._note_failure(f"{path} answered {key}={value!r}, not a boolean")
+                return None
+        return flags
+
     def _require_payload(self, payload: Optional[Mapping[str, Any]], what: str) -> Mapping[str, Any]:
         """The payload, or UpstreamFailed: a failed listing must not read as an empty one."""
 
@@ -878,7 +903,7 @@ class GhidraClient:
         if not isinstance(payload, dict):
             logger.warning("Unexpected check_dirty_state payload type: %s", type(payload))
             return None
-        return payload
+        return self._read_flags(payload, ("changed", "can_save"), "check_dirty_state")
 
     def save_program(self, description: str | None = None) -> Optional[Dict[str, Any]]:
         """Save the current program with an optional description."""
@@ -909,7 +934,7 @@ class GhidraClient:
         if not isinstance(payload, dict):
             logger.warning("Unexpected save_program payload type: %s", type(payload))
             return None
-        return payload
+        return self._read_flags(payload, ("saved",), "save_program")
 
     def open_program(self, domain_file_id: str, *, path: str | None = None, on_dirty: str | None = None) -> Optional[Dict[str, Any]]:
         """Request the plugin to open the specified program.
