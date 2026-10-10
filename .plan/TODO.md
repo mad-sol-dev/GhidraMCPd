@@ -4,7 +4,7 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.22} Data type lookup cache for Ghidra plugin (per-DataTypeManager map with safe invalidation and fast lookup fallback)
+- {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 - {R.23} `open_program` readiness semantics (IDLE/LOADING/READY state + status endpoint + bridge polling)
 - {R.25} Default read-only mode (`GHIDRA_MCP_ENABLE_WRITES` false) with `/info` reflecting write enablement and user guidance
 - {R.26} Write endpoint `domain_file_id` validation against the active program (reject mismatches before mutating)
@@ -34,6 +34,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {R.22-CORRECTNESS} Ein unbekannter Datentyp ist ein Fehler statt still `int`; das `P`-Präfix macht nur bei existierendem Basistyp einen Zeiger (vorher `void*`); exakter Treffer vor Treffer ohne Groß-/Kleinschreibung, ein Durchlauf statt zwei. Live mit Plugin 1.3.60: `uint8_t_nope` und `PacketHeaderNope` abgelehnt, nichts geschrieben; `int`/`char`/`Pchar`/`UINT` → `int`/`char`/`char *`/`uint`, danach in Ghidra zurückgenommen. Dabei `/renameData` mit gleichem Namen als No-op bestätigt.
 - [x] {DOC-DEFAULT-DRIFT} `test_doc_defaults.py`: jeder in einer Tool-Beschreibung genannte Parameter-Default (52 Stück) muss dem Schema-Default entsprechen, und jede `analyze`-Option muss mit Bereich und Default zu Anfrage-Schema und `AnalyzeConfig` passen. Beim Einführen keine echte Drift; ein Fall, wo das Schema `null` sagte und erst das Plugin `"error"` daraus machte (`select_program.on_dirty`), hat jetzt den ausdrücklichen Default. Beide Prüfungen schlagen bei eingebauter Drift an.
 - [x] {ANALYZE-POOL-CONSTANTS} `analyze_function_complete` hat den Abschnitt `constants` (im Default): je Wert, den die Funktion aus dem Konstantenpool lädt, Pool-Adresse, erste Ladestelle, Anzahl Loads; `options.constants.limit` 0–64 (8). Live an 0x002AF9C0: 0xB1008000 (USBD_BA), 0xB1008704, 0x8190, 0x82B0; an 0x002AF80C zusätzlich 0x00109AC4. Referenzlauf 58 264 → 59 804 Bytes (analyze +644/+561; project_info +335 aus IMAGE-BASE-STALE, dort nicht gemessen). Sockel 8 485.
 - [x] {IMAGE-BASE-STALE} Werkzeugseite: `project_info` trägt `layout_notes`, wenn `image_base` oder Einsprungpunkte in keinem Speicherblock liegen (sonst fehlt das Feld). `image_base` 0x0 ist Ghidras echter Wert, nicht veraltet. Live am ZK-Inkjet-Programm beide Hinweise. Die Korrektur des Programms (Block nach 0x00058000 verschieben) gehört ins ZK-Inkjet-Projekt, dort CL-TOOL-REC-121.
