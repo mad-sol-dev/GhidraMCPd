@@ -185,7 +185,8 @@ def test_slot_process_dry_run_collects_metadata_without_writes() -> None:
     )
 
     assert result["writes"] == {"renamed": False, "comment_set": False}
-    assert result["verify"] == {"name": "orig_name", "comment_present": False}
+    # None, not False: nothing can read a comment back.
+    assert result["verify"] == {"name": "orig_name", "comment_present": None}
     assert client.rename_calls == []
     assert client.comment_calls == []
 
@@ -212,7 +213,7 @@ def test_slot_process_performs_writes_and_verifies_results() -> None:
 
     assert result["errors"] == []
     assert result["writes"] == {"renamed": True, "comment_set": True}
-    assert result["verify"] == {"name": "new_7", "comment_present": True}
+    assert result["verify"] == {"name": "new_7", "comment_present": None}
     assert client.rename_calls == [(0x400200, "new_7")]
     assert client.comment_calls == [(0x400200, "note")]
 
@@ -372,3 +373,59 @@ def test_scan_batches_slot_checks_with_summary() -> None:
     assert result["items"][0]["errors"] == []
     assert result["items"][1]["errors"] == ["OUT_OF_RANGE"]
     assert result["items"][2]["errors"] == []
+
+
+def _prose(name: str, addr: int) -> Dict[str, object]:
+    """What GhidraClient.get_function_by_address really returns: prose keys."""
+
+    return {
+        "Function": f"{name} at {addr:08x}",
+        "Signature": f"undefined __stdcall {name}(void)",
+        "Entry": f"{addr:08x}",
+        "Body": f"{addr:08x} - {addr + 0x10:08x}",
+    }
+
+
+def test_names_before_and_after_are_read_from_the_plugins_prose() -> None:
+    """JT-PRENAME-PARSE: meta.get("name") on this answer was None every time,
+    so verify.name was null and the audit logged None -> None."""
+
+    client = StubClient(
+        read_result=0x400200,
+        metadata=[_prose("FUN_00400200", 0x400200), _prose("new_7", 0x400200)],
+    )
+    result = jt.slot_process(
+        client, jt_base=0x400000, slot_index=7, code_min=0x400000, code_max=0x500000,
+        rename_pattern="new_{slot}", comment="note", adapter=StubAdapter(mode="ARM", target=0x400200),
+        dry_run=False, writes_enabled=True,
+    )
+
+    assert result["errors"] == []
+    assert result["verify"] == {"name": "new_7", "comment_present": None}
+
+
+def test_a_rename_that_did_not_take_is_a_verify_failure() -> None:
+    """Verification never ran before: the name it compared was always None."""
+
+    client = StubClient(
+        read_result=0x400200,
+        metadata=[_prose("FUN_00400200", 0x400200), _prose("FUN_00400200", 0x400200)],
+    )
+    result = jt.slot_process(
+        client, jt_base=0x400000, slot_index=7, code_min=0x400000, code_max=0x500000,
+        rename_pattern="new_{slot}", comment="note", adapter=StubAdapter(mode="ARM", target=0x400200),
+        dry_run=False, writes_enabled=True,
+    )
+
+    assert result["verify"]["name"] == "FUN_00400200"
+    assert "WRITE_VERIFY_FAILED" in result["errors"]
+
+
+def test_a_dry_run_reads_the_current_name_from_prose() -> None:
+    client = StubClient(read_result=0x400200, metadata=[_prose("FUN_00400200", 0x400200)])
+    result = jt.slot_process(
+        client, jt_base=0x400000, slot_index=7, code_min=0x400000, code_max=0x500000,
+        rename_pattern="new_{slot}", comment="note", adapter=StubAdapter(mode="ARM", target=0x400200),
+        dry_run=True, writes_enabled=False,
+    )
+    assert result["verify"]["name"] == "FUN_00400200"

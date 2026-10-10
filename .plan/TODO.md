@@ -24,7 +24,6 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {DIAG.3} Force-refresh endpoint for manual state re-checking (allow users to trigger trackProgram() when state appears stale)
 - {DIAG.4} Analysis completion metadata in search results (add analysis_complete flag based on AutoAnalysisManager state)
 - {BUILD.1} Docker cache workaround documentation (docker build --no-cache or version-tagged images to avoid stale builds)
-- {JT-PRENAME-PARSE} jt.py parst pre_name/pre_comment falsch
 - {ANALYZE-POOL-CONSTANTS} Konstantenpool-Worte als eigener Abschnitt
 - {FIND-IN-FUNCTION-TEXT} fmt="text" fuer find_in_function
 - {DOC-DEFAULT-DRIFT} Test: Doku gegen Signatur-Defaults
@@ -39,6 +38,7 @@ Recommended next focus: land {R.22}/{R.23} to improve plugin performance and rea
 - {R.20} Controlled Ghidra action automation (auto-analysis, mark-as-library) with confirmations
 
 ## DONE
+- [x] {JT-PRENAME-PARSE} `jt_slot_process` liest Namen vorher/nachher über den gemeinsamen Prosa-Parser (`features/function_meta.py`, vorher nur in `tools.py`). Weiter als notiert: auch `verify.name` war immer `null`, `comment_present` behauptete `false`/`true` aus einem Feld, das das Plugin nicht hat (jetzt `null` + Hinweis, Schema nullable), und die Einsprungprüfung im ARM/Thumb-Adapter lief nie (`Entry` statt `entry_point`). Die Namensverifikation greift jetzt erstmals; ein widersprüchlicher Stub (`renamed_7` geschrieben, `new_name` gemeldet) fiel dabei auf. Live: Parser an `boot_init`, `rename_function`-Ledger. `jt_slot_process` selbst nicht live geschrieben.
 - [x] {RESPONSE-VALIDATION-MISLABELED} Eine Antwort, die ihr eigenes Schema verletzt, ist `INTERNAL` (HTTP 500) mit Schemaname und dem Hinweis, dass die Anfrage gültig war — an allen 29 Tool- und 23 Routenstellen über `response_schema_error`. `test_response_schema_errors.py` prüft jede Stelle; am alten Stand 52 Treffer. Ein Bestandstest, der 400/INVALID_REQUEST festschrieb, ist bewusst umgestellt. Ausnahme `capabilities` (statische Liste, protokolliert nur).
 - [x] {MMIO-ZERO-TARGET} `mmio_annotate_compact`: `target` ist bei READ/WRITE die Adresse, bei OR/AND/TOGGLE der Maskenwert oder `null` bei Registeroperand; `address_abs` nur noch bei Zugriffen (fiel vorher auf die Instruktionsadresse zurück oder trug die Maske). Schema `target` nullable; kein Konsument in zk-inkjet oder Starfish wertet die Felder maschinell aus. Live an 0x002AF9C0: drei Registeroperand-Operationen `null`, Live-Test gegen den alten Stand rot. Referenzlauf 68 109 → 67 977 Bytes.
 - [x] {DEAD-ALIAS-FIRST} Alle 15 toten Alias-Namen aus Kandidatentabellen und Whitelist entfernt (aus Plugin-Ständen, mit denen die Bridge seit 8c/8d ohnehin nicht spricht). Live gemessen: `get_function_by_address` und `get_xrefs_to` je 2 → 1 Anfrage, `analyze_function_complete` 19 → 17, `string_xrefs_compact` 22 → 21, keine 404 mehr. `test_plugin_routes.py` verlangt jetzt jeden Alias als Route; gegen die alten Tabellen rot.

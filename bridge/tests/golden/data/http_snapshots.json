@@ -234,7 +234,7 @@
       "slot_addr": "0x00100000",
       "target": "0x00102004",
       "verify": {
-        "comment_present": false,
+        "comment_present": null,
         "name": "sub_102004"
       },
       "writes": {
@@ -249,13 +249,15 @@
     "data": {
       "errors": [],
       "mode": "ARM",
-      "notes": [],
+      "notes": [
+        "comment not verified: the plugin has no route that reads a comment back; comment_set reports what the write call answered"
+      ],
       "raw": "0x00102004",
       "slot": 0,
       "slot_addr": "0x00100000",
       "target": "0x00102004",
       "verify": {
-        "comment_present": true,
+        "comment_present": null,
         "name": "slot_0_0x00102004"
       },
       "writes": {

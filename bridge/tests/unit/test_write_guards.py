@@ -215,7 +215,9 @@ def test_jt_slot_process_writes_enabled_records_audit(_patch_adapter, monkeypatc
     client = factory.last
 
     assert body["ok"] is True
-    assert data["notes"] == []
+    # The only note: the comment cannot be read back to verify it.
+    assert data["notes"] == [n for n in data["notes"] if n.startswith("comment not verified")]
+    assert len(data["notes"]) == 1
     assert data["writes"] == {"renamed": True, "comment_set": True}
     assert client.rename_calls
     assert client.comment_calls

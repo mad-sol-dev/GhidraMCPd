@@ -3,47 +3,101 @@
   "$id": "urn:schema:jt-slot-process.v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["slot", "slot_addr", "raw", "mode", "target", "errors", "writes", "verify"],
+  "required": [
+    "slot",
+    "slot_addr",
+    "raw",
+    "mode",
+    "target",
+    "errors",
+    "writes",
+    "verify"
+  ],
   "properties": {
-    "slot": {"type": "integer", "minimum": 0},
-    "slot_addr": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "raw": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-    "mode": {"type": "string", "enum": ["ARM", "Thumb", "none"]},
+    "slot": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "slot_addr": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$"
+    },
+    "raw": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]+$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "ARM",
+        "Thumb",
+        "none"
+      ]
+    },
     "target": {
       "oneOf": [
-        {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
-        {"type": "null"}
+        {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]+$"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "notes": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "errors": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "writes": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["renamed", "comment_set"],
+      "required": [
+        "renamed",
+        "comment_set"
+      ],
       "properties": {
-        "renamed": {"type": "boolean"},
-        "comment_set": {"type": "boolean"}
+        "renamed": {
+          "type": "boolean"
+        },
+        "comment_set": {
+          "type": "boolean"
+        }
       }
     },
     "verify": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "comment_present"],
+      "required": [
+        "name",
+        "comment_present"
+      ],
       "properties": {
         "name": {
           "oneOf": [
-            {"type": "string"},
-            {"type": "null"}
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "comment_present": {"type": "boolean"}
+        "comment_present": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "null: not verifiable -- the plugin has no route that reads a comment back. writes.comment_set reports what the write call answered."
+        }
       }
     }
   }

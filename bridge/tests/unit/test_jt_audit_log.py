@@ -42,8 +42,10 @@ def test_slot_process_records_audit_entry(tmp_path) -> None:
         entry = json.loads(content[0])
         assert entry["function"] == "0x00400200"
         assert entry["rename"] == {"ok": True, "from": "orig_5", "to": "new_5"}
-        assert entry["comment"] == {"ok": True, "from": "old", "to": "note"}
-        assert entry["verify"] == {"name": "new_5", "comment_present": True}
+        # The plugin cannot read a comment back (JT-PRENAME-PARSE); the stub's
+        # "comment" field never existed there, so before/after are unknown.
+        assert entry["comment"] == {"ok": True, "from": None, "to": None}
+        assert entry["verify"] == {"name": "new_5", "comment_present": None}
         assert entry["request"] == "jt_slot_process"
         assert entry["slot"] == 5
     finally:

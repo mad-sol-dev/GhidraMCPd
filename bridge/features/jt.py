@@ -11,6 +11,7 @@ from ..utils.config import ENABLE_WRITES
 from ..utils.errors import DetailCode
 from ..utils.hex import int_to_hex, slot_address
 from ..utils.logging import enforce_batch_limit, increment_counter, record_write_attempt
+from .function_meta import function_name, read_function_name
 
 
 @dataclass(slots=True)
@@ -40,7 +41,7 @@ class JTProcessResult(JTSlotResult):
     renamed: bool
     comment_set: bool
     verify_name: Optional[str]
-    comment_present: bool
+    comment_present: Optional[bool]
 
     def to_dict(self) -> Dict[str, object]:
         payload = JTSlotResult.to_dict(self)
@@ -94,6 +95,10 @@ def slot_check(
 
 _NOTE_WRITES_DISABLED = "writes disabled: no modifications were performed"
 _NOTE_DRY_RUN = "dry-run requested: no modifications were performed"
+_NOTE_COMMENT_UNVERIFIABLE = (
+    "comment not verified: the plugin has no route that reads a comment back; "
+    "comment_set reports what the write call answered"
+)
 
 
 def _append_note(notes: List[str], message: str) -> None:
@@ -134,7 +139,7 @@ def slot_process(
         renamed=False,
         comment_set=False,
         verify_name=None,
-        comment_present=False,
+        comment_present=None,
     )
     if result.errors or not result.target:
         if dry_run is False and not result.errors:
@@ -149,8 +154,7 @@ def slot_process(
         result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
         return result.to_dict()
     if dry_run:
-        meta = client.get_function_by_address(target_int)
-        result.verify_name = meta.get("name") if meta else None
+        result.verify_name = read_function_name(client, target_int)
         if not writes_enabled:
             _append_note(result.notes, _NOTE_WRITES_DISABLED)
         _append_note(result.notes, _NOTE_DRY_RUN)
@@ -161,8 +165,10 @@ def slot_process(
         result.errors.append(f"FORMAT_ERROR:{exc}")
         return result.to_dict()
     pre_meta = client.get_function_by_address(target_int)
-    pre_name = pre_meta.get("name") if isinstance(pre_meta, dict) else None
-    pre_comment = pre_meta.get("comment") if isinstance(pre_meta, dict) else None
+    pre_name = function_name(pre_meta, target_int)
+    # The plugin has no route that reads a comment back; None is "unknown",
+    # which the audit must not record as "there was none".
+    pre_comment: Optional[str] = None
     if not pre_meta:
         result.errors.append(DetailCode.NO_FUNCTION_AT_TARGET.value)
         return result.to_dict()
@@ -180,11 +186,12 @@ def slot_process(
     post_name: Optional[str] = None
     post_comment: Optional[str] = None
     if meta:
-        post_name = meta.get("name") if isinstance(meta, dict) else None
-        if isinstance(meta, dict):
-            post_comment = meta.get("comment")
-        result.verify_name = meta.get("name")
-        result.comment_present = bool(meta.get("comment")) if isinstance(meta, dict) else False
+        post_name = function_name(meta, target_int)
+        result.verify_name = post_name
+        if result.renamed and post_name != new_name:
+            result.errors.append(DetailCode.WRITE_VERIFY_FAILED.value)
+        # comment_present stays None: nothing can read the comment back.
+        _append_note(result.notes, _NOTE_COMMENT_UNVERIFIABLE)
     else:
         result.errors.append(DetailCode.WRITE_VERIFY_FAILED.value)
     record_jt_write(

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from . import ArchAdapter, Probe
+from ..features.function_meta import function_entry
 
 BX_SENTINELS = {0xE12FFF1C, 0xE12FFF33}
 
@@ -42,8 +43,10 @@ class ARMThumbAdapter(ArchAdapter):
         if disasm:
             meta = client.get_function_by_address(target)
             if meta:
-                entry_point: Any = meta.get("entry_point") or meta.get("address")
-                if isinstance(entry_point, int) and entry_point != target:
+                # The plugin's field is "Entry" (hex text); entry_point/address
+                # never existed, so this check used to be skipped every time.
+                entry_point = function_entry(meta)
+                if entry_point is not None and entry_point != target:
                     return False
             return True
         meta = client.get_function_by_address(target)

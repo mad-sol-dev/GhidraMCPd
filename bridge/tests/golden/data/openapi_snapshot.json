@@ -2408,7 +2408,11 @@
                       "additionalProperties": false,
                       "properties": {
                         "comment_present": {
-                          "type": "boolean"
+                          "description": "null: not verifiable -- the plugin has no route that reads a comment back. writes.comment_set reports what the write call answered.",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
                         },
                         "name": {
                           "oneOf": [

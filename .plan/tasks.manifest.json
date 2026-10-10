@@ -628,7 +628,7 @@
         "Denselben verankerten Parser wie tools.py._current_function_name verwenden",
         "Test gegen eine Prosa-Antwort"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "Gleiche Wurzel wie der in Stufe 5 behobene Fall. In keiner Stufe gefunden, beim Bauen von list_mutations aufgefallen."
       ]

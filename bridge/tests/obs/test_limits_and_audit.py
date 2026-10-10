@@ -61,7 +61,9 @@ def test_audit_log_includes_request_metadata(tmp_path: Path) -> None:
         read_result=0x400200,
         metadata=[
             {"name": "old_name", "comment": "prev"},
-            {"name": "new_name", "comment": "updated"},
+            # What the rename wrote ("renamed_{slot}").  This said "new_name",
+            # which only passed while verification compared None with None.
+            {"name": "renamed_7", "comment": "updated"},
         ],
     )
     adapter = StubAdapter(mode="ARM", target=0x400200)
@@ -91,9 +93,11 @@ def test_audit_log_includes_request_metadata(tmp_path: Path) -> None:
         assert entry["request_id"] == ctx.request_id
         assert entry["request"] == "jt_slot_process"
         assert entry["context"] == {"path": "/api/jt_slot_process.json"}
-        assert entry["rename"] == {"ok": True, "from": "old_name", "to": "new_name"}
-        assert entry["comment"] == {"ok": True, "from": "prev", "to": "updated"}
-        assert entry["verify"] == {"name": "new_name", "comment_present": True}
+        assert entry["rename"] == {"ok": True, "from": "old_name", "to": "renamed_7"}
+        # The plugin cannot read a comment back (JT-PRENAME-PARSE); the stub's
+        # "comment" field never existed there, so before/after are unknown.
+        assert entry["comment"] == {"ok": True, "from": None, "to": None}
+        assert entry["verify"] == {"name": "renamed_7", "comment_present": None}
         assert entry["errors"] == []
     finally:
         audit.set_audit_log_path(previous_path)
