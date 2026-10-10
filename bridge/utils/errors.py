@@ -6,6 +6,14 @@ from enum import Enum
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 
 
+class UpstreamFailed(RuntimeError):
+    """The plugin did not answer the question; the reason is the message.
+
+    Raised where a failed request would otherwise read as an empty result --
+    "no matches" is a statement about the program, a failed search is not.
+    """
+
+
 class ErrorCode(str, Enum):
     """Stable error codes returned from the deterministic endpoints."""
 

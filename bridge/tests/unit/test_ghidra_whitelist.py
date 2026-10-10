@@ -131,3 +131,35 @@ def test_get_alias_resolution_is_cached():
         "/api/disassemble_function",
         "/api/disassemble_function",
     ]
+
+
+def test_a_failed_request_is_sent_once():
+    """Only a missing route moves on; a failure on a live route is the answer."""
+
+    requested = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return httpx.Response(500, text="boom")
+
+    client = GhidraClient("https://example.test/api", transport=_build_transport(handle))
+
+    assert client.disassemble_function(0x401000) == []
+    assert requested == ["/api/disassemble"]
+
+
+def test_a_failed_write_is_not_resent():
+    requested = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/api/current_program.json"):
+            return httpx.Response(200, json={"domain_file_id": "p", "locked": False, "state": "READY",
+                                             "state_duration_seconds": 1, "warnings": []})
+        requested.append(request.url.path)
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    client = GhidraClient("https://example.test/api", transport=_build_transport(handle))
+
+    assert client.rename_function(0x401000, "x") is False
+    assert client.rename_function(0x401000, "y") is False
+    assert requested == ["/api/rename_function_by_address", "/api/rename_function_by_address"]

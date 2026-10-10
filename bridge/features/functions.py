@@ -12,6 +12,7 @@ from ..utils.cache import (
     get_search_cache,
     normalize_search_query,
 )
+from ..utils.errors import UpstreamFailed
 from ..utils.hex import parse_hex
 from . import method_notes
 from .pagination import finalize_page
@@ -21,6 +22,10 @@ _FUNCTION_LINE = re.compile(
 )
 
 _MAX_CONTEXT_LINES = 16
+
+
+def _reason(error: object) -> str:
+    return str(getattr(error, "reason", None) or error)
 
 
 def _rank_functions_simple(
@@ -157,6 +162,8 @@ def search_functions(
             cache.invalidate(cache_key)
         raise
     had_error = bool(page_result.error)
+    if page_result.error and not page_result.items:
+        raise UpstreamFailed(f"function search failed upstream: {_reason(page_result.error)}")
 
     def _parse_lines(lines: Optional[List[str]]) -> List[Dict[str, str]]:
         parsed: List[Dict[str, str]] = []
@@ -185,10 +192,6 @@ def search_functions(
     computed_cursor: Optional[str] = page_result.cursor
     has_more = page_result.has_more
 
-    if page_result.error and not parsed_items:
-        has_more = False
-        computed_cursor = None
-
     if rank == "simple":
         if cursor_token:
             raise ValueError("cursor pagination cannot be combined with rank")
@@ -205,9 +208,10 @@ def search_functions(
                     cache.invalidate(cache_key)
                 raise
             had_error = had_error or bool(next_page.error)
-            aggregated_lines.extend(_parse_lines(next_page.items))
             if next_page.error and not next_page.items:
-                break
+                # a ranking over the pages that did arrive would be a wrong ranking
+                raise UpstreamFailed(f"function search failed upstream: {_reason(next_page.error)}")
+            aggregated_lines.extend(_parse_lines(next_page.items))
             if not next_page.has_more:
                 break
             safety += 1

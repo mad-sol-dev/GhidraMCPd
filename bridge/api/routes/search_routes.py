@@ -17,7 +17,7 @@ from ...features import (
 )
 from ...ghidra.client import GhidraClient
 from ...features.listing import ListingUnavailable
-from ...utils.errors import ErrorCode
+from ...utils.errors import ErrorCode, UpstreamFailed
 from ...utils.hex import int_to_hex, parse_hex
 from ...utils.logging import (
     SafetyLimitExceeded,
@@ -372,6 +372,8 @@ def create_search_routes(deps: RouteDependencies) -> List[Route]:
                 )
             except SafetyLimitExceeded as exc:
                 return error_response(ErrorCode.RESULT_TOO_LARGE, str(exc))
+            except UpstreamFailed as exc:
+                return error_response(ErrorCode.UNAVAILABLE, str(exc))
             valid, errors = validate_payload("search_functions.v1.json", payload)
             if valid:
                 return envelope_response(envelope_ok(payload))

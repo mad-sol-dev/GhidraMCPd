@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence
 
 from ..ghidra.client import GhidraClient
-from ..utils.errors import ErrorCode, make_error
+from ..utils.errors import ErrorCode, UpstreamFailed, make_error
 from ..utils.hex import parse_hex
 from ..utils.logging import (
     SafetyLimitExceeded,
@@ -437,7 +437,7 @@ def execute_collect(
             payload = handler(client, params_raw)
         except SafetyLimitExceeded as exc:
             envelope = _envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
-        except ListingUnavailable as exc:
+        except (ListingUnavailable, UpstreamFailed) as exc:
             envelope = _envelope_error(ErrorCode.UNAVAILABLE, str(exc))
         except (KeyError, TypeError, ValueError) as exc:
             envelope = _envelope_error(ErrorCode.INVALID_REQUEST, str(exc))

@@ -40,7 +40,7 @@ from ..utils.config import (
     WRITES_ENABLE_HOWTO,
     writes_status,
 )
-from ..utils.errors import ErrorCode
+from ..utils.errors import ErrorCode, UpstreamFailed
 from ..utils.logging import (
     SafetyLimitExceeded,
     enforce_batch_limit,
@@ -404,7 +404,17 @@ def register_tools(
                 client_arg.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(
                     _current_requestor()
                 )
-            result = fn(*args, **kwargs)
+            try:
+                result = fn(*args, **kwargs)
+            except UpstreamFailed as exc:
+                # A failed request ends the call as UNAVAILABLE, never as an
+                # empty result that reads like a statement about the program.
+                upstream = getattr(client_arg, "last_error", None)
+                return envelope_error(
+                    ErrorCode.UNAVAILABLE,
+                    str(exc),
+                    upstream_error=upstream.as_dict() if isinstance(upstream, RequestError) else None,
+                )
             refusal = getattr(client_arg, "write_refusal", None)
             if isinstance(refusal, RequestError):
                 return write_refusal_envelope(refusal)
@@ -2176,6 +2186,8 @@ def register_tools(
                 )
         except SafetyLimitExceeded as exc:
             return envelope_error(ErrorCode.RESULT_TOO_LARGE, str(exc))
+        except UpstreamFailed as exc:
+            return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
 
         valid, errors = validate_payload("search_functions.v1.json", data)
         if not valid:

@@ -85,7 +85,7 @@ def test_a_plugin_answering_in_text_is_unavailable_not_empty():
     """The text parser returned [] on any failure -- "no functions here"."""
 
     client = _client("boot_init @ 0025b0c4 392\n")
-    with pytest.raises(ListingUnavailable, match="without JSON"):
+    with pytest.raises(ListingUnavailable, match="not JSON"):
         function_range.list_functions_in_range(
             client, address_min="0x0025b000", address_max="0x00274000", limit=20, page=1
         )

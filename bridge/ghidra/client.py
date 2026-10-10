@@ -26,6 +26,7 @@ from time import perf_counter
 
 from .models import FunctionMeta, Xref
 from .whitelist import DEFAULT_WHITELIST, WhitelistEntry
+from ..utils.errors import UpstreamFailed
 from ..utils.logging import current_request, increment_counter, scoped_timer
 
 logger = logging.getLogger("ghidra.bridge.client")
@@ -115,19 +116,23 @@ class EndpointResolver:
         self._cache = {}
 
     def resolve(self, key: str, requester: "EndpointRequester") -> List[str]:
+        """Send the request once, to the first candidate route that exists.
+
+        Only a missing route moves on to the next candidate.  Any other failure
+        is the answer: retrying it on an alias of the same handler sent every
+        failed request twice, POST writes included -- a create that had landed
+        before a timeout came back "already exists".
+        """
+
         cached = self._cache.get(key)
-        if cached:
-            result = requester.request(cached)
-            if not _is_error(result):
-                return result
-        last_error: List[str] = [f"ERROR: no candidates for {key}"]
-        for candidate in self.candidates.get(key, (key,)):
+        candidates = (cached,) if cached else tuple(self.candidates.get(key, (key,)))
+        result: List[str] | RequestError = [f"ERROR: no candidates for {key}"]
+        for candidate in candidates:
             result = requester.request(candidate)
-            if not _is_error(result):
+            if not _route_missing(result):
                 self._cache[key] = candidate
                 return result
-            last_error = result
-        return last_error
+        return result
 
 
 class EndpointRequester:
@@ -154,6 +159,16 @@ class EndpointRequester:
                 "POST", path, key=self.key, data=self.data
             )
         raise ValueError(f"Unsupported method {self.method}")
+
+
+def _route_missing(result: object) -> bool:
+    """The plugin has no such route: the JDK server's own 404, which is not JSON."""
+
+    return (
+        isinstance(result, RequestError)
+        and result.status == 404
+        and not result.reason.lstrip().startswith("{")
+    )
 
 
 def _is_error(lines: object) -> bool:
@@ -454,6 +469,20 @@ class GhidraClient:
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
 
+    def _note_failure(self, reason: str) -> None:
+        """Keep a transport error's own reason; otherwise record why there is no answer."""
+
+        if self._last_error is None:
+            self._last_error = RequestError(status=None, reason=reason, retryable=False)
+
+    def _require_payload(self, payload: Optional[Mapping[str, Any]], what: str) -> Mapping[str, Any]:
+        """The payload, or UpstreamFailed: a failed listing must not read as an empty one."""
+
+        if payload:
+            return payload
+        reason = self._last_error.reason if self._last_error else "no answer"
+        raise UpstreamFailed(f"{what} failed upstream: {reason}")
+
     def _write_target(self) -> str | RequestError:
         """The domain_file_id a write may go to, or why it may not be sent."""
 
@@ -506,10 +535,12 @@ class GhidraClient:
         lines = self._request_lines(method, path, key=key, params=params, data=data)
         if _is_error(lines):
             logger.warning("%s request failed: %s", path, _error_summary(lines))
+            self._note_failure(_error_summary(lines))
             return None
         text = "\n".join(line for line in lines if line is not None).strip()
         if not text:
             logger.warning("%s returned empty payload", path)
+            self._note_failure(f"{path} answered with an empty body")
             return None
         try:
             payload = json.loads(text)
@@ -517,6 +548,7 @@ class GhidraClient:
             logger.warning(
                 "%s returned invalid JSON", path, extra={"error": str(exc), "preview": text[:256]}
             )
+            self._note_failure(f"{path} answered with something that is not JSON: {text[:80]!r}")
             return None
         if schema_key is not None:
             validator = self._validators.get(schema_key)
@@ -529,9 +561,13 @@ class GhidraClient:
                         "%s response failed schema validation", path,
                         extra={"errors": [err.message for err in errors][:3]},
                     )
+                    self._note_failure(
+                        f"{path} answered in an unexpected shape: {errors[0].message}"
+                    )
                     return None
         if not isinstance(payload, Mapping):
             logger.warning("%s payload was not an object", path, extra={"type": type(payload).__name__})
+            self._note_failure(f"{path} answered with a {type(payload).__name__}, not an object")
             return None
         if "error" in payload:
             message = str(payload.get("error"))
@@ -1040,7 +1076,6 @@ class GhidraClient:
         increment_counter("ghidra.xrefs")
         params = {"address": f"0x{address:08x}", "limit": int(limit)}
         payload = None
-        path_used = "xrefs_to"
         for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("xrefs_to",)):
             payload = self._request_json_payload(
                 "GET",
@@ -1049,13 +1084,9 @@ class GhidraClient:
                 key="GET_XREFS_TO",
                 schema_key="xrefs",
             )
-            path_used = candidate
             if payload is not None:
                 break
-        if not payload:
-            return []
-        if payload.get("error"):
-            logger.warning("%s returned error", path_used, extra={"error": payload.get("error")})
+        payload = self._require_payload(payload, f"references to 0x{address:08x}")
         items_raw = payload.get("items", [])
         results: List[Xref] = []
         for raw in items_raw:
@@ -1080,18 +1111,13 @@ class GhidraClient:
             "filter": query,
         }
         payload = None
-        path_used = "xrefs_to"
         for candidate in ENDPOINT_CANDIDATES.get("GET_XREFS_TO", ("xrefs_to",)):
             payload = self._request_json_payload(
                 "GET", candidate, key="GET_XREFS_TO", params=params, schema_key="xrefs"
             )
-            path_used = candidate
             if payload is not None:
                 break
-        if not payload:
-            return []
-        if payload.get("error"):
-            logger.warning("%s returned error", path_used, extra={"error": payload.get("error")})
+        payload = self._require_payload(payload, f"references to 0x{address:08x}")
         items_raw = payload.get("items", [])
         parsed: List[Xref] = []
         for raw in items_raw:
@@ -1116,10 +1142,7 @@ class GhidraClient:
             params={"filter": query, "limit": 100000, "offset": 0},
             schema_key="strings",
         )
-        if not payload:
-            return []
-        if payload.get("error"):
-            logger.warning("strings returned error", extra={"error": payload.get("error")})
+        payload = self._require_payload(payload, "string search")
         results: List[Dict[str, Any]] = []
         for raw in payload.get("items", []):
             if not isinstance(raw, Mapping):
@@ -1149,12 +1172,7 @@ class GhidraClient:
             params={"limit": max(int(limit), 1), "offset": max(int(offset), 0)},
             schema_key="strings",
         )
-        if not payload:
-            return {"items": [], "has_more": False}
-        if payload.get("error"):
-            logger.warning(
-                "strings returned error", extra={"error": payload.get("error")}
-            )
+        payload = self._require_payload(payload, "string listing")
         results: List[Dict[str, Any]] = []
         for raw in payload.get("items", []):
             if not isinstance(raw, Mapping):
@@ -1180,10 +1198,7 @@ class GhidraClient:
             params={"filter": query, "limit": 999999, "offset": 0},
             schema_key="symbols",
         )
-        if not payload:
-            return []
-        if payload.get("error"):
-            logger.warning("imports returned error", extra={"error": payload.get("error")})
+        payload = self._require_payload(payload, "import search")
         return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_exports(self, query: str) -> List[str]:
@@ -1197,10 +1212,7 @@ class GhidraClient:
             params={"filter": query, "limit": 999999, "offset": 0},
             schema_key="symbols",
         )
-        if not payload:
-            return []
-        if payload.get("error"):
-            logger.warning("exports returned error", extra={"error": payload.get("error")})
+        payload = self._require_payload(payload, "export search")
         return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_functions(
@@ -1228,36 +1240,15 @@ class GhidraClient:
                 return stripped if stripped else None
             return None
 
-        result = self._request_cursor_page(
+        # No fallback: the old one asked /functions for ``filter``, which that
+        # route never reads, and answered every failure with all functions.
+        return self._request_cursor_page(
             "GET",
             "searchFunctions",
             key="SEARCH_FUNCTIONS",
             params=params,
             item_parser=_ensure_str,
         )
-
-        # Fallback to legacy endpoint if plugin predates cursor support
-        if result.error and not result.items:
-            legacy_lines = self._request_lines(
-                "GET",
-                "functions",
-                key="SEARCH_FUNCTIONS",
-                params={"filter": query, "limit": 999999, "offset": 0},
-            )
-            if _is_error(legacy_lines):
-                if isinstance(legacy_lines, RequestError):
-                    legacy_error: object = legacy_lines
-                elif isinstance(legacy_lines, list) and legacy_lines:
-                    legacy_error = legacy_lines[0]
-                else:
-                    legacy_error = "unknown error"
-                return CursorPageResult([], False, None, error=legacy_error)
-            legacy_items = [line.strip() for line in legacy_lines if line.strip()]
-            has_more = len(legacy_items) > max(0, int(offset)) + max(1, int(limit))
-            sliced = legacy_items[offset : offset + limit]
-            return CursorPageResult(sliced, has_more, None, error=None)
-
-        return result
 
 
     def search_scalars(

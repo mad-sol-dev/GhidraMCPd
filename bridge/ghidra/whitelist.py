@@ -37,7 +37,7 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         WhitelistEntry(
             "GET",
             "SEARCH_FUNCTIONS",
-            ("searchFunctions", "functions"),
+            ("searchFunctions",),
         ),
         WhitelistEntry("GET", "SEARCH_IMPORTS", ("imports",)),
         WhitelistEntry("GET", "SEARCH_EXPORTS", ("exports",)),

@@ -11,7 +11,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from ...ghidra.client import GhidraClient, RequestError
-from ...utils.errors import ErrorCode
+from ...utils.errors import ErrorCode, UpstreamFailed
 from ...utils.program_context import PROGRAM_SELECTIONS, requestor_from_request
 from ..validators import validate_payload
 from .._shared import envelope_response, error_response, write_refusal_envelope
@@ -72,7 +72,10 @@ def build_with_client(
                 client.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(requestor)
             try:
                 async with call_semaphore:
-                    response = await func(request, client)
+                    try:
+                        response = await func(request, client)
+                    except UpstreamFailed as exc:
+                        return error_response(ErrorCode.UNAVAILABLE, str(exc))
                 refusal = getattr(client, "write_refusal", None)
                 if isinstance(refusal, RequestError):
                     return envelope_response(write_refusal_envelope(refusal))
