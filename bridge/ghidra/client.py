@@ -461,7 +461,11 @@ class GhidraClient:
             payload = json.loads(text)
         except json.JSONDecodeError:
             payload = None
-        if isinstance(payload, Mapping) and "error" in payload:
+        # A page envelope ({"items": [...], "error": ...}) is left to the page
+        # parsers: searchScalars sends found items *with* an error when its
+        # inspection cap stops it, and folding the whole page into an error
+        # threw those items away.
+        if isinstance(payload, Mapping) and "error" in payload and "items" not in payload:
             message = str(payload.get("error"))
             retryable = int(response.status_code) >= 500 if response.status_code is not None else False
             self._last_error = RequestError(
@@ -610,7 +614,8 @@ class GhidraClient:
 
         text = "\n".join(line for line in raw_lines if line is not None).strip()
         if not text:
-            return CursorPageResult([], False, None)
+            # not an empty page: an empty page is {"items":[],"has_more":false}
+            return CursorPageResult([], False, None, error=f"{path} answered with an empty body")
 
         try:
             payload = json.loads(text)
@@ -624,6 +629,10 @@ class GhidraClient:
                 },
             )
             return CursorPageResult([], False, None, error="invalid json payload")
+        if not isinstance(payload, Mapping):
+            return CursorPageResult(
+                [], False, None, error=f"{path} answered with a {type(payload).__name__}, not a page"
+            )
 
         items_raw = payload.get("items", [])
         if not isinstance(items_raw, list):
@@ -1294,47 +1303,15 @@ class GhidraClient:
                 }
             return None
 
-        result = self._request_cursor_page(
+        # No fallback: the old one asked again with limit=999999 (the plugin
+        # caps at 500) and parsed the JSON answer line by line.
+        return self._request_cursor_page(
             "GET",
             "searchScalars",
             key="SEARCH_SCALARS",
             params=params,
             item_parser=_parse_scalar,
         )
-
-        if result.error and not result.items:
-            lines = self._request_lines(
-                "GET",
-                "searchScalars",
-                key="SEARCH_SCALARS",
-                params={"value": f"0x{value:x}", "limit": 999999},
-            )
-            if _is_error(lines):
-                if isinstance(lines, RequestError):
-                    scalar_error: object = lines
-                elif isinstance(lines, list) and lines:
-                    scalar_error = lines[0]
-                else:
-                    scalar_error = "unknown error"
-                return CursorPageResult([], False, None, error=scalar_error)
-            parsed: List[Dict[str, Any]] = []
-            for line in lines:
-                stripped = line.strip()
-                if not stripped:
-                    continue
-                if ":" in stripped:
-                    address_part, rest = stripped.split(":", 1)
-                    address = address_part.strip()
-                    context = rest.strip()
-                else:
-                    address = stripped
-                    context = ""
-                parsed.append({"address": address, "context": context})
-            sliced = parsed[offset : offset + limit]
-            has_more = len(parsed) > offset + limit
-            return CursorPageResult(sliced, has_more, None, error=None)
-
-        return result
 
     def list_functions_in_range(
         self, address_min: int, address_max: int

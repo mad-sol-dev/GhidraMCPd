@@ -8,23 +8,15 @@ from ..utils.cache import (
     get_search_cache,
     normalize_search_query,
 )
+from ..utils.errors import UpstreamFailed
 from ..utils.hex import int_to_hex, parse_hex
-from ..utils.logging import increment_counter, SafetyLimitExceeded
+from ..utils.logging import increment_counter
 from . import method_notes
 from .pagination import finalize_page
 
 
-_LIMIT_ERROR_MARKERS = ("scan limit", "too large")
-
-
-def _is_limit_error(error: object) -> bool:
-    if error is None:
-        return False
-    if isinstance(error, RequestError):
-        message = error.reason
-    else:
-        message = str(error)
-    return any(marker in message.lower() for marker in _LIMIT_ERROR_MARKERS)
+def _reason(error: object) -> str:
+    return error.reason if isinstance(error, RequestError) else str(error)
 
 
 def search_scalars(
@@ -95,10 +87,16 @@ def search_scalars(
             cache.invalidate(cache_key)
         raise
 
-    if _is_limit_error(page_result.error):
+    if page_result.error and not page_result.items:
+        # Nothing found *and* an error is a failed search, not "no hits" --
+        # the inspection cap among them: it stopped before finishing the page.
         if cache_key is not None:
             cache.invalidate(cache_key)
-        raise SafetyLimitExceeded("scalars.search.plugin_limit", limit, request_offset + limit)
+        raise UpstreamFailed(f"scalar search failed upstream: {_reason(page_result.error)}")
+    # Items with an error: the plugin's inspection cap stopped the page early.
+    # What was found is real, the rest was never looked at, and there is no
+    # cursor to continue from -- a hard cap, so truncated.
+    stopped_early = bool(page_result.error)
 
     raw_items = page_result.items if page_result.items is not None else []
 
@@ -123,9 +121,7 @@ def search_scalars(
 
     has_more = page_result.has_more
     total: Optional[int] = None
-    if page_result.error and not items:
-        has_more = False
-    if not has_more and not cursor_token:
+    if not has_more and not cursor_token and not stopped_early:
         total = request_offset + len(items)
 
     result = {
@@ -142,7 +138,7 @@ def search_scalars(
     method_notes.attach("search_scalars", result)
     # Cursor pagination: the total is unknowable on most pages, so it is
     # never reported rather than sometimes.
-    finalize_page(result, keeps_total=False)
+    finalize_page(result, keeps_total=False, truncated=True if stopped_early else None)
 
     if cache_key is not None and not page_result.error:
         cache.set(cache_key, result)

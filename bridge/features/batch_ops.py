@@ -310,7 +310,10 @@ def search_scalars_with_context(
     
     total = results.get("total")
     has_more = bool(results.get("has_more", False))
-    if total is None and not has_more:
+    # The plugin's inspection cap stops a page early: what came back is real,
+    # but it is not all there is, so it is no total either.
+    stopped_early = bool(results.get("truncated")) and not has_more
+    if total is None and not has_more and not stopped_early:
         total = len(matches)
 
     resume_cursor = results.get("resume_cursor") or results.get("cursor")
@@ -327,6 +330,6 @@ def search_scalars_with_context(
         response["resume_cursor"] = resume_cursor
 
     method_notes.attach("search_scalars_with_context", response)
-    finalize_page(response)
+    finalize_page(response, truncated=True if stopped_early else None)
 
     return response
