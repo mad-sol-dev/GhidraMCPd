@@ -31,6 +31,7 @@ See the table below for concrete error codes and HTTP status guidance.
 | `RESULT_TOO_LARGE` | Batch/search window or write count exceeds configured caps (`GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`) | `413 Payload Too Large` envelope with `code="RESULT_TOO_LARGE"` |
 | `TOO_MANY_REQUESTS` | Future throttling guard when concurrent request caps are exceeded | `429 Too Many Requests` envelope with `code="TOO_MANY_REQUESTS"` |
 | `UNAVAILABLE` | No program is loaded in Ghidra | `503 Service Unavailable` envelope with `code="UNAVAILABLE"` |
+| `INVALID_REQUEST` (409) | A write named a program that is not the active one: the session selected another program with `select_program`, or a different program became active between check and write. Nothing was written by the refused request | `409 Conflict` envelope, message starting `Write refused:`; make the session's program active again or call `select_program` for the active one |
 | `INTERNAL` | Unexpected bridge failure | `500 Internal Server Error` envelope with `code="INTERNAL"` |
 | `WRITE_DISABLED_DRY_RUN` | Write attempted while writes are disabled or `dry_run=false` without permission | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"WRITE_DISABLED_DRY_RUN","message":"Writes are disabled while dry_run is false."}]}` |
 | `WRITE_VERIFY_FAILED` | Ghidra could not confirm a rename/comment during jump-table processing | `200 OK` with `data.errors` containing `"WRITE_VERIFY_FAILED"` |

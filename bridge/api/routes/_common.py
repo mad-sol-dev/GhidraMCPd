@@ -10,11 +10,11 @@ from typing import Awaitable, Callable, Dict, Tuple
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from ...ghidra.client import GhidraClient
+from ...ghidra.client import GhidraClient, RequestError
 from ...utils.errors import ErrorCode
 from ...utils.program_context import PROGRAM_SELECTIONS, requestor_from_request
 from ..validators import validate_payload
-from .._shared import error_response
+from .._shared import envelope_response, error_response, write_refusal_envelope
 
 JsonBody = Tuple[Dict[str, object] | None, JSONResponse | None]
 RouteHandler = Callable[[Request, GhidraClient], Awaitable[JSONResponse]]
@@ -68,9 +68,15 @@ def build_with_client(
             if request.url.path not in skip_paths:
                 PROGRAM_SELECTIONS.mark_used(requestor)
             client = factory()
+            if isinstance(client, GhidraClient):
+                client.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(requestor)
             try:
                 async with call_semaphore:
-                    return await func(request, client)
+                    response = await func(request, client)
+                refusal = getattr(client, "write_refusal", None)
+                if isinstance(refusal, RequestError):
+                    return envelope_response(write_refusal_envelope(refusal))
+                return response
             finally:
                 client.close()
 

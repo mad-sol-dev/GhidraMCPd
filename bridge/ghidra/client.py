@@ -76,6 +76,31 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
 }
 
 
+#: Endpoint keys that change the program (or, for SAVE_PROGRAM, its file).
+#: Each request through one of them is checked first: the active program must
+#: be known, and must be the session's selection when there is one; the
+#: request then names it as ``domain_file_id``, so the plugin refuses it if a
+#: different program became active in between (R.26).
+WRITE_ENDPOINT_KEYS = frozenset(
+    {
+        "RENAME_FUNCTION",
+        "SET_DECOMPILER_COMMENT",
+        "SET_DISASSEMBLY_COMMENT",
+        "CREATE_LABEL",
+        "CREATE_STRUCTURE",
+        "UPDATE_STRUCTURE",
+        "CREATE_UNION",
+        "UPDATE_UNION",
+        "DELETE_DATATYPE",
+        "SAVE_PROGRAM",
+    }
+)
+
+#: Start of every ``RequestError.reason`` for a write refused over the program,
+#: by the bridge or the plugin; the tool layer turns those into INVALID_REQUEST.
+WRITE_REFUSED_PREFIX = "Write refused"
+
+
 @dataclass(slots=True)
 class EndpointResolver:
     candidates: Mapping[str, Iterable[str]]
@@ -228,6 +253,12 @@ class GhidraClient:
         self._get_resolver = EndpointResolver(ENDPOINT_CANDIDATES)
         self._post_resolver = EndpointResolver(POST_ENDPOINT_CANDIDATES)
         self._last_error: Optional[RequestError] = None
+        #: The program this session selected (select_program), set by the tool
+        #: layer; None when the session has made no explicit choice.
+        self.expected_program_id: Optional[str] = None
+        #: The first write refusal of this client's call, kept although later
+        #: requests reset ``last_error``.
+        self.write_refusal: Optional[RequestError] = None
         self._validators = {
             "xrefs": Draft202012Validator(
                 {
@@ -335,6 +366,11 @@ class GhidraClient:
                 path,
             )
             return [f"ERROR: endpoint {method} {path} not allowed"]
+        if key in WRITE_ENDPOINT_KEYS:
+            guard = self._write_target()
+            if isinstance(guard, RequestError):
+                return self._refuse_write(guard)
+            params = {**(params or {}), "domain_file_id": guard}
         url = urljoin(self.base_url, path)
         context = current_request()
         timer_extra: Dict[str, Any]
@@ -381,9 +417,17 @@ class GhidraClient:
         )
         if response.is_error:
             retryable = int(response.status_code) >= 500 if response.status_code is not None else False
+            reason = response.text.strip()
+            if response.status_code == 409 and key in WRITE_ENDPOINT_KEYS:
+                try:
+                    reason = str(json.loads(reason).get("error") or reason)
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+                if reason.startswith(WRITE_REFUSED_PREFIX):
+                    return self._refuse_write(RequestError(status=409, reason=reason, retryable=False))
             self._last_error = RequestError(
                 status=int(response.status_code) if response.status_code is not None else None,
-                reason=response.text.strip(),
+                reason=reason,
                 retryable=retryable,
             )
             return self._last_error
@@ -404,6 +448,45 @@ class GhidraClient:
             return self._last_error
         lines = text.replace("\r\n", "\n").splitlines()
         return lines
+
+    def _write_target(self) -> str | RequestError:
+        """The domain_file_id a write may go to, or why it may not be sent."""
+
+        status = self.get_current_program_status()
+        if not isinstance(status, Mapping):
+            return RequestError(
+                status=None,
+                reason=(
+                    f"{WRITE_REFUSED_PREFIX}: the active program could not be determined "
+                    "(no answer from /api/current_program.json); nothing was sent"
+                ),
+                retryable=True,
+            )
+        active = str(status.get("domain_file_id") or "").strip()
+        if not active:
+            return RequestError(
+                status=409,
+                reason=f"{WRITE_REFUSED_PREFIX}: no program is active in Ghidra; nothing was sent",
+                retryable=False,
+            )
+        expected = (self.expected_program_id or "").strip()
+        if expected and expected != active:
+            return RequestError(
+                status=409,
+                reason=(
+                    f"{WRITE_REFUSED_PREFIX}: this session selected domain_file_id "
+                    f"'{expected}', but the active program is '{active}'; nothing was sent"
+                ),
+                retryable=False,
+            )
+        return active
+
+    def _refuse_write(self, error: RequestError) -> RequestError:
+        logger.warning("ghidra.write_refused", extra={"reason": error.reason})
+        if self.write_refusal is None:
+            self.write_refusal = error
+        self._last_error = error
+        return error
 
     def _request_json_payload(
         self,

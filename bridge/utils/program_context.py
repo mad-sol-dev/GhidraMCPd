@@ -18,6 +18,9 @@ class ProgramState:
 
     domain_file_id: str | None = None
     locked: bool = False
+    #: True once select_program chose ``domain_file_id``; a default taken from
+    #: the project listing is not a choice and does not bind writes (R.26).
+    explicit: bool = False
 
 
 class ProgramSelectionError(RuntimeError):
@@ -69,6 +72,7 @@ class ProgramSelectionStore:
         state = self._state_for(key)
         state.domain_file_id = snapshot.domain_file_id
         state.locked = snapshot.locked
+        state.explicit = snapshot.explicit
 
     def ensure_default(
         self, key: Hashable | object, provider: Callable[[], str | None]
@@ -95,6 +99,7 @@ class ProgramSelectionStore:
         requested = _normalize_domain_file_id(domain_file_id)
         if requested is None:
             state.domain_file_id = None
+            state.explicit = False
             return SelectionResult(state=state, warning=None)
         if (
             state.locked
@@ -106,13 +111,22 @@ class ProgramSelectionStore:
                 raise ProgramSelectionError(current=current)
             warning = _mid_session_warning(current, requested)
         state.domain_file_id = requested
+        state.explicit = True
         return SelectionResult(state=state, warning=warning)
+
+    def selected_program_id(self, key: Hashable | object) -> str | None:
+        """The program *key* chose with select_program, or None if it chose none."""
+
+        state = self._state_for(key)
+        return _normalize_domain_file_id(state.domain_file_id) if state.explicit else None
 
     def snapshot(self, key: Hashable | object) -> ProgramState:
         """Return a shallow copy of the current state for *key*."""
 
         state = self._state_for(key)
-        return ProgramState(domain_file_id=state.domain_file_id, locked=state.locked)
+        return ProgramState(
+            domain_file_id=state.domain_file_id, locked=state.locked, explicit=state.explicit
+        )
 
 
 PROGRAM_SELECTIONS = ProgramSelectionStore()
@@ -171,6 +185,7 @@ def normalize_selection(
 
     if fallback is None:
         state.domain_file_id = None
+        state.explicit = False
         return SelectionResult(state=state, warning=None)
 
     if normalized and state.locked and normalized != fallback:
@@ -180,6 +195,7 @@ def normalize_selection(
         warning = _mid_session_warning(normalized, fallback)
 
     state.domain_file_id = fallback
+    state.explicit = False
     return SelectionResult(state=state, warning=warning)
 
 

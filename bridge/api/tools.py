@@ -33,7 +33,7 @@ from ..features.listing import ListingUnavailable
 from ..features.function_meta import read_function_name
 from ..features.project_layout import layout_notes
 from ..features.collect import execute_collect
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import GhidraClient, RequestError
 from ..utils.config import ENABLE_WRITES, MAX_WRITES_PER_REQUEST
 from ..utils.errors import ErrorCode
 from ..utils.logging import (
@@ -53,7 +53,14 @@ from ..utils.program_context import (
     requestor_from_context,
     validate_program_id,
 )
-from ._shared import adapter_for_arch, envelope_error, envelope_ok, inject_client, response_schema_error
+from ._shared import (
+    adapter_for_arch,
+    envelope_error,
+    envelope_ok,
+    inject_client,
+    response_schema_error,
+    write_refusal_envelope,
+)
 from .validators import validate_payload
 
 
@@ -388,7 +395,15 @@ def register_tools(
                     return readiness
 
             mark_used_for_context(server, lock_usage=lock_usage)
-            return fn(*args, **kwargs)
+            if isinstance(client_arg, GhidraClient):
+                client_arg.expected_program_id = PROGRAM_SELECTIONS.selected_program_id(
+                    _current_requestor()
+                )
+            result = fn(*args, **kwargs)
+            refusal = getattr(client_arg, "write_refusal", None)
+            if isinstance(refusal, RequestError):
+                return write_refusal_envelope(refusal)
+            return result
 
         return wrapper
 

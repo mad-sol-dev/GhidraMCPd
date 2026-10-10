@@ -11,7 +11,7 @@ from starlette.responses import JSONResponse
 from ..adapters import ArchAdapter, load_optional_adapter, optional_adapter_names
 from ..adapters.arm_thumb import ARMThumbAdapter
 from ..adapters.fallback import FallbackAdapter
-from ..ghidra.client import GhidraClient
+from ..ghidra.client import GhidraClient, RequestError
 from ..utils.errors import ErrorCode, make_error
 
 
@@ -58,6 +58,33 @@ def response_schema_error(schema: str, errors: Sequence[str]) -> Dict[str, objec
             "The request was valid; this is a defect in the bridge. Report the tool, "
             "its arguments and this message.",
         ),
+    )
+
+
+def write_refusal_envelope(refusal: RequestError) -> Dict[str, object]:
+    """A write the program check stopped (R.26), as the call's answer.
+
+    Replaces whatever the tool made of the failed request ("Failed to rename",
+    UNAVAILABLE): the request was well-formed, it named the wrong program.  A
+    call that writes several times stops being trustworthy at the first
+    refusal, so the answer is the refusal even if earlier writes went through.
+    """
+
+    if refusal.retryable:
+        recovery: tuple[str, ...] = ("Retry once Ghidra answers; nothing was written.",)
+    else:
+        recovery = (
+            "Make the session's program active in Ghidra again, or call select_program "
+            "for the program that is active now.",
+            "A call with several writes stops at the first refusal; writes before it "
+            "were applied (check_dirty_state shows whether anything changed).",
+        )
+    return envelope_error(
+        ErrorCode.UNAVAILABLE if refusal.retryable else ErrorCode.INVALID_REQUEST,
+        refusal.reason,
+        recovery=recovery,
+        status=503 if refusal.retryable else 409,
+        upstream_error=refusal.as_dict(),
     )
 
 

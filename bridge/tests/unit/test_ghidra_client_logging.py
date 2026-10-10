@@ -29,6 +29,12 @@ class FakeSession:
             return FakeResponse('{"items":[{"address":"0x00002000","context":"call string"},{"address":"0x00003000","context":"BL other"}],"has_more":false}')
         if path in {"decompile_function", "decompileFunction", "decompile_by_addr", "decompileByAddr"}:
             return FakeResponse("int stub(void)\\n{\\n    return 0;\\n}\\n")
+        if url.endswith("api/current_program.json"):
+            # every write first checks the active program (R.26)
+            return FakeResponse(
+                '{"domain_file_id":"prog-1","locked":false,"state":"READY",'
+                '"state_duration_seconds":1,"warnings": []}'
+            )
         if path == "read_cstring":
             return FakeResponse("hello world\n")
         if path in {"rename_function_by_address", "renameFunctionByAddress"}:

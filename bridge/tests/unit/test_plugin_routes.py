@@ -24,10 +24,10 @@ PLUGIN_SOURCE = (
     Path(__file__).resolve().parents[3]
     / "src/main/java/com/lauriewired/GhidraMCPPlugin.java"
 )
-#: Both ways the plugin registers a route: through its two helpers, and
+#: Both ways the plugin registers a route: through its three helpers, and
 #: directly (``/plugin_version`` needs no program context and skips them).
 ROUTE_PATTERN = re.compile(
-    r'(?:register(?:Program|Project)Handler\(\s*server,\s*|server\.createContext\(\s*)"/([^"]+)"'
+    r'(?:register(?:Program|Project|Write)Handler\(\s*server,\s*|server\.createContext\(\s*)"/([^"]+)"'
 )
 
 # The extraction is only trustworthy if it finds what is known to be there.

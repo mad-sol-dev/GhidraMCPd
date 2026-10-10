@@ -135,10 +135,17 @@ import httpx  # noqa: E402
 from bridge.ghidra.client import GhidraClient  # noqa: E402
 
 
+#: What /api/current_program.json answers; every write checks it first (R.26).
+STATUS = {"domain_file_id": "prog-1", "locked": False, "state": "READY",
+          "state_duration_seconds": 1, "warnings": []}
+
+
 def _client(status, body):
     seen = []
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/current_program.json":
+            return httpx.Response(200, text=json.dumps(STATUS))
         seen.append(request)
         return httpx.Response(status, text=body)
 
@@ -152,6 +159,7 @@ def test_the_client_posts_address_name_and_an_explicit_dry_run_flag():
     assert client.create_label(0xB1006000, "FMI_CTL", dry_run=False) == answer
     request = seen[0]
     assert request.method == "POST" and request.url.path == "/createLabel"
+    assert request.url.params["domain_file_id"] == "prog-1"
     assert parse_qs(request.content.decode()) == {
         "address": ["0xb1006000"], "name": ["FMI_CTL"], "dry_run": ["false"],
     }

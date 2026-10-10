@@ -541,25 +541,25 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, plugin.readCString(address, maxLen));
         });
 
-        registerProgramHandler(server, "/renameFunction", (plugin, exchange) -> {
+        registerWriteHandler(server, "/renameFunction", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String response = plugin.renameFunction(params.get("oldName"), params.get("newName"))
                     ? "Renamed successfully" : "Rename failed";
             plugin.sendResponse(exchange, response);
         });
 
-        registerProgramHandler(server, "/renameData", (plugin, exchange) -> {
+        registerWriteHandler(server, "/renameData", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendResponse(exchange, plugin.renameDataAtAddress(params.get("address"), params.get("newName")));
         });
 
-        registerProgramHandler(server, "/createLabel", (plugin, exchange) -> {
+        registerWriteHandler(server, "/createLabel", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             // Anything but an explicit "false" is a dry run.
             boolean dryRun = !"false".equalsIgnoreCase(params.get("dry_run"));
             plugin.sendJsonResponse(exchange, plugin.createLabelAt(params.get("address"), params.get("name"), dryRun));
         });
-        registerProgramHandler(server, "/renameVariable", (plugin, exchange) -> {
+        registerWriteHandler(server, "/renameVariable", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionName = params.get("functionName");
             String oldName = params.get("oldName");
@@ -686,7 +686,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
         });
 
-        registerProgramHandler(server, "/set_decompiler_comment", (plugin, exchange) -> {
+        registerWriteHandler(server, "/set_decompiler_comment", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
@@ -694,7 +694,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
         });
 
-        registerProgramHandler(server, "/set_disassembly_comment", (plugin, exchange) -> {
+        registerWriteHandler(server, "/set_disassembly_comment", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String address = params.get("address");
             String comment = params.get("comment");
@@ -702,7 +702,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, success ? "Comment set successfully" : "Failed to set comment");
         });
 
-        registerProgramHandler(server, "/rename_function_by_address", (plugin, exchange) -> {
+        registerWriteHandler(server, "/rename_function_by_address", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String newName = params.get("new_name");
@@ -710,7 +710,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, success ? "Function renamed successfully" : "Failed to rename function");
         });
 
-        registerProgramHandler(server, "/set_function_prototype", (plugin, exchange) -> {
+        registerWriteHandler(server, "/set_function_prototype", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String prototype = params.get("prototype");
@@ -728,7 +728,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
         });
 
-        registerProgramHandler(server, "/set_local_variable_type", (plugin, exchange) -> {
+        registerWriteHandler(server, "/set_local_variable_type", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionAddress = params.get("function_address");
             String variableName = params.get("variable_name");
@@ -859,7 +859,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendJsonResponse(exchange, plugin.checkProgramDirtyState());
         });
 
-        registerProgramHandler(server, "/save_program", (plugin, exchange) -> {
+        registerWriteHandler(server, "/save_program", (plugin, exchange) -> {
             Map<String, String> qparams = plugin.parseQueryParams(exchange);
             plugin.sendJsonResponse(exchange, plugin.saveCurrentProgram(qparams.get("description")));
         });
@@ -880,31 +880,31 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, plugin.readBytesBase64(address, length));
         });
 
-        registerProgramHandler(server, "/createStructure", (plugin, exchange) -> {
+        registerWriteHandler(server, "/createStructure", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendJsonResponse(exchange,
                 plugin.createDataType("structure", params.get("name"), params.get("category"), params.get("fields")));
         });
 
-        registerProgramHandler(server, "/createUnion", (plugin, exchange) -> {
+        registerWriteHandler(server, "/createUnion", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendJsonResponse(exchange,
                 plugin.createDataType("union", params.get("name"), params.get("category"), params.get("fields")));
         });
 
-        registerProgramHandler(server, "/updateStructure", (plugin, exchange) -> {
+        registerWriteHandler(server, "/updateStructure", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendJsonResponse(exchange,
                 plugin.updateDataType("structure", params.get("path"), params.get("fields")));
         });
 
-        registerProgramHandler(server, "/updateUnion", (plugin, exchange) -> {
+        registerWriteHandler(server, "/updateUnion", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendJsonResponse(exchange,
                 plugin.updateDataType("union", params.get("path"), params.get("fields")));
         });
 
-        registerProgramHandler(server, "/deleteDataType", (plugin, exchange) -> {
+        registerWriteHandler(server, "/deleteDataType", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             plugin.sendJsonResponse(exchange,
                 plugin.deleteDataType(params.get("kind"), params.get("path")));
@@ -912,20 +912,25 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     private static void registerProgramHandler(HttpServer server, String path, PluginExchangeHandler handler) {
-        registerContext(server, path, true, handler);
+        registerContext(server, path, true, false, handler);
     }
 
     private static void registerProjectHandler(HttpServer server, String path, PluginExchangeHandler handler) {
-        registerContext(server, path, false, handler);
+        registerContext(server, path, false, false, handler);
     }
 
-    private static void registerContext(
-            HttpServer server, String path, boolean requireProgramContext, PluginExchangeHandler handler) {
-        server.createContext(path, exchange -> dispatchToTool(requireProgramContext, handler, exchange));
+    /** A route that changes the program: refused when domain_file_id names another one. */
+    private static void registerWriteHandler(HttpServer server, String path, PluginExchangeHandler handler) {
+        registerContext(server, path, true, true, handler);
     }
 
-    private static void dispatchToTool(
-            boolean requireProgramContext, PluginExchangeHandler handler, HttpExchange exchange) throws IOException {
+    private static void registerContext(HttpServer server, String path, boolean requireProgramContext,
+            boolean write, PluginExchangeHandler handler) {
+        server.createContext(path, exchange -> dispatchToTool(requireProgramContext, write, handler, exchange));
+    }
+
+    private static void dispatchToTool(boolean requireProgramContext, boolean write,
+            PluginExchangeHandler handler, HttpExchange exchange) throws IOException {
         Optional<GhidraMCPPlugin> target = CONTEXT_REGISTRY.active(requireProgramContext);
         if (target.isEmpty()) {
             writeUnavailable(exchange, requireProgramContext);
@@ -937,11 +942,62 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             CONTEXT_REGISTRY.promote(plugin);
         }
 
+        if (write) {
+            // Checked against the program this very handler would write to, so
+            // no switch of window or program can slip in between check and write.
+            String refusal = plugin.programMismatch(exchange);
+            if (refusal != null) {
+                writeJson(exchange, 409, refusal);
+                return;
+            }
+        }
+
         try {
             handler.handle(plugin, exchange);
         } catch (Exception e) {
             Msg.error(plugin, "Error handling request for " + exchange.getRequestURI(), e);
             plugin.sendJsonResponse(exchange, plugin.errorResponse("Internal error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * The refusal for a write whose {@code domain_file_id} query parameter is
+     * not the active program, or null to go ahead.  Without the parameter the
+     * write goes ahead: scripts and manual calls name no program.  The bridge
+     * always sends it.
+     */
+    private String programMismatch(HttpExchange exchange) {
+        String requested = parseQueryParams(exchange).get("domain_file_id");
+        if (requested == null || requested.isBlank()) {
+            return null;
+        }
+        Program program = getCurrentProgram();
+        DomainFile file = program != null ? program.getDomainFile() : null;
+        String active = file != null ? file.getFileID() : null;
+        if (requested.trim().equals(active)) {
+            return null;
+        }
+        String message = active == null
+            ? "Write refused: no program is active; nothing was changed"
+            : "Write refused: domain_file_id '" + requested.trim() + "' is not the active program '"
+                + active + "' (" + program.getName() + "); nothing was changed";
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        appendJsonField(sb, "status", "error");
+        appendJsonField(sb, "error", message);
+        appendJsonField(sb, "requested_domain_file_id", requested.trim());
+        appendJsonField(sb, "active_domain_file_id", active);
+        trimTrailingComma(sb);
+        sb.append('}');
+        return sb.toString();
+    }
+
+    private static void writeJson(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
         }
     }
 

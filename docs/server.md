@@ -102,6 +102,7 @@ Write operations are guarded by deterministic envelopes and configuration flags:
 
 - `ENABLE_WRITES`: bound to `GHIDRA_MCP_ENABLE_WRITES`. When `false`, write routes short-circuit and return `ok=false` with errors.
 - `dry_run`: per-request override that forces non-destructive execution even when writes are enabled.
+- Program check: every request to a write endpoint first reads the active program. It is refused before sending when no program is active, when the program state cannot be read, or when the session chose a different program with `select_program`. A default selection the bridge took from the project listing does not count as a choice. The request names the program as `domain_file_id`, and the plugin (1.3.62+) refuses the write with HTTP 409 if another program became active in between. Calls without the parameter, from scripts or `curl`, are not checked.
 - `SafetyLimitExceeded`: error raised when batch sizes, search windows, or write counts exceed configured caps (e.g., `GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`).
 
 Keep writes idempotent and monitor for repeated `SafetyLimitExceeded` responses to fine-tune batch sizes or adjust configuration within safe bounds.

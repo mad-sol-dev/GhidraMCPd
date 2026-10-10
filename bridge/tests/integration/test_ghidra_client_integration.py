@@ -8,8 +8,15 @@ from bridge.ghidra.client import GhidraClient
 # Both handlers answer the plugin's own route names.  They used to answer the
 # dead aliases /function_by_addr and /get_xrefs_to, which the plugin never had,
 # so the tests passed only because the resolver fell through to them.
+#: Every write first reads the active program (R.26).
+_STATUS = {"domain_file_id": "prog-1", "locked": False, "state": "READY",
+           "state_duration_seconds": 1, "warnings": []}
+
+
 def _success_handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path
+    if path.endswith("/api/current_program.json"):
+        return httpx.Response(200, json=_STATUS)
     if path.endswith("/read_dword"):
         return httpx.Response(200, text="00001000\n")
     if path.endswith("/get_function_by_address"):
@@ -45,6 +52,8 @@ def test_ghidra_client_happy_path() -> None:
 
 def _failure_handler(request: httpx.Request) -> httpx.Response:
     path = request.url.path
+    if path.endswith("/api/current_program.json"):
+        return httpx.Response(200, json=_STATUS)
     if path.endswith("/read_dword"):
         return httpx.Response(200, text="n/a\n")
     if path.endswith("/get_function_by_address"):
