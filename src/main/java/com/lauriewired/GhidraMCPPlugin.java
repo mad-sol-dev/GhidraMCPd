@@ -598,6 +598,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             plugin.sendResponse(exchange, "Rename data attempted");
         });
 
+        registerProgramHandler(server, "/createLabel", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            // Anything but an explicit "false" is a dry run.
+            boolean dryRun = !"false".equalsIgnoreCase(params.get("dry_run"));
+            plugin.sendJsonResponse(exchange, plugin.createLabelAt(params.get("address"), params.get("name"), dryRun));
+        });
         registerProgramHandler(server, "/renameVariable", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionName = params.get("functionName");
@@ -1242,6 +1248,114 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         catch (InterruptedException | InvocationTargetException e) {
             Msg.error(this, "Failed to execute rename data on Swing thread", e);
         }
+    }
+
+    /**
+     * {@code POST /createLabel}: place a label at any address, including one
+     * no memory block covers (R.12).
+     *
+     * <p>The only other {@code createLabel()} call sits inside
+     * {@link #renameDataAtAddress}, behind {@code getDefinedDataAt(addr) != null};
+     * an MMIO register has no defined data, so that path silently did nothing,
+     * and {@code /renameData} answered "Rename data attempted" either way.
+     *
+     * <p>{@code dry_run=true} (the default) validates the name and reports what
+     * is already at the address without opening a transaction.  The same name
+     * already at the same address is not duplicated: {@code created=false}.  A
+     * label added where a user-named symbol is primary stays secondary --
+     * renaming that symbol is a rename, not a label -- and {@code primary} says
+     * which happened.
+     */
+    private String createLabelAt(String addressStr, String name, boolean dryRun) {
+        Program program = getCurrentProgram();
+        if (program == null) return errorResponse("no program loaded");
+        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
+        if (name == null || name.isEmpty()) return errorResponse("name parameter is required");
+
+        Address addr;
+        try {
+            addr = program.getAddressFactory().getAddress(addressStr);
+        } catch (Exception e) {
+            addr = null;
+        }
+        if (addr == null || !addr.isMemoryAddress()) {
+            return errorResponse("invalid address: " + addressStr);
+        }
+        try {
+            SymbolUtilities.validateName(name);
+        } catch (InvalidInputException e) {
+            return errorResponse("invalid label name '" + name + "': " + e.getMessage());
+        }
+
+        SymbolTable symbolTable = program.getSymbolTable();
+        Symbol primaryBefore = symbolTable.getPrimarySymbol(addr);
+        List<String> existing = new ArrayList<>();
+        boolean alreadyThere = false;
+        for (Symbol symbol : symbolTable.getSymbols(addr)) {
+            existing.add(symbol.getName());
+            if (symbol.getName().equals(name)) {
+                alreadyThere = true;
+            }
+        }
+
+        boolean created = false;
+        boolean primary = primaryBefore != null && primaryBefore.getName().equals(name);
+        String failure = null;
+        if (!dryRun && !alreadyThere) {
+            AtomicBoolean ok = new AtomicBoolean(false);
+            AtomicBoolean isPrimary = new AtomicBoolean(false);
+            StringBuilder error = new StringBuilder();
+            Address target = addr;
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    int tx = program.startTransaction("Create label " + name);
+                    boolean commit = false;
+                    try {
+                        Symbol symbol = symbolTable.createLabel(target, name, SourceType.USER_DEFINED);
+                        isPrimary.set(symbol.isPrimary());
+                        ok.set(true);
+                        commit = true;
+                    } catch (Exception e) {
+                        error.append(e.getMessage());
+                    } finally {
+                        program.endTransaction(tx, commit);
+                    }
+                });
+            } catch (InterruptedException | InvocationTargetException e) {
+                error.append(e.getMessage());
+            }
+            created = ok.get();
+            primary = isPrimary.get();
+            if (!created) {
+                failure = error.length() > 0 ? error.toString() : "createLabel failed";
+            }
+        }
+
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"status\":\"").append(failure == null ? "ok" : "error").append('"');
+        sb.append(",\"address\":\"").append(hexAddress(addr)).append('"');
+        sb.append(",\"name\":\"").append(jsonEscape(name)).append('"');
+        sb.append(",\"dry_run\":").append(dryRun);
+        sb.append(",\"mapped\":").append(program.getMemory().contains(addr));
+        sb.append(",\"already_present\":").append(alreadyThere);
+        sb.append(",\"created\":").append(created);
+        sb.append(",\"primary\":").append(primary);
+        sb.append(",\"primary_before\":");
+        if (primaryBefore == null) {
+            sb.append("null");
+        } else {
+            sb.append('"').append(jsonEscape(primaryBefore.getName())).append('"');
+        }
+        sb.append(",\"existing\":[");
+        for (int i = 0; i < existing.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append('"').append(jsonEscape(existing.get(i))).append('"');
+        }
+        sb.append(']');
+        if (failure != null) {
+            sb.append(",\"error\":\"").append(jsonEscape(failure)).append('"');
+        }
+        return sb.append('}').toString();
     }
 
     private String renameVariableInFunction(String functionName, String oldVarName, String newVarName) {

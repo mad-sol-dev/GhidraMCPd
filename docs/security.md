@@ -3,6 +3,7 @@
 ## Write-capable operations (as implemented in code)
 - **Data type mutations**: `create_datatype`, `update_datatype`, and `delete_datatype` in `bridge/features/datatypes.py` gate writes on both `dry_run=False` and `writes_enabled=True` before invoking GhidraClient operations (create/update/delete) and `record_write_attempt()`.
 - **Jump-table annotations**: `bridge/features/jt.py::slot_process` performs `rename_function` and `set_decompiler_comment` only if the slot check succeeds, `dry_run` is `False`, and `writes_enabled` is `True`; it records each write attempt.
+- **Labels**: `bridge/features/labels.py::apply_label` asks the plugin's `/createLabel` with `dry_run=true` unless `dry_run` is `False` and `writes_enabled` is `True`; only then is a write recorded and the label created, in a transaction committed only on success.
 - **MMIO annotations**: `bridge/features/mmio.py::annotate` enforces a batch limit, then calls `set_disassembly_comment` per sample only when `dry_run=False` and `writes_enabled=True`.
 - **Not offered**: byte patches and image-base rebasing. `write_bytes` and `project_rebase` existed as tools but called plugin endpoints that were never written; they were removed in Stage 8b. Do both in the Ghidra GUI.
 

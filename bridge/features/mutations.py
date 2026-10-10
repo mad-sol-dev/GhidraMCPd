@@ -35,7 +35,7 @@ __all__ = [
     "summarise",
 ]
 
-Kind = Literal["rename", "comment", "datatype"]
+Kind = Literal["rename", "comment", "datatype", "label"]
 
 #: Longest old/new value kept verbatim; the rest is elided.
 _VALUE_CHARS = 60

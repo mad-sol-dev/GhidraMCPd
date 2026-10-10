@@ -79,6 +79,7 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
             "SET_DISASSEMBLY_COMMENT",
             ("set_disassembly_comment", "setDisassemblyComment"),
         ),
+        WhitelistEntry("POST", "CREATE_LABEL", ("createLabel",)),
         WhitelistEntry("POST", "CREATE_STRUCTURE", ("createStructure", "create_structure")),
         WhitelistEntry("POST", "UPDATE_STRUCTURE", ("updateStructure", "update_structure")),
         WhitelistEntry("POST", "CREATE_UNION", ("createUnion", "create_union")),

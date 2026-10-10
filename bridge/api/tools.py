@@ -20,6 +20,7 @@ from ..features import (
     functions,
     imports as import_features,
     jt,
+    labels,
     memory,
     mmio,
     scalars,
@@ -890,6 +891,53 @@ def register_tools(
                 "mutations_cleared": cleared,
                 "message": response.get("message", "Save operation completed")
             })
+
+    @server.tool()
+    @tracked_tool()
+    def apply_label(
+        client,
+        address: str,
+        name: str,
+        *,
+        dry_run: bool = True,
+    ) -> Dict[str, object]:
+        """Put a label at any address, including MMIO registers outside every
+        memory block.
+
+        The dry run still asks Ghidra: it validates the name and lists what
+        is already there. Writing needs GHIDRA_MCP_ENABLE_WRITES=true. Not
+        for: renaming a function (rename_function).
+
+        Args:
+            address: hex, e.g. '0xB1006000'.
+            name: the label.
+            dry_run: default true."""
+        request_payload = {"address": address, "name": name, "dry_run": dry_run}
+        valid, errors = validate_payload("apply_label.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        with request_scope(
+            "apply_label",
+            logger=logger,
+            extra={"tool": "apply_label", "address": address, "dry_run": dry_run},
+            max_writes=1,
+        ):
+            try:
+                data = labels.apply_label(
+                    client,
+                    address=parse_hex(address),
+                    name=name,
+                    dry_run=dry_run,
+                    writes_enabled=enable_writes,
+                )
+            except labels.LabelRejected as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+            except labels.LabelUnavailable as exc:
+                return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
+        valid, errors = validate_payload("apply_label.v1.json", data)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        return envelope_ok(data)
 
     @server.tool()
     @tracked_tool()

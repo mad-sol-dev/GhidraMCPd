@@ -27,7 +27,8 @@ def tools():
 def test_the_full_surface_is_present(tools):
     # 35 through Stage 4; list_mutations is Stage 5.  Stage 8b removed
     # write_bytes and project_rebase, whose plugin endpoints never existed.
-    assert len(tools) == 34
+    # R.12 added apply_label.
+    assert len(tools) == 35
 
 
 def test_no_tool_without_a_description(tools):
@@ -129,7 +130,11 @@ def test_the_detail_lives_in_the_note_not_the_description(tools):
 #: Lowered in Stage 8b, to 8400: removing write_bytes and project_rebase took
 #: the base from 8691 to 8307.  The ceiling follows it down so the 384 tokens
 #: do not stay behind as headroom nobody had to argue for.
-SCHEMA_BASE_CEILING = 8400
+#:
+#: Raised in R.12, to 8500: apply_label costs 151 tokens and takes the base to
+#: 8466.  It is the one write the analysis was actually blocked on -- labelling
+#: MMIO registers outside every memory block, which no other path could do.
+SCHEMA_BASE_CEILING = 8500
 
 
 def test_schema_base_stays_within_budget(tools):

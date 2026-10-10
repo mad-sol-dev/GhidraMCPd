@@ -30,8 +30,7 @@
   - Current `analyze_function_complete` truncates by line count (max 500), which can cut mid-block. Consider adding `max_chars` or `max_tokens` options to avoid abrupt truncation and better align with LLM token budgets.
 - ◻ High-level analysis recipes on existing tools
   - Formalize LLM-side "String → Xrefs → Disasm," "Scalar → MMIO → mmio_annotate_compact," and "Region → list_functions_in_range → analyze_function_complete" workflows. Future: optional MCP meta-tools that package these.
-- ◻ Write-path hygiene (rename/comments/labels)
-  - Build small gated write tools such as `rename_function`, `set_comment`, or `apply_label`, each with dry-run options, explicit error codes, and clear docs about `GHIDRA_MCP_ENABLE_WRITES` requirements.
+- ✅ Write-path hygiene (rename/comments/labels): `rename_function`, `set_comment` and `apply_label` (R.12), each dry-run by default and gated by `GHIDRA_MCP_ENABLE_WRITES`. `apply_label` reaches addresses without defined data, MMIO registers included.
 
 ## C. GhidraMCP plugin & packaging
 - ✅ Single-port multi-context server (R.21) (NOW)

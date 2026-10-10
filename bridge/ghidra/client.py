@@ -72,6 +72,7 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
         "set_disassembly_comment",
         "setDisassemblyComment",
     ),
+    "CREATE_LABEL": ("createLabel",),
     "CREATE_STRUCTURE": ("createStructure", "create_structure"),
     "UPDATE_STRUCTURE": ("updateStructure", "update_structure"),
     "CREATE_UNION": ("createUnion", "create_union"),
@@ -1433,6 +1434,45 @@ class GhidraClient:
             "SET_DISASSEMBLY_COMMENT", requester
         )
         return not _is_error(response)
+
+    def create_label(self, address: int, name: str, *, dry_run: bool) -> Optional[Mapping[str, Any]]:
+        """Place a label at ``address`` through ``/createLabel`` (R.12).
+
+        Returns the plugin's answer as is, including one with ``status:
+        "error"`` -- a rejected name is a finding, not a transport failure.
+        None only when there is no JSON answer at all, with ``last_error`` set;
+        a plugin from before R.12 has no such route.
+        """
+
+        increment_counter("ghidra.create_label")
+        self._last_error = None
+        lines = self._request_lines(
+            "POST",
+            "createLabel",
+            key="CREATE_LABEL",
+            data={
+                "address": f"0x{address:08x}",
+                "name": name,
+                "dry_run": "true" if dry_run else "false",
+            },
+        )
+        if _is_error(lines):
+            if self._last_error is None:
+                self._last_error = RequestError(
+                    status=None, reason=_error_summary(lines), retryable=False
+                )
+            return None
+        text = "\n".join(lines).strip()
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = None
+        if not isinstance(payload, Mapping):
+            self._last_error = RequestError(
+                status=None, reason=STRUCTURED_LISTING_UNSUPPORTED, retryable=False
+            )
+            return None
+        return payload
 
     def close(self) -> None:
         self._session.close()

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:apply-label.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address", "name", "dry_run", "applied", "already_present", "primary", "primary_before", "existing", "mapped", "notes"],
+  "properties": {
+    "address": {"type": "string", "pattern": "^0x[0-9a-fA-F]+$"},
+    "name": {"type": "string"},
+    "dry_run": {"type": "boolean"},
+    "applied": {"type": "boolean", "description": "True only when the label was created by this call."},
+    "already_present": {"type": "boolean"},
+    "primary": {"type": "boolean"},
+    "primary_before": {"type": ["string", "null"]},
+    "existing": {"type": "array", "items": {"type": "string"}},
+    "mapped": {"type": "boolean", "description": "Whether a memory block covers the address."},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

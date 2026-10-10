@@ -30,9 +30,10 @@ ROUTE_PATTERN = re.compile(
 
 # The extraction is only trustworthy if it finds what is known to be there.
 # 51 register*Handler calls on 2026-10-09, plus /plugin_version (e49ea83),
-# which the first version of this pattern did not see.  A change in the
-# plugin moves the number, and then it is updated deliberately.
-EXPECTED_ROUTE_COUNT = 52
+# which the first version of this pattern did not see, plus /createLabel
+# (R.12).  A change in the plugin moves the number, and then it is updated
+# deliberately.
+EXPECTED_ROUTE_COUNT = 53
 
 
 def plugin_routes() -> set[str]:

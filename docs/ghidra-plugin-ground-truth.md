@@ -32,7 +32,8 @@ Raw plugin routes are exposed on **port 8080** for non-MCP access:
 * `/disassemble`
 * `/renameFunction`
 * `/renameVariable`
-* `/renameData`
+* `/renameData` (answers "Rename data attempted" whatever happened, and does nothing without defined data)
+* `/createLabel` (POST `address`, `name`, `dry_run`; JSON with `created`, `already_present`, `primary`, `existing`)
 * `/set_*comment`
 * `/rename_function_by_address`
 * `/set_function_prototype`
