@@ -16,7 +16,10 @@ only meaningful while neither has been edited.
 
 Usage::
 
-    python scripts/reference_run_structural.py --usage-log structural.jsonl
+    python scripts/reference_run_structural.py --expect-fingerprint baseline/fingerprint.json
+
+Logs go to ``runs/`` by default; replacing a file under ``baseline/`` needs
+``--overwrite-baseline`` (see ``reference_run.py``).
 """
 from __future__ import annotations
 
@@ -51,6 +54,8 @@ _spec.loader.exec_module(_reference_run)
 FINGERPRINT_KEYS = _reference_run.FINGERPRINT_KEYS
 compare_fingerprints = _reference_run.compare_fingerprints
 fingerprint_database = _reference_run.fingerprint_database
+baseline_conflicts = _reference_run.baseline_conflicts
+RUNS_DIR = _reference_run.RUNS_DIR
 
 DEFAULT_BRIDGE = ROOT / "scripts/bridge_stdio.py"
 DEFAULT_GHIDRA = "http://127.0.0.1:8080/"
@@ -390,8 +395,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--usage-log",
         type=Path,
-        default=ROOT / "baseline" / "reference_run_structural.jsonl",
+        default=RUNS_DIR / "reference_run_structural.jsonl",
         help="JSONL usage log written by this run (truncated first)",
+    )
+    parser.add_argument(
+        "--overwrite-baseline",
+        action="store_true",
+        help="allow replacing an existing file under baseline/",
     )
     parser.add_argument(
         "--expect-fingerprint",
@@ -406,6 +416,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     args.usage_log = args.usage_log.expanduser().resolve()
+    conflicts = baseline_conflicts(
+        [args.usage_log, args.write_fingerprint], overwrite_baseline=args.overwrite_baseline
+    )
+    if conflicts:
+        for path in conflicts:
+            print(f"refusing to overwrite checked-in baseline file: {path}")
+        print("pass --overwrite-baseline to replace it, or write somewhere else")
+        return 2
     args.usage_log.parent.mkdir(parents=True, exist_ok=True)
 
     fingerprint = fingerprint_database(args.ghidra_server_url)

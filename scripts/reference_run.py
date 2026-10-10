@@ -19,10 +19,14 @@ no relation to the rework.  If the fingerprint differs between the Stage 0 and
 Stage 7 runs, the comparison is void.  ``--expect-fingerprint`` turns that from
 an assumption into a check.
 
+Logs go to ``runs/`` (ignored by git) unless told otherwise.  ``baseline/``
+holds the checked-in comparison points; a run replaces a file there only with
+``--overwrite-baseline``, so a routine run cannot overwrite one by accident.
+
 Usage::
 
-    python scripts/reference_run.py --usage-log baseline.jsonl
-    python scripts/reference_run.py --usage-log after.jsonl \
+    python scripts/reference_run.py --expect-fingerprint baseline/fingerprint.json
+    python scripts/reference_run.py --usage-log baseline/reference_run_new.jsonl \
         --expect-fingerprint baseline/fingerprint.json
 """
 from __future__ import annotations
@@ -48,6 +52,8 @@ if str(ROOT) not in sys.path:
 
 DEFAULT_BRIDGE = ROOT / "scripts/bridge_stdio.py"
 DEFAULT_GHIDRA = "http://127.0.0.1:8080/"
+BASELINE_DIR = ROOT / "baseline"
+RUNS_DIR = ROOT / "runs"
 
 # Known, hard-wired anchors in ZK-INKJET-NANO-APP.bin.
 FN_USBD_INIT_PHY_CEP = "0x002af9c0"
@@ -208,6 +214,23 @@ def compare_fingerprints(
     return drift
 
 
+def baseline_conflicts(paths: Sequence[Path | None], *, overwrite_baseline: bool) -> List[Path]:
+    """Return the output paths that would replace a checked-in baseline file.
+
+    A new file in ``baseline/`` is fine; replacing an existing one needs
+    ``--overwrite-baseline``.  Empty when the run may go ahead.
+    """
+
+    if overwrite_baseline:
+        return []
+    base = BASELINE_DIR.resolve()
+    return [
+        path
+        for path in paths
+        if path is not None and path.exists() and path.resolve().is_relative_to(base)
+    ]
+
+
 def _first_json(result: types.CallToolResult) -> Any:
     for content in result.content:
         if isinstance(content, types.TextContent):
@@ -280,8 +303,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--usage-log",
         type=Path,
-        default=ROOT / "baseline" / "reference_run.jsonl",
+        default=RUNS_DIR / "reference_run.jsonl",
         help="JSONL usage log written by this run (truncated first)",
+    )
+    parser.add_argument(
+        "--overwrite-baseline",
+        action="store_true",
+        help="allow replacing an existing file under baseline/",
     )
     parser.add_argument(
         "--expect-fingerprint",
@@ -296,6 +324,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     args.usage_log = args.usage_log.expanduser().resolve()
+    conflicts = baseline_conflicts(
+        [args.usage_log, args.write_fingerprint], overwrite_baseline=args.overwrite_baseline
+    )
+    if conflicts:
+        for path in conflicts:
+            print(f"refusing to overwrite checked-in baseline file: {path}")
+        print("pass --overwrite-baseline to replace it, or write somewhere else")
+        return 2
     args.usage_log.parent.mkdir(parents=True, exist_ok=True)
 
     fingerprint = fingerprint_database(args.ghidra_server_url)

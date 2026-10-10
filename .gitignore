@@ -75,3 +75,6 @@ SESSION_NOTES.md
 
 # Private Sitzungsmitschriften (Pfade, Projektinterna)
 2*-weve-had-some-issues-*.txt
+
+# Reference-run logs (checked-in comparison points live in baseline/)
+/runs/
