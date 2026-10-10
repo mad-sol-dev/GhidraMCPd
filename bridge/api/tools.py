@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from functools import wraps
+import time
 from time import monotonic
 from typing import Any, Callable, Dict, List, Mapping, Sequence
 
@@ -194,6 +195,41 @@ def _maybe_autoopen_program(
     return warnings, None
 
 
+# How long select_program waits for auto-analysis after opening a program.
+# Short enough for one tool call; a longer analysis is reported, not awaited.
+PROGRAM_READY_WAIT_SECONDS = 10.0
+PROGRAM_READY_POLL_SECONDS = 0.5
+
+
+def _await_program_ready(client: GhidraClient) -> tuple[Mapping[str, object] | None, list[str]]:
+    """Poll the plugin's program state while it is LOADING, up to the wait limit.
+
+    Returns the last status payload (None if the plugin did not answer) and
+    the warnings to pass on: the plugin's own, plus a note when analysis was
+    still running at the deadline.
+    """
+
+    deadline = monotonic() + PROGRAM_READY_WAIT_SECONDS
+    while True:
+        status = client.get_current_program_status()
+        state = str(status.get("state", "")).upper() if isinstance(status, Mapping) else ""
+        if state != "LOADING" or monotonic() >= deadline:
+            break
+        time.sleep(PROGRAM_READY_POLL_SECONDS)
+
+    warnings: list[str] = []
+    if isinstance(status, Mapping):
+        upstream_warnings = status.get("warnings")
+        if isinstance(upstream_warnings, list):
+            warnings.extend(str(item) for item in upstream_warnings)
+    if state == "LOADING":
+        warnings.append(
+            f"Ghidra is still running auto-analysis after {PROGRAM_READY_WAIT_SECONDS:g} s; "
+            "analysis tools refuse until state is READY. Check with get_current_program."
+        )
+    return status, warnings
+
+
 def _detect_collect_misspecifications(
     payload: Mapping[str, object] | None,
 ) -> str | None:
@@ -319,24 +355,15 @@ def register_tools(
                 else f"Program is not ready (state={state}): {extra_warning}"
             )
 
-            # Provide better recovery suggestions based on duration
+            # LOADING is the plugin reading AutoAnalysisManager.isAnalyzing() at
+            # this moment -- a long duration is a long analysis, not a stale state.
             recovery = []
             if state == "LOADING":
-                if duration_seconds > 300:  # > 5 minutes
-                    recovery.append(
-                        f"Program has been in LOADING state for {duration_seconds} seconds. "
-                        "This may indicate a stale state."
-                    )
-                    recovery.append("Try selecting a different program, then re-selecting the original.")
-                    recovery.append("If the issue persists, restart GhidraMCPd server.")
-                elif duration_seconds > 60:  # > 1 minute
-                    recovery.append(
-                        f"Program has been analyzing for {duration_seconds} seconds. "
-                        "Analysis may take several minutes for large binaries."
-                    )
-                    recovery.append("Wait for auto-analysis to complete, or check Ghidra UI.")
-                else:
-                    recovery.append("Wait for auto-analysis to finish before retrying.")
+                recovery.append(
+                    f"Ghidra has been running auto-analysis for {duration_seconds} s; "
+                    "large binaries can take minutes. Progress shows in Ghidra's status bar."
+                )
+                recovery.append("Retry once get_current_program reports state READY.")
             else:
                 recovery.append("Ensure a program is open and ready in Ghidra.")
 
@@ -667,14 +694,12 @@ def register_tools(
             warnings.extend(autoopen_warnings)
             lock_selection_for_requestor(requestor)
 
-            status_payload = client.get_current_program_status()
+            status_payload, status_warnings = _await_program_ready(client)
+            warnings.extend(status_warnings)
             if status_payload is None:
                 state_value = "IDLE"
             else:
                 state_value = str(status_payload.get("state", "IDLE")).upper()
-                upstream_warnings = status_payload.get("warnings")
-                if isinstance(upstream_warnings, list):
-                    warnings.extend(str(item) for item in upstream_warnings)
 
         payload = {
             "domain_file_id": state.domain_file_id,

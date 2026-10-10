@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from typing import List, Mapping
 
 from starlette.requests import Request
@@ -16,7 +18,7 @@ from ...utils.program_context import (
     requestor_from_request,
     validate_program_id,
 )
-from ..tools import _maybe_autoopen_program
+from ..tools import _await_program_ready, _maybe_autoopen_program
 from .._shared import envelope_error, envelope_ok, envelope_response, response_schema_error
 from ..validators import validate_payload
 from ._common import RouteDependencies
@@ -199,14 +201,13 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
                 return envelope_response(autoopen_error)
             warnings.extend(autoopen_warnings)
 
-            status_payload = client.get_current_program_status()
+            # The wait blocks on sleep and the sync client; keep it off the event loop
+            status_payload, status_warnings = await asyncio.to_thread(_await_program_ready, client)
+            warnings.extend(status_warnings)
             if status_payload is None:
                 state_value = "IDLE"
             else:
                 state_value = str(status_payload.get("state", "IDLE")).upper()
-                upstream_warnings = status_payload.get("warnings")
-                if isinstance(upstream_warnings, list):
-                    warnings.extend(str(item) for item in upstream_warnings)
 
         payload = {
             "domain_file_id": state.domain_file_id,

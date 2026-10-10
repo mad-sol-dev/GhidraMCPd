@@ -48,6 +48,7 @@ import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.framework.plugintool.PluginInfo;
 import ghidra.framework.plugintool.util.PluginStatus;
+import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramLocation;
 import ghidra.util.Msg;
 import ghidra.util.task.ConsoleTaskMonitor;
@@ -259,21 +260,55 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
     }
 
+    /**
+     * Reports whether the active program can be analysed right now.
+     *
+     * The state is read from the program on every snapshot rather than kept
+     * from open/activate events: auto-analysis can start long after a program
+     * was opened (the "Analyze?" prompt, the Analysis menu, a script), and a
+     * state set at activation would say READY throughout.  LOADING means
+     * Ghidra's AutoAnalysisManager is analysing at this moment, for as long as
+     * that takes -- no timeout turns it into READY.
+     */
     private final class ProgramStatusTracker {
         private final Object lock = new Object();
-        private ProgramState state = ProgramState.IDLE;
-        private long stateTransitionTime = System.currentTimeMillis();
-        private String domainFileId;
-        private boolean locked;
+        private Program program;
         private List<String> warnings = new ArrayList<>();
-        private Thread watcher;
+        private ProgramState lastState = ProgramState.IDLE;
+        private long stateTransitionTime = System.currentTimeMillis();
 
         ProgramStatusSnapshot snapshot() {
             synchronized (lock) {
+                Program current = program;
+                ProgramState state = currentState(current);
+                if (state != lastState) {
+                    lastState = state;
+                    stateTransitionTime = System.currentTimeMillis();
+                }
+                List<String> notes = new ArrayList<>(warnings);
+                if (state == ProgramState.READY && !GhidraProgramUtilities.isAnalyzed(current)) {
+                    notes.add("Auto-analysis has not been run on this program; functions, "
+                        + "references and strings may be incomplete");
+                }
+                DomainFile file = current != null ? current.getDomainFile() : null;
                 long durationSeconds = (System.currentTimeMillis() - stateTransitionTime) / 1000;
-                return new ProgramStatusSnapshot(domainFileId, locked, state,
-                    new ArrayList<>(warnings), durationSeconds);
+                return new ProgramStatusSnapshot(
+                    file != null ? file.getFileID() : null,
+                    file != null && file.isCheckedOut(),
+                    state, notes, durationSeconds);
             }
+        }
+
+        private ProgramState currentState(Program current) {
+            if (current == null || current.isClosed()) {
+                return ProgramState.IDLE;
+            }
+            // hasAutoAnalysisManager first: getAnalysisManager would create one
+            if (AutoAnalysisManager.hasAutoAnalysisManager(current)
+                    && AutoAnalysisManager.getAnalysisManager(current).isAnalyzing()) {
+                return ProgramState.LOADING;
+            }
+            return ProgramState.READY;
         }
 
         void applyWarnings(List<String> newWarnings) {
@@ -285,124 +320,35 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             }
         }
 
-        void markLoading(DomainFile target, List<String> initialWarnings) {
-            synchronized (lock) {
-                state = ProgramState.LOADING;
-                stateTransitionTime = System.currentTimeMillis();
-                domainFileId = target != null ? target.getFileID() : null;
-                locked = target != null && target.isCheckedOut();
-                warnings = initialWarnings == null ? new ArrayList<>()
-                    : new ArrayList<>(initialWarnings);
-            }
-        }
-
         void initialise(ProgramManager manager) {
             if (manager != null) {
                 trackProgram(manager.getCurrentProgram());
             }
         }
 
-        void onProgramActivated(Program program) {
-            trackProgram(program);
+        void onProgramActivated(Program activated) {
+            trackProgram(activated);
         }
 
-        void onProgramClosed(Program program) {
-            trackProgram(null);
+        void onProgramOpened(Program opened) {
+            trackProgram(opened);
         }
 
-        void onProgramOpened(Program program) {
-            trackProgram(program);
-        }
-
-        private void trackProgram(Program program) {
-            stopWatcher();
-            if (program == null) {
-                synchronized (lock) {
-                    state = ProgramState.IDLE;
-                    stateTransitionTime = System.currentTimeMillis();
-                    domainFileId = null;
-                    locked = false;
+        void onProgramClosed(Program closed) {
+            synchronized (lock) {
+                if (program == closed) {
+                    program = null;
                     warnings = new ArrayList<>();
                 }
-                return;
-            }
-
-            DomainFile file = program.getDomainFile();
-            synchronized (lock) {
-                domainFileId = file != null ? file.getFileID() : null;
-                locked = file != null && file.isCheckedOut();
-                warnings = new ArrayList<>();
-            }
-
-            AutoAnalysisManager manager = AutoAnalysisManager.getAnalysisManager(program);
-            if (manager == null || !manager.isAnalyzing()) {
-                markReady(program);
-                return;
-            }
-
-            synchronized (lock) {
-                state = ProgramState.LOADING;
-                stateTransitionTime = System.currentTimeMillis();
-            }
-
-            watcher = new Thread(() -> awaitAnalysisCompletion(program, manager),
-                "GhidraMCP-AnalysisWatcher");
-            watcher.setDaemon(true);
-            watcher.start();
-        }
-
-        private void awaitAnalysisCompletion(Program program, AutoAnalysisManager manager) {
-            final long startTime = System.currentTimeMillis();
-            final long TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    if (!manager.isAnalyzing()) {
-                        markReady(program);
-                        return;
-                    }
-
-                    // Detect stale state - if stuck in LOADING for > 5 minutes, force READY
-                    long elapsed = System.currentTimeMillis() - startTime;
-                    if (elapsed > TIMEOUT_MS) {
-                        Msg.warn(this,
-                            String.format("Analysis watcher timeout after %d seconds, forcing READY state",
-                                elapsed / 1000));
-                        markReady(program);
-                        return;
-                    }
-
-                    Thread.sleep(500);
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-                catch (Exception e) {
-                    // Log the exception instead of silently ignoring it
-                    Msg.error(this, "Analysis watcher exception, forcing READY state", e);
-                    markReady(program);
-                    return;
-                }
             }
         }
 
-        private void markReady(Program program) {
-            DomainFile file = program != null ? program.getDomainFile() : null;
+        private void trackProgram(Program tracked) {
             synchronized (lock) {
-                state = ProgramState.READY;
-                stateTransitionTime = System.currentTimeMillis();
-                domainFileId = file != null ? file.getFileID() : null;
-                locked = file != null && file.isCheckedOut();
-            }
-        }
-
-        private void stopWatcher() {
-            synchronized (lock) {
-                if (watcher != null) {
-                    watcher.interrupt();
+                if (program != tracked) {
+                    warnings = new ArrayList<>();
                 }
-                watcher = null;
+                program = tracked;
             }
         }
     }
@@ -3844,7 +3790,6 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return errorResponse("File not found for provided path or ID");
         }
 
-        statusTracker.markLoading(file, warnings);
         ProgramManager pm = ensureProgramManager(file, warnings);
         if (pm == null) {
             return openProgramResponse("error",
@@ -3858,10 +3803,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 file, warnings);
         }
 
-        // Ensure the tracker transitions out of LOADING even when the program
-        // is already open and Ghidra does not fire programOpened/programActivated
-        // callbacks.  Without this, the state stays LOADING permanently and all
-        // subsequent operations are blocked with 503 UNAVAILABLE.
+        // Track the opened program even when it was already open and Ghidra
+        // fires no programOpened/programActivated callback.
         Program currentProgram = pm.getCurrentProgram();
         if (currentProgram != null) {
             statusTracker.onProgramActivated(currentProgram);
