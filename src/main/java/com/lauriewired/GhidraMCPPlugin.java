@@ -1240,6 +1240,12 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             return "ERROR: no defined data at " + addr
                 + "; /createLabel places a label at any address";
         }
+        Symbol current = program.getSymbolTable().getPrimarySymbol(addr);
+        if (current != null && current.getName().equals(newName)) {
+            // No transaction for a no-op; the first live run reported
+            // "R58_live_check -> R58_live_check" and left an undo step behind.
+            return "Data already named " + newName + " at " + addr;
+        }
 
         StringBuilder outcome = new StringBuilder();
         Address target = addr;
