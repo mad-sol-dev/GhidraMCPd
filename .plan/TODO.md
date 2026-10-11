@@ -6,7 +6,7 @@
 ## NOW
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach CL-TOOL-REC-121 (flash-Basis); LOADING→READY braucht eine laufende Analyse; R.22-Cache nur nach Messung; Skript-Adapter (Entscheidung offen). Hand-off: Ende von `ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach CL-TOOL-REC-121 (flash-Basis); R.22-Cache nur nach Messung; Skript-Adapter (Entscheidung offen). Hand-off: Ende von `ghidramcpd-rework.md`.
 
 ## NEXT
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)

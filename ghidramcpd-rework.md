@@ -2168,3 +2168,16 @@ Bereichs, `dry_run=false`, es darf nichts geschrieben werden).
   0x0006ba78, außerhalb `flash`): `OUT_OF_RANGE`, `renamed`/`comment_set` false, Programm
   unverändert. Der Schreibpfad selbst bleibt bis CL-TOOL-REC-121 ungeprüft.
 
+### `LOADING` → `READY` live (2026-10-11)
+
+Der Nutzer hat eine Auto-Analyse gestartet; ein lesender Beobachter fragte jede halbe
+Sekunde `/api/current_program.json` ab und rief bei jedem Wechsel `search_functions` auf:
+bei `LOADING` abgelehnt („Program is not ready (state=LOADING)"), nach 98 s `READY`, danach
+5 Treffer. Damit ist der Übergang nicht mehr nur im Stub geprüft.
+
+Nebenwirkung: Die Analyse legte 23 Funktionen an (1 289 statt 1 266), `changed: true`, der
+Fingerabdruck der eingefrorenen Kopie wich ab. Der Nutzer hat das Programm ohne Speichern
+geschlossen und neu geöffnet; danach `changed: false` und Fingerabdruck wie die Baseline.
+Für künftige Tests: Eine Analyse an der eingefrorenen Kopie verändert sie; nur mit
+anschließendem Schließen ohne Speichern.
+
