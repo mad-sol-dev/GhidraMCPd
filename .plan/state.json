@@ -588,6 +588,16 @@
       "commit": "d71cfce",
       "status": "done",
       "updated_at": "2026-10-11T00:00:00+00:00"
+    },
+    "STREAMABLE-HTTP": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "DEAD-TOO-MANY-REQUESTS": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
     }
   }
 }

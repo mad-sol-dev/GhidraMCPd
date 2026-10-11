@@ -427,6 +427,27 @@
       "status": "todo"
     },
     {
+      "id": "STREAMABLE-HTTP",
+      "title": "MCP-Transport Streamable HTTP",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "Die Bridge bietet Streamable HTTP an (mcp-Paket aktualisiert, FastMCP-Transport)",
+        "docs/setup.md beschreibt ihn; SSE als Altlast markiert oder entfernt"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "DEAD-TOO-MANY-REQUESTS",
+      "title": "Ungenutzten Fehlercode TOO_MANY_REQUESTS entfernen",
+      "area": "bridge",
+      "depends_on": [],
+      "dod": [
+        "ErrorCode.TOO_MANY_REQUESTS entfernt oder an einer echten Stelle ausgelöst"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "R.22",
       "title": "Data type lookup cache",
       "area": "plugin",

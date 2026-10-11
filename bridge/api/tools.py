@@ -73,7 +73,7 @@ from .validators import validate_payload
 
 #: The plugin renders a function as "<name> at <hex>".  Anchored at both ends so
 #: a response in any other shape is rejected rather than partially believed.
-COLLECT_DOCS_URL = "docs/api.md#/api/collect.json"
+COLLECT_DOCS_URL = "docs/reference/http-api.md#/api/collect.json"
 _SUPPORTED_COLLECT_OPS: tuple[str, ...] = tuple(
     sorted(getattr(collect_feature, "_OPERATIONS", {}).keys())
 )

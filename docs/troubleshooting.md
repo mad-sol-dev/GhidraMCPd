@@ -1,132 +1,53 @@
 # Troubleshooting
 
-## Error reference
-
-All REST responses share the deterministic envelope shown below. Successful calls set `ok=true` and populate `data`, while errors populate `errors[]` with structured entries that include the HTTP status, a stable code, a short message, and recovery hints.
-
-```json
-{
-  "ok": false,
-  "data": null,
-  "errors": [
-    {
-      "status": 413,
-      "code": "RESULT_TOO_LARGE",
-      "message": "Result exceeds configured limits.",
-      "recovery": [
-        "Narrow the scope or reduce limits to shrink the result."
-      ]
-    }
-  ]
-}
-```
-
-See the table below for concrete error codes and HTTP status guidance.
-
-| Name | When it appears | Example payload / status |
-| --- | --- | --- |
-| `NOT_READY` | `POST /messages` before the SSE stream and session finish initialising | `425 Too Early` envelope with `code="NOT_READY"` |
-| `SSE_CONFLICT` | Second `GET /sse` while another stream is open | `409 Conflict` envelope with `code="SSE_CONFLICT"` |
-| `INVALID_REQUEST` | JSON body violates schema or parameters fail validation | `400 Bad Request` envelope with recovery hint `Check required fields and value formats.` |
-| `RESULT_TOO_LARGE` | Batch/search window or write count exceeds configured caps (`GHIDRA_MCP_MAX_ITEMS_PER_BATCH`, `GHIDRA_MCP_MAX_WRITES_PER_REQUEST`) | `413 Payload Too Large` envelope with `code="RESULT_TOO_LARGE"` |
-| `TOO_MANY_REQUESTS` | Future throttling guard when concurrent request caps are exceeded | `429 Too Many Requests` envelope with `code="TOO_MANY_REQUESTS"` |
-| `UNAVAILABLE` | No program is loaded in Ghidra, Ghidra failed (plugin `INTERNAL`), or the connection failed | `503 Service Unavailable` envelope with `code="UNAVAILABLE"`; `upstream.code` carries the plugin's code |
-| `UNAVAILABLE` (`PLUGIN_TOO_OLD`) | The installed GhidraMCP extension predates the bridge's API 3 (older header, none, or a missing route) | Build and install the extension from this repository, restart Ghidra, check `GET /plugin_version` (`"api": 3`) |
-| `UNAVAILABLE` (`PLUGIN_TOO_NEW`) | The plugin speaks a newer API than the bridge | Update the bridge to the repository version the plugin was built from and restart it |
-| `INVALID_REQUEST` (400/404/409 from the plugin) | The plugin refused the request: a malformed parameter or name (400), nothing at that address or no such type (404 `NOT_FOUND`/`UNMAPPED`), a name that exists or a type of another kind (409 `CONFLICT`). Nothing was changed | The status is the plugin's; `upstream.code` says which |
-| `INVALID_REQUEST` (409) | A write named a program that is not the active one: the session selected another program with `select_program`, or a different program became active between check and write. Nothing was written by the refused request | `409 Conflict` envelope, message starting `Write refused:`; make the session's program active again or call `select_program` for the active one |
-| `INTERNAL` | Unexpected bridge failure | `500 Internal Server Error` envelope with `code="INTERNAL"` |
-| `WRITE_DISABLED_DRY_RUN` | Write attempted while writes are disabled or `dry_run=false` without permission | `400 Bad Request` envelope: `{"ok":false,"errors":[{"code":"WRITE_DISABLED_DRY_RUN","message":"Writes are disabled while dry_run is false."}]}` |
-| `WRITE_VERIFY_FAILED` | Ghidra could not confirm a rename/comment during jump-table processing | `200 OK` with `data.errors` containing `"WRITE_VERIFY_FAILED"` |
-| `TOOL_BINDING_MISSING` | Jump-table slot read failed (adapter missing backing data) | `200 OK` with `data.errors` containing `"TOOL_BINDING_MISSING"` |
-| `ARM_INSTRUCTION` | Jump-table slot contains instruction sentinel (no branch target) | `200 OK` with `data.errors` containing `"ARM_INSTRUCTION"` |
-| `OUT_OF_RANGE` | Jump-table target falls outside `code_min`/`code_max` bounds | `200 OK` with `data.errors` containing `"OUT_OF_RANGE"` |
-| `NO_FUNCTION_AT_TARGET` | Jump-table target lacks a defined function symbol | `200 OK` with `data.errors` containing `"NO_FUNCTION_AT_TARGET"` |
-
-Refer back to this table when interpreting the examples below or cross-checking logs.
-
-## Quick checks
-
-- **409 on `/sse`**: By design there is only one active SSE stream. See [SSE readiness guidance](server.md#streaming--readiness) and the [error reference](#error-reference) before reconnecting.
-- **425 on `/messages`**: The bridge or session is still initialising. Wait for the readiness event on `/sse` or poll `/state` until `bridge_ready` and `session_ready` are true.
-- **Noisy `CancelledError` on shutdown**: Benign cancellation traces may appear while the server closes background tasks. They are filtered in current builds but can surface if an ASGI server terminates abruptly.
-- **Adapter error**: Unknown optional adapter values raise fast failures. Verify `BRIDGE_OPTIONAL_ADAPTERS` names against supported architectures.
-
-## SSE Connection Error (409 Conflict) — detailed guide
-
-### Symptom
-
-MCP clients (e.g., AiderDesk) log messages such as:
-
-- `SSE error: Non-200 status code (409)`
-- `Error invoking remote method 'load-mcp-server-tools'`
-
-### Root cause
-
-The Ghidra Java plugin does not support parallel operations. Ghidra MCPd enforces a single active SSE connection to prevent concurrent access that could corrupt state. A second `GET /sse` request therefore returns 409 while the first stream remains active.
-
-### Common scenarios
-
-#### Task switching in clients
-
-Switching contexts rapidly can leave the old SSE stream closing while a new one starts.
-
-Server logs typically show:
-
-```
-INFO: 127.0.0.1:44026 - "GET /sse HTTP/1.1" 200 OK
-INFO: 127.0.0.1:48446 - "GET /sse HTTP/1.1" 409 Conflict
-INFO: 127.0.0.1:57816 - "GET /sse HTTP/1.1" 200 OK
-```
-
-#### MCP server reloads
-
-Restarting a client-side MCP manager can trigger reconnect attempts before the bridge cleans up the earlier connection.
-
-### Resolution
-
-1. Allow 500–1000 ms backoff before retrying and wait for the prior connection to close. Streaming best practices are detailed in [Server operations](server.md#streaming--readiness).
-2. Confirm idle state:
-   ```bash
-   curl http://127.0.0.1:8000/state | jq '.active_sse'
-   ```
-   A null value indicates the bridge is ready for a new stream.
-3. Reconnect once `/state.active_sse` is `null` or readiness events arrive on the SSE stream.
-
-### Prevention
-
-- Ensure clients close SSE connections gracefully before spinning up a new one.
-- Space reconnection attempts to avoid overlapping `GET /sse` calls.
-- Monitor `/state.active_sse` and `/state.connects` to confirm reconnect behaviour over time.
-
-### Manual recovery
-
-If a client remains stuck, restart the server:
+## First checks
 
 ```bash
-python -m uvicorn bridge.app:create_app --factory --host 127.0.0.1 --port 8000
+curl http://127.0.0.1:8080/plugin_version          # plugin running, which version, which API
+curl http://127.0.0.1:8080/api/current_program.json # program open, READY or LOADING
 ```
 
-## `425 Too Early` on `/messages`
+No answer on 8080: Ghidra is not running, the extension is not enabled (*File > Configure
+> Developer*), or it listens on another port (*Edit > Tool Options > GhidraMCP HTTP
+Server*). A freshly installed extension loads only after a Ghidra restart.
 
-### Symptom
+The client shows no tools or old behaviour: the client starts the bridge once per session,
+so restart the client after updating the bridge.
 
-Requests to `/messages` return HTTP 425 with body `{"error":"mcp_not_ready"}`.
+## Error codes
 
-### Root cause
+Errors come as `{"ok": false, "errors": [{"code", "status", "message", "recovery", "upstream"?}]}`.
+`upstream.code` is the plugin's code when the plugin refused.
 
-The SSE stream has not finished initialising or the Ghidra bridge is still loading. Until both readiness flags are true, the server gates message traffic.
+| Code | Status | Means | Do |
+|---|---|---|---|
+| `UNAVAILABLE` + `PLUGIN_TOO_OLD` | 503 | the plugin speaks an older API than the bridge (or none, or lacks a route) | build and install the plugin from the same checkout, restart Ghidra |
+| `UNAVAILABLE` + `PLUGIN_TOO_NEW` | 503 | the plugin speaks a newer API than the bridge | update the bridge to the same checkout, restart the client |
+| `UNAVAILABLE`, "Program is not ready" | 503 | analysis is running (`LOADING`) or no program is open | wait for `READY`, or open a program |
+| `UNAVAILABLE`, upstream `INTERNAL` | 503 | Ghidra failed; the message says how | read the message; retry if it says the connection failed |
+| `INVALID_REQUEST` | 400 | a parameter is missing or out of range | the message names it |
+| `INVALID_REQUEST`, upstream `NOT_FOUND`/`UNMAPPED`/`CONFLICT` | 404/409 | the plugin refused: nothing there, no memory there, or the name/type conflicts; nothing changed | |
+| `INVALID_REQUEST`, "Writes are disabled" | 400 | `dry_run=false` without `GHIDRA_MCP_ENABLE_WRITES=true` | enable writes or stay with the dry run |
+| `INVALID_REQUEST`, "Write refused" | 409 | the write named a program that is no longer the active one | make the session's program active again, or `select_program` the active one |
+| `RESULT_TOO_LARGE` | 413 | a batch, page, write count or token budget is exceeded; or a search the plugin had to cut | narrow the query or raise the limit |
+| `NOT_READY` | 425 | (HTTP/SSE only) a message before the MCP session finished starting | wait for the readiness event |
+| `SSE_CONFLICT` | 409 | (SSE only) a second connection while one is open | close the other client; the bridge serves one SSE stream |
+| `INTERNAL` | 500 | the bridge itself failed | a bug; the message and the bridge log help |
 
-### Resolution
+### Codes inside jump-table results
 
-1. Establish the SSE connection and wait for the readiness event.
-2. Alternatively poll `/state` and confirm:
-   ```bash
-   curl http://127.0.0.1:8000/state | jq '{bridge_ready, session_ready}'
-   ```
-   Both values must be `true` before `/messages` accepts requests.
-3. After readiness, resume normal MCP messaging.
+`jt_*` tools report per slot in `data.errors`, with `ok: true` for the call itself:
+`OUT_OF_RANGE` (target outside `code_min`..`code_max`), `ARM_INSTRUCTION` (the slot holds
+an instruction, not a pointer), `NO_FUNCTION_AT_TARGET`, `TOOL_BINDING_MISSING` (the slot
+could not be read), `WRITE_DISABLED_DRY_RUN`, `WRITE_VERIFY_FAILED` (Ghidra did not
+confirm the rename or comment).
 
-## Handling shutdown `CancelledError`
+## Answers that look wrong
 
-The server cancels background tasks when stopping. Uvicorn may still log `asyncio.CancelledError` traces during shutdown, especially if the process receives `SIGINT` or `SIGTERM`. These messages are expected and safe to ignore unless accompanied by stack traces indicating failed cleanup.
+- **Empty listing at an address.** If the answer says `UNMAPPED`, there is no memory there
+  (`project_info` lists the blocks). If it has a `coverage` note, the bytes there are not
+  defined as instructions in Ghidra; read them with `read_words`.
+- **`search_scalars` finds nothing for a register address.** Those usually sit in a
+  constant pool as data, not in an instruction; the answer's note says where to look.
+- **Every jump-table slot is `OUT_OF_RANGE`.** The table's pointers do not match the
+  program's memory map, usually because the image is loaded at the wrong base.

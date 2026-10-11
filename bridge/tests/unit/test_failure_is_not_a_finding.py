@@ -1,6 +1,6 @@
 """R.24 phase 1: a failed request must not come back as a finding.
 
-From the inventory in ghidramcpd-rework.md ("R.24 — Bestandsaufnahme"): places
+From the inventory in docs/notes/ghidramcpd-rework.md ("R.24 — Bestandsaufnahme"): places
 where the bridge turned a plugin failure into "no matches", "all functions",
 "a function is here", or a field that is always the same value.  The mocked
 plugin answers in the shapes the real one sends (API 2: a failure carries an

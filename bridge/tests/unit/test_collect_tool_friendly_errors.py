@@ -78,4 +78,4 @@ def test_collect_friendly_error_for_budget(monkeypatch: pytest.MonkeyPatch) -> N
     message = _error_message(response)
     assert "uses 'max_items'" in message
     assert "max_result_tokens" in message
-    assert "docs/api.md" in message
+    assert "docs/reference/http-api.md" in message

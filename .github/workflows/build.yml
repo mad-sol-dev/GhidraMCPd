@@ -50,16 +50,16 @@ jobs:
           python-version: '3.11'
       - name: Render OpenAPI markdown
         run: |
-          python scripts/gen_api_md.py "${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}" > docs/api.md
+          python scripts/gen_api_md.py "${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}" > docs/reference/http-api.md
       - name: Upload API docs artifact
         uses: actions/upload-artifact@v4
         with:
           name: api-md
-          path: docs/api.md
-      - name: Detect drift in docs/api.md
+          path: docs/reference/http-api.md
+      - name: Detect drift in docs/reference/http-api.md
         run: |
-          if ! git diff --exit-code -- docs/api.md; then
-            echo "::error::docs/api.md is out of date. Run: python scripts/gen_api_md.py \"${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}\" > docs/api.md"
+          if ! git diff --exit-code -- docs/reference/http-api.md; then
+            echo "::error::docs/reference/http-api.md is out of date. Run: python scripts/gen_api_md.py \"${OPENAPI_SOURCE:-bridge/tests/golden/data/openapi_snapshot.json}\" > docs/reference/http-api.md"
             exit 1
           fi
 

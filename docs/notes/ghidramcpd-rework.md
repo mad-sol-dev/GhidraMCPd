@@ -2181,3 +2181,27 @@ geschlossen und neu geöffnet; danach `changed: false` und Fingerabdruck wie die
 Für künftige Tests: Eine Analyse an der eingefrorenen Kopie verändert sie; nur mit
 anschließendem Schließen ohne Speichern.
 
+## Doku neu aufgesetzt (2026-10-11)
+
+Auf Wunsch des Nutzers die alte Doku beiseitegelegt und neu gebaut, Englisch, nach seinem
+Doku-Stil (Prüfvermerk oben, Fakten und Erzählung getrennt, keine Emojis). Entscheidungen
+des Nutzers: Altes löschen (Git hat es), dieses Protokoll nach `docs/notes/`, stdio als Weg
+und SSE als Altlast dokumentieren (Streamable HTTP als Aufgabe `STREAMABLE-HTTP`), die
+HTTP-API-Referenz generiert unter `docs/reference/` behalten.
+
+Neu: `README.md` (Anlass, Aufbau, Schnellstart), `docs/setup.md`, `docs/tools.md`,
+`docs/design.md` (Konventionen, Kosten mit Messbedingungen, Entstehung aus meiner Sicht),
+`docs/troubleshooting.md`, `docs/development.md`; `docs/reference/tools.md` und
+`plugin-api.md` werden erzeugt (`scripts/gen_tools_md.py`, `gen_plugin_routes_md.py`) und
+von `test_generated_docs.py` gegen Docstrings und Java-Quelltext geprüft. `AGENTS.md` ist
+die Anleitung für Agenten, `CLAUDE.md` importiert sie. Gelöscht: 15 Dateien (zwei Roadmaps,
+TESTING_REPORT, overview, migration, observability, security, configuration, smoke-test,
+release_checklist, changelog, server, getting-started, Plugin-Ground-Truth, docs/README)
+und die veraltete `bridge/tests/README.md`.
+
+Beim Schreiben gefunden und korrigiert: Das Plugin wird unter *Configure > Developer*
+aktiviert (nicht *Miscellaneous*); optionale Adapter sind nur `x86`/`i386`, ARM/Thumb ist
+fest eingebaut; das JDK muss 17 oder neuer sein (`release 17`, nicht „JDK 21").
+`ErrorCode.TOO_MANY_REQUESTS` wird nirgends ausgelöst (Aufgabe `DEAD-TOO-MANY-REQUESTS`).
+Der Prüfvermerk sagt „not yet reviewed by the maintainer", bis der Nutzer gegengelesen hat.
+
