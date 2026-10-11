@@ -1503,6 +1503,64 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
+     * Copies what a script prints into the captured output while passing every
+     * message on unchanged.  GhidraScript.print/println/printf/printerr never
+     * write to the writer handed to execute(): in 11.4.2 they go to
+     * {@code Msg} as a {@link ghidra.app.script.ScriptMessage} and to the tool's
+     * console.  {@code Msg} has a setter for its logger but no getter, so the
+     * one in place is read by reflection and put back afterwards.  Only
+     * messages from the thread running the script are copied.
+     */
+    static final class ScriptOutputCapture implements ghidra.util.ErrorLogger {
+        private final ghidra.util.ErrorLogger delegate;
+        private final java.io.PrintWriter out;
+        private final Thread owner;
+
+        ScriptOutputCapture(ghidra.util.ErrorLogger delegate, java.io.PrintWriter out, Thread owner) {
+            this.delegate = delegate;
+            this.out = out;
+            this.owner = owner;
+        }
+
+        /** The logger Msg uses now, or null when it cannot be read. */
+        static ghidra.util.ErrorLogger current() {
+            try {
+                java.lang.reflect.Field field = Msg.class.getDeclaredField("errorLogger");
+                field.setAccessible(true);
+                return (ghidra.util.ErrorLogger) field.get(null);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return null;
+            }
+        }
+
+        private void copy(String prefix, Object message) {
+            if (message instanceof ghidra.app.script.ScriptMessage && Thread.currentThread() == owner) {
+                out.println(prefix + formatted(message));
+            }
+        }
+
+        /** ScriptMessage's text; called reflectively, its interface is log4j's, not on the compile path. */
+        private static String formatted(Object message) {
+            try {
+                return String.valueOf(message.getClass().getMethod("getFormattedMessage").invoke(message));
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                return String.valueOf(message);
+            }
+        }
+
+        @Override public void trace(Object o, Object m) { delegate.trace(o, m); }
+        @Override public void trace(Object o, Object m, Throwable t) { delegate.trace(o, m, t); }
+        @Override public void debug(Object o, Object m) { delegate.debug(o, m); }
+        @Override public void debug(Object o, Object m, Throwable t) { delegate.debug(o, m, t); }
+        @Override public void info(Object o, Object m) { copy("", m); delegate.info(o, m); }
+        @Override public void info(Object o, Object m, Throwable t) { copy("", m); delegate.info(o, m, t); }
+        @Override public void warn(Object o, Object m) { copy("WARN ", m); delegate.warn(o, m); }
+        @Override public void warn(Object o, Object m, Throwable t) { copy("WARN ", m); delegate.warn(o, m, t); }
+        @Override public void error(Object o, Object m) { copy("ERROR ", m); delegate.error(o, m); }
+        @Override public void error(Object o, Object m, Throwable t) { copy("ERROR ", m); delegate.error(o, m, t); }
+    }
+
+    /**
      * Run a Ghidra script file against the active program inside one outer
      * transaction (SCRIPT-ADAPTER prototype).
      *
@@ -1514,6 +1572,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * undo step.  Not covered by the rollback: what a script does outside this
      * program (files, other programs, {@code save()}).
      *
+     * <p>{@code output} is what the script printed (see {@link ScriptOutputCapture})
+     * plus what Ghidra wrote while loading it, such as compile errors;
+     * {@code output_captured=false} says the prints could not be intercepted.
+     *
      * <p>A script that throws is an answer, not a route failure: {@code ok:false}
      * with the output up to the failure, nothing committed.  {@code phase}
      * says whether it failed loading (compile errors are in the output) or
@@ -1522,8 +1584,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * else (the HTTP server handles one request at a time).
      *
      * <p>Java scripts compile in an OSGi bundle per source directory; a
-     * directory the Bundle Manager does not know yet is added to it
-     * ({@code bundle_added}), which the tool keeps in its configuration.
+     * directory the Bundle Manager does not know yet, or has disabled, is added
+     * or enabled ({@code bundle_added}), which the tool keeps in its configuration.
      */
     private String runScript(String pathStr, String argsStr, boolean dryRun, int timeoutSeconds) {
         Program program = getCurrentProgram();
@@ -1546,6 +1608,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         boolean modified = false;
         boolean bundleAdded = false;
         boolean timedOut = false;
+        boolean outputCaptured = false;
         String phase = "load";
         String error = null;
         long started = System.currentTimeMillis();
@@ -1561,9 +1624,20 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                         + " (Java needs .java; Python needs PyGhidra or Jython in this Ghidra)");
                 }
                 if (provider instanceof ghidra.app.script.JavaScriptProvider) {
+                    // Not getExistingGhidraBundle: for an unknown directory it pops up an
+                    // error dialog in Ghidra besides answering null.
                     generic.jar.ResourceFile dir = source.getParentFile();
-                    if (bundleHost.getExistingGhidraBundle(dir) == null) {
+                    ghidra.app.plugin.core.osgi.GhidraBundle bundle = null;
+                    for (ghidra.app.plugin.core.osgi.GhidraBundle known : bundleHost.getGhidraBundles()) {
+                        if (dir.equals(known.getFile())) {
+                            bundle = known;
+                        }
+                    }
+                    if (bundle == null) {
                         bundleHost.add(dir, true, false);
+                        bundleAdded = true;
+                    } else if (!bundle.isEnabled()) {
+                        bundleHost.enable(bundle);
                         bundleAdded = true;
                     }
                 }
@@ -1584,6 +1658,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                     ghidra.util.task.TimeoutTaskMonitor monitor = ghidra.util.task.TimeoutTaskMonitor
                         .timeoutIn(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
                     long modBefore = program.getModificationNumber();
+                    ghidra.util.ErrorLogger logger = ScriptOutputCapture.current();
+                    outputCaptured = logger != null;
+                    if (outputCaptured) {
+                        Msg.setErrorLogger(new ScriptOutputCapture(logger, writer, Thread.currentThread()));
+                    }
                     int tx = program.startTransaction("MCP script: " + file.getName());
                     try {
                         script.execute(state, monitor, writer);
@@ -1592,6 +1671,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                         timedOut = monitor.didTimeout();
                         error = timedOut ? "timed out after " + timeoutSeconds + " s" : describe(e);
                     } finally {
+                        if (outputCaptured) {
+                            Msg.setErrorLogger(logger);
+                        }
                         monitor.finished();
                         modified = program.getModificationNumber() != modBefore;
                         committed = ok && !dryRun;
@@ -1618,6 +1700,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         appendJsonField(sb, "error", error);
         appendJsonField(sb, "output", captured.text());
         appendJsonField(sb, "output_truncated", captured.truncated());
+        appendJsonField(sb, "output_captured", outputCaptured);
         trimTrailingComma(sb);
         return sb.append('}').toString();
     }
