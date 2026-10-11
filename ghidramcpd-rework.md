@@ -2091,3 +2091,16 @@ Live mit 1.3.66: 71/71 (12 neue API-3-Proben, lesend), Referenzlauf 40/40, 60 19
 Programm unverändert. Über MCP: `disassemble_at 0x10` meldet „No memory is mapped" statt
 einer Auflistung ab 0x00200000; `search_imports` liefert `EXTERNAL:00000001`.
 
+## R.29 erledigt (2026-10-11)
+
+Der Befund war wieder derselbe Typ: `max_result_tokens` war im Docstring als Obergrenze
+beschrieben (disasm and decompile are trimmed), im Code aber nur nach `meta` kopiert. Ein
+Aufrufer mit Budget bekam die volle Antwort und ein Etikett, das das Gegenteil behauptete.
+
+Umgesetzt wie beschrieben, ohne neuen Parameter (Sockel bleibt 8 485): disasm und decompile
+schrumpfen anteilig in 5-%-Schritten an ganzen Zeilen, das Dekompilat vom Ende, das Listing
+um das Ziel; `meta.estimate_tokens` liegt danach nie über dem Budget. Passt der Rest allein
+nicht, ist es `RESULT_TOO_LARGE`. Live an 0x002af9c0 (voll 1 103 Tokens): 800 → 765,
+500 → 499, 300 abgelehnt (319). Erklärung Zeilen gegen Tokens in `docs/getting-started.md`.
+Die laufende Desktop-Bridge hat das erst nach einem Neustart.
+

@@ -550,7 +550,7 @@
         "Consider unlimited option (max_lines: null or max_lines: -1) for complete output",
         "Tests cover char-based truncation and combined line+char limits"
       ],
-      "status": "todo",
+      "status": "done",
       "notes": [
         "Lines-based truncation can cut mid-block, leaving important logic invisible",
         "Character/token limits align better with LLM context budgets",

@@ -6,10 +6,9 @@
 ## NOW
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): R.29 (Zeichenbudget für analyze_function_complete; Sockel 8 485 von 8 500). Hand-off: Ende von `ghidramcpd-rework.md`. Hand-off: Ende von `ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): Kleinkram aus dem Hand-off; R.22-Cache nur nach Messung; Skript-Adapter (Entscheidung offen). Hand-off: Ende von `ghidramcpd-rework.md`.
 
 ## NEXT
-- {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
 - {R.13} Extension ZIP packaging + install checklist + CI/script smoke-test hook

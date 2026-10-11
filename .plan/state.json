@@ -503,8 +503,9 @@
       "status": "todo"
     },
     "R.29": {
-      "commit": "pending",
-      "status": "todo"
+      "commit": "8f66d59",
+      "status": "done",
+      "updated_at": "2026-10-11T00:00:00+00:00"
     },
     "JT-PRENAME-PARSE": {
       "commit": "pending",
