@@ -12,7 +12,6 @@ _EXPECTED_STATUS = {
     ErrorCode.RESULT_TOO_LARGE: 413,
     ErrorCode.NOT_READY: 425,
     ErrorCode.SSE_CONFLICT: 409,
-    ErrorCode.TOO_MANY_REQUESTS: 429,
     ErrorCode.INTERNAL: 500,
     ErrorCode.UNAVAILABLE: 503,
 }

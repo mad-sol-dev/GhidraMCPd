@@ -23,11 +23,6 @@ def test_error_templates_map_to_status_and_message() -> None:
             "Server-sent events stream already active.",
             ["Disconnect the existing SSE client before reconnecting."],
         ),
-        ErrorCode.TOO_MANY_REQUESTS: (
-            429,
-            "Too many requests in flight.",
-            ["Back off and retry with fewer concurrent requests."],
-        ),
         ErrorCode.INTERNAL: (
             500,
             "Internal server error.",

@@ -71,7 +71,6 @@ class ErrorCode(str, Enum):
     RESULT_TOO_LARGE = "RESULT_TOO_LARGE"
     NOT_READY = "NOT_READY"
     SSE_CONFLICT = "SSE_CONFLICT"
-    TOO_MANY_REQUESTS = "TOO_MANY_REQUESTS"
     INTERNAL = "INTERNAL"
     UNAVAILABLE = "UNAVAILABLE"
 
@@ -112,13 +111,6 @@ _TEMPLATES: Mapping[ErrorCode, ErrorTemplate] = {
         message="Server-sent events stream already active.",
         recovery=(
             "Disconnect the existing SSE client before reconnecting.",
-        ),
-    ),
-    ErrorCode.TOO_MANY_REQUESTS: ErrorTemplate(
-        status=429,
-        message="Too many requests in flight.",
-        recovery=(
-            "Back off and retry with fewer concurrent requests.",
         ),
     ),
     ErrorCode.INTERNAL: ErrorTemplate(

@@ -10,7 +10,6 @@ Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach 
 
 ## NEXT
 - {STREAMABLE-HTTP} MCP-Transport Streamable HTTP anbieten (löst SSE im MCP-Standard ab); braucht ein `mcp`-Update (1.5.0 hat ihn nicht). SSE danach als Altlast markieren oder entfernen.
-- {DEAD-TOO-MANY-REQUESTS} `ErrorCode.TOO_MANY_REQUESTS` wird nirgends ausgelöst: entfernen oder begründen.
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)
 - {R.13} Extension ZIP packaging + install checklist + CI/script smoke-test hook
