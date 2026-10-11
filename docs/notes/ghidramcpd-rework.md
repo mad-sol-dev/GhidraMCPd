@@ -2314,3 +2314,53 @@ nicht an der eingefrorenen Kopie.
 R.22-Cache nur nach Messung, Schreibpfad von `jt_slot_process` nach CL-TOOL-REC-121,
 Ghidra-12-Port irgendwann (das Original ist auf 12.1.4).
 
+
+## Skript-Adapter-Prototyp: Ergebnis (2026-10-11)
+
+Branch `script-adapter-prototype`, Plugin 1.3.68 (API 3). `POST /runScript` (Schreibroute):
+`path` absolut, `args` durch Leerzeichen getrennt, `dry_run` (alles außer `false` ist
+Probelauf), `timeout_s` 1–600 (60). Antwort: `ok`, `dry_run`, `committed`, `modified`
+(Änderungszähler des Programms vor/nach dem Lauf), `phase` (`load`/`run`), `timed_out`,
+`bundle_added`, `elapsed_ms`, `error`, `output` (64 KiB), `output_truncated`,
+`output_captured`. Mit im Build: PROTOTYPE-NAME (`RENAME`, Antwort JSON mit `signature`),
+nicht live geprüft.
+
+**Live an der eingefrorenen Kopie, `McpProbe.java` an 0x002AF9C4** (je mit Zustimmung):
+
+- Probelauf: `ok:true`, `committed:false`, `modified:true`, Ausgabe da; danach
+  `changed:false`, kein Kommentar. Rollback über die äußere Transaktion trägt, auch wenn
+  das Skript seine eigene mit `end(true)` schließt.
+- Echter Lauf: Kommentar im Listing, `changed:true`. Ein Ctrl+Z, danach Undo ausgegraut,
+  `changed:false`, Kommentar weg -- ein Undo-Schritt. Das Edit-Menü nennt nur den
+  Programmnamen, nicht den Transaktionsnamen.
+- Fehlerfall (`fail`, `dry_run=false`): `ok:false`, `IllegalStateException` mit Text,
+  Ausgabe bis zum Fehler, `committed:false`; danach `changed:false`, kein Kommentar.
+- `execute` aus dem HTTP-Thread läuft sauber (9–44 ms nach dem ersten Lauf; der erste mit
+  Kompilieren 1,8 s).
+
+**Befunde, die der Bauplan nicht kannte:**
+
+1. Java-Skripte brauchen ihren Ordner als Bundle im Bundle Manager
+   (`JavaScriptProvider.getBundleForSource` → `findSourceDirectoryContaining`), sonst
+   `ClassNotFoundException`. Die Route legt ihn an (`bundle_added`); das bleibt in der
+   Tool-Konfiguration -- der Skriptordner des Analyse-Projekts erscheint damit auch im
+   Script Manager, was eher nützt.
+2. `BundleHost.getExistingGhidraBundle` zeigt für einen unbekannten Ordner einen
+   Fehlerdialog („ghidra bundle cache"), statt nur `null` zu liefern (1.3.67, vom Nutzer
+   gesehen). Jetzt Durchlauf über `getGhidraBundles()`.
+3. `print`/`println`/`printf`/`printerr` schreiben in 11.4.2 **nicht** in den Writer von
+   `execute()`, sondern als `ScriptMessage` an `Msg` und an die Konsole des Tools (in
+   1.3.67 kam `output` leer zurück). Der Writer bekommt nur, was Ghidra beim Laden
+   schreibt (Kompilierfehler). Lösung: während des Laufs ein weiterreichender
+   `ErrorLogger` vor `Msg` (der alte per Reflection gelesen, `Msg` hat keinen Getter, im
+   `finally` zurückgesetzt), kopiert nur `ScriptMessage`s des Skript-Threads.
+   `ScriptMessage` implementiert log4j's `Message`, das nicht im Compile-Pfad liegt --
+   Text per Reflection. Zeilen tragen das Präfix `McpProbe.java> `.
+4. Der HTTP-Server bedient eine Anfrage nach der anderen (`setExecutor(null)`): während
+   ein Skript läuft, antwortet das Plugin auf nichts. Der Timeout ist kooperativ.
+5. Was der Nutzer während eines Laufs in Ghidra ändert, landet in derselben äußeren
+   Transaktion und wird beim Probelauf mit verworfen.
+
+**Offen:** `ask*` ohne Argumente (Dialog aus dem HTTP-Thread; Test 4, nicht gelaufen),
+Timeout live, Kompilierfehler live (`phase:"load"`), PROTOTYPE-NAME live, Python-Skripte
+(braucht PyGhidra/Jython). Danach das Bridge-Tool `run_script` wie im Hand-off oben.
