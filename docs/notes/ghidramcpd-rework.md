@@ -2386,6 +2386,12 @@ keine, kracht es. Vermutung: Ort und Tabellenschlüssel passen für das Bundle n
 zusammen, kein Timing-Problem. Ob Ghidras Script Manager mit demselben Skript denselben
 Dialog zeigt, ist nicht geprüft. Der Dialog blockiert nichts, bleibt aber stehen.
 
-**Offen:**
-PROTOTYPE-NAME live, Python-Skripte
+**PROTOTYPE-NAME live** (1.3.68, an 0x002AF9C0 `usbd_init_phy_cep`, mit Freigabe):
+`void mcp_proto_probe(void)` → Antwort `{"status":"ok","address":"0x002af9c0","name":
+"mcp_proto_probe","signature":"void mcp_proto_probe(void)"}`, Zurücklesen bestätigt Name
+und Rückgabetyp. Ein Ctrl+Z, danach Undo ausgegraut, wieder `undefined
+usbd_init_phy_cep(void)`, `changed:false`. Vor dem Undo war im Edit-Menü auch Redo aktiv
+(nach dem früheren Rückgängigmachen des Skriptlaufs); nicht weiter verfolgt.
+
+**Offen:** Python-Skripte
 (braucht PyGhidra/Jython). Danach das Bridge-Tool `run_script` wie im Hand-off oben.
