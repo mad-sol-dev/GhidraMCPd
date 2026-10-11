@@ -190,6 +190,7 @@
           }
         },
         "limit": {"type": "integer"},
+        "truncated": {"type": "boolean"},
         "source": {"type": "string"}
       }
     },

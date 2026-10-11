@@ -273,3 +273,37 @@ def test_a_budget_too_small_for_the_rest_is_refused_not_ignored() -> None:
 
     with pytest.raises(SafetyLimitExceeded, match="even without disasm and decompile"):
         _dossier(10)
+
+
+class ManyStrings(StubClient):
+    """Three referenced strings, for a strings.limit below that."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._strings = {0x3000: "alpha text", 0x3010: "beta text", 0x3020: "gamma text"}
+
+    def disassemble_function_structured(self, address: int) -> Dict[str, object]:
+        return listing(address, [
+            insn(0x1000 + 4 * i, "adr", text=f"adr r0,0x{a:x}", ref=(a, "PARAM", True))
+            for i, a in enumerate((0x3000, 0x3010, 0x3020))
+        ])
+
+
+def test_strings_cut_at_their_limit_say_so() -> None:
+    payload = analyze.analyze_function_complete(
+        ManyStrings(), address=0x1000, fields=["strings", "features"],
+        options={"strings": {"limit": 2}},
+    )
+
+    assert [s["literal"] for s in payload["strings"]["items"]] == ["alpha text", "beta text"]
+    assert payload["strings"]["truncated"] is True
+    assert any("strings.limit 2" in note for note in payload["features"]["notes"])
+    assert payload["meta"]["truncated"] is True
+
+
+def test_features_count_strings_without_the_strings_section() -> None:
+    """string_reference_count was 0 unless 'strings' was asked for too."""
+
+    payload = analyze.analyze_function_complete(ManyStrings(), address=0x1000, fields=["features"])
+
+    assert payload["features"]["string_reference_count"] == 3

@@ -24,7 +24,7 @@
         "signature": "undefined sub_102004(void)"
       },
       "meta": {
-        "estimate_tokens": 249,
+        "estimate_tokens": 254,
         "fields": [
           "constants",
           "features",
@@ -46,7 +46,8 @@
           }
         ],
         "limit": 6,
-        "source": "disassembly_literals"
+        "source": "disassembly_literals",
+        "truncated": false
       },
       "xrefs": {
         "inbound": [

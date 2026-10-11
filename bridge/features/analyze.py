@@ -198,16 +198,19 @@ def analyze_function_complete(
             }
 
     string_items: List[Dict[str, object]] = []
-    if "strings" in requested:
-        string_items = _collect_strings(
+    strings_truncated = False
+    if "strings" in requested or "features" in requested:
+        string_items, strings_truncated = _collect_strings(
             client,
             disasm_entries,
             limit=config.strings_limit,
             max_len=config.cstring_max_len,
         )
+    if "strings" in requested:
         payload["strings"] = {
             "items": string_items,
             "limit": config.strings_limit,
+            "truncated": strings_truncated,
             "source": "disassembly_literals",
         }
 
@@ -223,12 +226,14 @@ def analyze_function_complete(
             body_range,
             inbound_limit=config.inbound_limit if inbound_truncated else None,
             outbound_limit=config.outbound_limit if outbound_truncated else None,
+            strings_limit=config.strings_limit if strings_truncated else None,
         )
 
     trimmed = max_result_tokens is not None and _fit_to_budget(payload, max_result_tokens)
 
     truncated = (
-        disasm_truncated or decompile_truncated or inbound_truncated or outbound_truncated or trimmed
+        disasm_truncated or decompile_truncated or inbound_truncated or outbound_truncated
+        or strings_truncated or trimmed
     )
 
     data_without_meta = {k: v for k, v in payload.items() if k != "meta"}
@@ -754,13 +759,19 @@ def _collect_strings(
     *,
     limit: int,
     max_len: int,
-) -> List[Dict[str, object]]:
+) -> Tuple[List[Dict[str, object]], bool]:
+    """The first ``limit`` strings the listing references, and whether more exist.
+
+    One more than shown is read: a list cut at the limit must not read as all
+    the strings there are.
+    """
+
     if limit <= 0:
-        return []
+        return [], False
     seen: set[int] = set()
     results: List[Dict[str, object]] = []
     for entry in entries:
-        if len(results) >= limit:
+        if len(results) > limit:
             break
         if entry.get("flow") != "fallthrough":
             # A branch or call operand is where control goes, not something to
@@ -790,9 +801,9 @@ def _collect_strings(
                     "length": len(_decoded_view(cleaned)),
                 }
             )
-            if len(results) >= limit:
+            if len(results) > limit:
                 break
-    return results
+    return results[:limit], len(results) > limit
 
 
 def _collect_constants(
@@ -879,6 +890,7 @@ def _summarize_features(
     *,
     inbound_limit: Optional[int] = None,
     outbound_limit: Optional[int] = None,
+    strings_limit: Optional[int] = None,
 ) -> Dict[str, object]:
     """Counts over the collected lists; a limit passed here means that list was cut."""
 
@@ -891,6 +903,8 @@ def _summarize_features(
         notes.append(
             f"xrefs_outbound_count and call_count stop at outbound_limit {outbound_limit}; more exist"
         )
+    if strings_limit is not None:
+        notes.append(f"string_reference_count stops at strings.limit {strings_limit}; more exist")
     return {
         "instruction_count": len(disasm_entries),
         "call_count": sum(1 for entry in outbound if entry.get("type")),

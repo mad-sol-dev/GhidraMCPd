@@ -542,6 +542,9 @@
                         },
                         "source": {
                           "type": "string"
+                        },
+                        "truncated": {
+                          "type": "boolean"
                         }
                       },
                       "type": [
