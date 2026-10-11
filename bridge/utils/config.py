@@ -54,6 +54,13 @@ def writes_status(enabled: bool) -> dict[str, object]:
     return {"writes_enabled": False, "writes_note": WRITES_ENABLE_HOWTO}
 
 
+#: The analysis project's script folder (SCRIPT-ADAPTER): run_script runs only
+#: files below it.  Unset, run_script is off.
+_script_dir_env = os.getenv("GHIDRA_MCP_SCRIPT_DIR", "").strip()
+SCRIPT_DIR: Final[Optional[Path]] = (
+    Path(_script_dir_env).expanduser() if _script_dir_env else None
+)
+
 _audit_log_env = os.getenv("GHIDRA_MCP_AUDIT_LOG", "").strip()
 AUDIT_LOG_PATH: Final[Optional[Path]] = (
     Path(_audit_log_env).expanduser() if _audit_log_env else None
@@ -65,6 +72,7 @@ __all__ = [
     "ENABLE_WRITES",
     "MAX_ITEMS_PER_BATCH",
     "MAX_WRITES_PER_REQUEST",
+    "SCRIPT_DIR",
     "WRITES_DISABLED_NOTE",
     "WRITES_ENABLE_HOWTO",
     "writes_status",

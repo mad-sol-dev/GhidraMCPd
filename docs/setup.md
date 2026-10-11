@@ -95,7 +95,8 @@ repository root (copy `.env.sample`); variables already set in the environment w
 | Variable | Default | Effect |
 |---|---|---|
 | `GHIDRA_SERVER_URL` | `http://127.0.0.1:8080/` | where the plugin listens |
-| `GHIDRA_MCP_ENABLE_WRITES` | `false` | allow renames, comments, labels, structure edits and saving |
+| `GHIDRA_MCP_ENABLE_WRITES` | `false` | allow renames, comments, labels, structure edits, script runs and saving |
+| `GHIDRA_MCP_SCRIPT_DIR` | unset | the analysis project's script folder; `run_script` runs only files below it, and is off while this is unset |
 | `GHIDRA_MCP_MAX_WRITES_PER_REQUEST` | `2` | writes one tool call may make |
 | `GHIDRA_MCP_MAX_ITEMS_PER_BATCH` | `256` | items one batch or page may hold |
 | `GHIDRA_BRIDGE_PROGRAM_SWITCH_POLICY` | `strict` | `strict`: switching programs mid-session is an error; `soft`: a warning |
@@ -114,4 +115,33 @@ Changes stay unsaved in Ghidra: `list_mutations` shows what this session changed
 included), `check_dirty_state` whether anything is unsaved, `save_program` saves. Undo in
 Ghidra works as usual.
 
-Byte patches and moving the image base are not offered; do them in Ghidra.
+Byte patches and moving the image base are not offered as tools; do them in Ghidra, or
+with a script (below).
+
+### Scripts
+
+`run_script` runs a Ghidra script from the analysis project's own script folder, e.g.
+`GHIDRA_MCP_SCRIPT_DIR=/path/to/zk-inkjet/ghidra_scripts`. Only files below that folder
+run -- a path with `..` or a symlink leading out is refused -- and no code is ever sent
+with the call. The folder belongs to the analysis project and its review: a script can do
+anything Java or Python can.
+
+The plugin runs the script inside one transaction. A dry run (the default) lets it run
+and then rolls back every change it made to the program; a real run keeps them as one
+undo step. Not rolled back: what the script does outside the program (files, other
+programs, `save()`).
+
+Things to know:
+
+- Java scripts compile in an OSGi bundle per folder. The first run adds the folder to
+  Ghidra's Bundle Manager, where it stays (and shows up in the Script Manager). One script
+  that does not compile blocks the others in its folder; the answer carries the compiler's
+  messages, and Ghidra may show an error dialog besides.
+- Python scripts run through whatever Ghidra has (Jython or PyGhidra).
+- While a script runs, the plugin answers nothing else. `timeout_s` (default 60, at most
+  600) stops a script only at its next monitor check (`monitor.checkCancelled()`).
+- A script that asks (`askString`, `askAddress`, ...) opens a dialog in Ghidra and waits
+  for someone to answer it. Write scripts that take their values from `getScriptArgs()`.
+- What a script prints comes back as `output` (up to 64 KiB).
+- Whatever you change in Ghidra by hand while a script runs joins its transaction, and a
+  dry run rolls it back too.

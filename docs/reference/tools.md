@@ -4,7 +4,7 @@ Generated from the tool docstrings by `scripts/gen_tools_md.py`; do not edit by 
 The docstrings are what a model sees when it chooses a tool. Full parameter
 descriptions are in each tool's schema, as the MCP client shows it.
 
-35 tools.
+36 tools.
 
 ## Orientation
 
@@ -144,7 +144,7 @@ Writes only with `GHIDRA_MCP_ENABLE_WRITES=true` and `dry_run=false`.
 
 ### `collect`
 
-Run several read-only queries in one call, optionally across projects.
+Run several read-only queries in one call, optionally across projects, under one shared token budget.
 
 ## Jump tables
 
@@ -186,6 +186,12 @@ Put a label at any address, including MMIO registers outside every memory block.
 
 Writes only with `GHIDRA_MCP_ENABLE_WRITES=true` and `dry_run=false`.
 
+### `run_script`
+
+Run a Ghidra script from the project's script folder (GHIDRA_MCP_SCRIPT_DIR) on the active program.
+
+Writes only with `GHIDRA_MCP_ENABLE_WRITES=true` and `dry_run=false`.
+
 ### `datatypes_create`
 
 Create a structure or union in the data type manager.
@@ -214,9 +220,9 @@ Writes only with `GHIDRA_MCP_ENABLE_WRITES=true` and `dry_run=false`.
 
 ### `list_mutations`
 
-Everything this session changed since the last save_program.
+What this session changed since the last save_program: renames, comments, labels, data types, scripts -- with target, old and new value, ready for a commit message. check_dirty_state knows *that* something is unsaved; this knows *what*. Dry runs are listed with a "[proposed]" prefix.
 
-*Not for:* history. The list resets on a successful save_program, since everything before that is in the file. It also lives in this server process, so a restart loses it -- save first.
+*Not for:* history. It resets on save_program and on a server restart.
 
 ### `check_dirty_state`
 

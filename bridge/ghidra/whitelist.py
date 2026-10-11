@@ -85,5 +85,6 @@ DEFAULT_WHITELIST: Dict[str, Iterable[WhitelistEntry]] = {
         WhitelistEntry("POST", "CREATE_UNION", ("createUnion",)),
         WhitelistEntry("POST", "UPDATE_UNION", ("updateUnion",)),
         WhitelistEntry("POST", "DELETE_DATATYPE", ("deleteDataType",)),
+        WhitelistEntry("POST", "RUN_SCRIPT", ("runScript",)),
     ),
 }

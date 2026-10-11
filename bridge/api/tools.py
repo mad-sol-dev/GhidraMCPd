@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from functools import wraps
+from pathlib import Path
 import time
 from time import monotonic
 from typing import Any, Callable, Dict, List, Mapping, Sequence
@@ -24,6 +25,7 @@ from ..features import (
     memory,
     mmio,
     scalars,
+    scripts,
     search_function,
     strings,
     xrefs,
@@ -37,6 +39,7 @@ from ..ghidra.client import GhidraClient, RequestError
 from ..utils.config import (
     ENABLE_WRITES,
     MAX_WRITES_PER_REQUEST,
+    SCRIPT_DIR,
     WRITES_ENABLE_HOWTO,
     writes_status,
 )
@@ -342,6 +345,7 @@ def register_tools(
     *,
     client_factory: Callable[[], GhidraClient],
     enable_writes: bool = ENABLE_WRITES,
+    script_dir: Path | None = SCRIPT_DIR,
 ) -> None:
     tool_client = inject_client(client_factory)
     logger = logging.getLogger("bridge.mcp.tools")
@@ -837,25 +841,16 @@ def register_tools(
     @server.tool()
     @tracked_tool(lock_usage=False, require_ready=False)
     def list_mutations(client, fmt: str = "text") -> Dict[str, object]:
-        """Everything this session changed since the last save_program.
+        """What this session changed since the last save_program: renames,
+        comments, labels, data types, scripts -- with target, old and new
+        value, ready for a commit message. check_dirty_state knows *that*
+        something is unsaved; this knows *what*. Dry runs are listed with a
+        "[proposed]" prefix.
 
-        Renames, comments and data types, with address, old value and new
-        value, rendered so the block drops straight into a commit
-        message or a TRUTH line. It is the answer check_dirty_state cannot give:
-        that tool knows *that* something is unsaved, this one knows *what*.
-
-        Proposals are included and marked. A dry-run rename is a decision you
-        made about the binary, worth writing down -- but it carries a
-        "[proposed]" prefix, because a ledger where an intention reads as an
-        accomplishment is worse than none.
-
-        Not for: history. The list resets on a successful save_program, since
-        everything before that is in the file. It also lives in this server
-        process, so a restart loses it -- save first.
+        Not for: history. It resets on save_program and on a server restart.
 
         Args:
-            fmt: 'text' (default) returns `lines`, ready to paste; 'json'
-                returns `mutations` as structured records.
+            fmt: 'text' (default) returns `lines`; 'json' returns `mutations`.
 
         Returns summary (total, applied, proposed, by_kind) plus lines or
         mutations."""
@@ -1001,6 +996,63 @@ def register_tools(
         valid, errors = validate_payload("apply_label.v1.json", data)
         if not valid:
             return response_schema_error("apply_label.v1.json", errors)
+        return envelope_ok(data)
+
+    @server.tool()
+    @tracked_tool()
+    def run_script(
+        client,
+        script: str,
+        args: str = "",
+        *,
+        dry_run: bool = True,
+        timeout_s: int = 60,
+    ) -> Dict[str, object]:
+        """Run a Ghidra script from the project's script folder
+        (GHIDRA_MCP_SCRIPT_DIR) on the active program.
+
+        A dry run rolls back all program changes; writing needs
+        GHIDRA_MCP_ENABLE_WRITES=true, one undo step. Give values as args:
+        ask* opens a dialog that blocks Ghidra. Not for: own code.
+
+        Args:
+            script: relative to the folder, e.g. 'Rebase.java'.
+            args: space-separated.
+            dry_run: default true.
+            timeout_s: 1-600 (60); stops at a monitor check."""
+        arguments = args.split()
+        request_payload: Dict[str, object] = {
+            "script": script,
+            "args": arguments,
+            "dry_run": dry_run,
+            "timeout_s": timeout_s,
+        }
+        valid, errors = validate_payload("run_script.request.v1.json", request_payload)
+        if not valid:
+            return envelope_error(ErrorCode.INVALID_REQUEST, "; ".join(errors))
+        with request_scope(
+            "run_script",
+            logger=logger,
+            extra={"tool": "run_script", "script": script, "dry_run": dry_run},
+            max_writes=1,
+        ):
+            try:
+                data = scripts.run_script(
+                    client,
+                    script_dir=script_dir,
+                    script=script,
+                    args=arguments,
+                    dry_run=dry_run,
+                    timeout_s=timeout_s,
+                    writes_enabled=enable_writes,
+                )
+            except scripts.ScriptRejected as exc:
+                return envelope_error(ErrorCode.INVALID_REQUEST, str(exc))
+            except scripts.ScriptUnavailable as exc:
+                return envelope_error(ErrorCode.UNAVAILABLE, str(exc))
+        valid, errors = validate_payload("run_script.v1.json", data)
+        if not valid:
+            return response_schema_error("run_script.v1.json", errors)
         return envelope_ok(data)
 
     @server.tool()
@@ -1323,10 +1375,8 @@ def register_tools(
         result_budget: dict[str, object] | None = None,
         metadata: dict[str, object] | None = None,
     ) -> Dict[str, object]:
-        """Run several read-only queries in one call, optionally across projects.
-
-        Batches what would otherwise be separate round trips, and applies one
-        shared token budget over the lot.
+        """Run several read-only queries in one call, optionally across
+        projects, under one shared token budget.
 
         Args:
             queries: in-project queries. Each needs an ``id`` and an ``op``,
@@ -1334,10 +1384,9 @@ def register_tools(
                 ``result_budget``, and ``metadata`` echoed back.
                 Example: {"id": "head", "op": "disassemble_at",
                           "params": {"address": "0x401000", "count": 8}}
-            projects: cross-project overrides. Each entry has an ``id``, its own
-                ``queries`` list of the same shape, optional ``result_budget``
-                and ``metadata``, and an alternate ``ghidra_url``/``base_url``
-                for a remote instance.
+            projects: per project an ``id``, ``queries`` (same shape),
+                optional ``result_budget``, ``metadata`` and a remote
+                ``ghidra_url``/``base_url``.
             result_budget: shared budget. ``max_result_tokens`` is an int or
                 null for unlimited; ``mode`` is "auto_trim" (soft cap) or
                 "strict" (raise RESULT_TOO_LARGE when exceeded).
@@ -1365,8 +1414,8 @@ def register_tools(
             search_scalars_with_context value, context_lines (0-16, default 4),
                                         limit (20), fmt
 
-        Each query returns its own envelope. Aggregate metadata records the
-        total token estimate across all queries and projects."""
+        Each query returns its own envelope; metadata totals the token
+        estimate."""
         request_payload: Dict[str, object] = {}
         if queries is not None:
             request_payload["queries"] = [dict(item) for item in queries]
@@ -2558,9 +2607,8 @@ def register_tools(
     ) -> Dict[str, object]:
         """Disassemble several addresses in one call, optionally filtered.
 
-        With a query it answers "every constant-pool load in these four
-        functions" in one call and returns only those lines: 4 addresses x 16
-        instructions is 64 lines, of which 12 match.
+        With a query it returns only matching lines, e.g. every
+        constant-pool load in four functions.
 
         Not for: locating the addresses -- you bring those. Without a query it
         returns every instruction for every address, so 20 addresses at the
@@ -2580,8 +2628,7 @@ def register_tools(
                 operand instead of a character class.
             case_sensitive: default false.
             context_lines: instructions kept either side of a match, 0-16,
-                default 0. find_in_function defaults to 3 because it scans a
-                whole function; here you already chose the addresses.
+                default 0.
 
         Returns results keyed by address string. With a query it also returns
         `filter` (what was asked for) and `summary` with scanned, matched and

@@ -35,7 +35,7 @@ GROUPS: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
     )),
     ("Jump tables", ("jt_slot_check", "jt_scan", "jt_slot_process")),
     ("Writing (dry run by default)", (
-        "rename_function", "set_comment", "apply_label", "datatypes_create", "datatypes_update",
+        "rename_function", "set_comment", "apply_label", "run_script", "datatypes_create", "datatypes_update",
         "datatypes_delete",
     )),
     ("Unsaved work", ("list_mutations", "check_dirty_state", "save_program")),

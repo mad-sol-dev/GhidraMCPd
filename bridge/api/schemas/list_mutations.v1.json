@@ -67,12 +67,13 @@
               "rename",
               "comment",
               "datatype",
-              "label"
+              "label",
+              "script"
             ]
           },
           "target": {
             "type": "string",
-            "description": "Hex address, or the data type path."
+            "description": "Hex address, the data type path, or the script path."
           },
           "old": {
             "type": [

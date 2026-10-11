@@ -27,8 +27,8 @@ def tools():
 def test_the_full_surface_is_present(tools):
     # 35 through Stage 4; list_mutations is Stage 5.  Stage 8b removed
     # write_bytes and project_rebase, whose plugin endpoints never existed.
-    # R.12 added apply_label.
-    assert len(tools) == 35
+    # R.12 added apply_label, SCRIPT-ADAPTER run_script.
+    assert len(tools) == 36
 
 
 def test_no_tool_without_a_description(tools):

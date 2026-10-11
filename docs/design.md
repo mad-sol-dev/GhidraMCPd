@@ -76,6 +76,11 @@ per bridge (default false); a write needs both. A tool call may make at most
 selected; the plugin refuses it if another program is active by the time it arrives.
 `list_mutations` keeps the session's changes, including dry runs, until `save_program`.
 
+`run_script` is the one write whose effect the bridge cannot describe in advance, so its
+dry run is real: the plugin runs the script inside an outer transaction and ends it
+without commit, which discards the script's own commits too (Ghidra nests transactions).
+Only scripts below `GHIDRA_MCP_SCRIPT_DIR` run, never submitted code.
+
 ## How it got here
 
 As I understood it from my conversations with the maintainer (@mad-sol-dev), the fork

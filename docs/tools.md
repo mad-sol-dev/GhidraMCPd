@@ -65,6 +65,11 @@ With writes enabled ([setup](setup.md#writes)), the usual round:
 3. `list_mutations` shows the session's changes; nothing is saved until `save_program`,
    and Ghidra's undo works as usual.
 
+For changes no tool covers -- moving a memory block, a bulk import -- `run_script` runs a
+script from the analysis project's script folder ([setup](setup.md#scripts)): first as a
+dry run, which runs it and rolls everything back, then with `dry_run=false`. Its values
+go in `args`; a script that asks opens a dialog in Ghidra.
+
 ## Jump tables
 
 `jt_slot_check`, `jt_scan` and `jt_slot_process` read a table of code pointers, judge

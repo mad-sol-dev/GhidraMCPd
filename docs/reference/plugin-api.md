@@ -100,7 +100,7 @@ Change the program or its file. With `domain_file_id` set and naming another pro
 | `/renameFunction` |  |
 | `/renameVariable` |  |
 | `/rename_function_by_address` | yes |
-| `/runScript` |  |
+| `/runScript` | yes |
 | `/save_program` | yes |
 | `/set_decompiler_comment` | yes |
 | `/set_disassembly_comment` | yes |

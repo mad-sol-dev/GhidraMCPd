@@ -76,8 +76,13 @@ POST_ENDPOINT_CANDIDATES: Mapping[str, Iterable[str]] = {
     "CREATE_UNION": ("createUnion",),
     "UPDATE_UNION": ("updateUnion",),
     "DELETE_DATATYPE": ("deleteDataType",),
+    "RUN_SCRIPT": ("runScript",),
 }
 
+
+#: Seconds the bridge waits for /runScript beyond the script's own timeout:
+#: loading (a Java script compiles first) and the answer itself.
+RUN_SCRIPT_HTTP_MARGIN_S = 30.0
 
 #: The first line of /get_function_by_address when a function is there.
 _FUNCTION_LINE = re.compile(r"^.+ at [0-9a-fA-F]+$")
@@ -125,6 +130,8 @@ WRITE_ENDPOINT_KEYS = frozenset(
         "UPDATE_UNION",
         "DELETE_DATATYPE",
         "SAVE_PROGRAM",
+        # A dry run as well: the script runs against the program, then it is rolled back.
+        "RUN_SCRIPT",
     }
 )
 
@@ -416,6 +423,7 @@ class GhidraClient:
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
         route_may_be_missing: bool = False,
+        timeout: Optional[float] = None,
     ) -> List[str] | RequestError:
         """The answer's lines, or a RequestError for an answer that says "not there".
 
@@ -458,7 +466,10 @@ class GhidraClient:
         with scoped_timer(logger, f"ghidra.{method.lower()}", extra=timer_extra):
             start = perf_counter()
             try:
-                response = self._session.request(method, url, params=params, data=data)
+                if timeout is None:
+                    response = self._session.request(method, url, params=params, data=data)
+                else:
+                    response = self._session.request(method, url, params=params, data=data, timeout=timeout)
             except httpx.HTTPError as exc:  # pragma: no cover - transport errors are environment specific
                 duration_ms = (perf_counter() - start) * 1000.0
                 status_code = getattr(getattr(exc, "response", None), "status_code", None)
@@ -1652,6 +1663,46 @@ class GhidraClient:
                 status=None, reason=STRUCTURED_LISTING_UNSUPPORTED, retryable=False
             )
             return None
+        return payload
+
+    def run_script(
+        self, path: str, args: Sequence[str], *, dry_run: bool, timeout_s: int
+    ) -> Optional[Mapping[str, Any]]:
+        """Run the script file at the absolute ``path`` through ``/runScript``.
+
+        The answer as the plugin sends it.  A script that failed is an answer
+        (``ok: false`` with its output); a refused request (no such file, no
+        provider for it) raises UpstreamFailed.  None when the write guard
+        refused to send it (``write_refusal`` says why).  The HTTP wait is the
+        script's timeout plus room for compiling: the plugin answers only when
+        the script has ended.
+        """
+
+        increment_counter("ghidra.run_script")
+        lines = self._request_lines(
+            "POST",
+            "runScript",
+            key="RUN_SCRIPT",
+            data={
+                "path": path,
+                "args": " ".join(args),
+                "dry_run": "true" if dry_run else "false",
+                "timeout_s": str(timeout_s),
+            },
+            timeout=float(timeout_s) + RUN_SCRIPT_HTTP_MARGIN_S,
+        )
+        if isinstance(lines, RequestError):
+            # Only the write guard answers a POST with a RequestError.
+            return None
+        if _is_error(lines):
+            reason = self._last_error.reason if self._last_error else _error_summary(lines)
+            raise UpstreamFailed(f"runScript failed: {reason}")
+        try:
+            payload = json.loads("\n".join(lines))
+        except json.JSONDecodeError:
+            payload = None
+        if not isinstance(payload, Mapping):
+            raise UpstreamFailed(f"runScript: {STRUCTURED_LISTING_UNSUPPORTED}")
         return payload
 
     def close(self) -> None:

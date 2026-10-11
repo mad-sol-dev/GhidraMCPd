@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:run-script.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["script", "args", "dry_run", "ok", "applied", "modified", "phase", "timed_out", "error", "output", "notes"],
+  "properties": {
+    "script": {"type": "string", "description": "Path relative to the script folder."},
+    "args": {"type": "array", "items": {"type": "string"}},
+    "dry_run": {"type": "boolean"},
+    "ok": {"type": "boolean", "description": "The script ran to its end without an exception."},
+    "applied": {"type": "boolean", "description": "True only when this call committed the script's changes."},
+    "modified": {"type": "boolean", "description": "The script changed the program, whether or not that was kept."},
+    "phase": {"type": "string", "enum": ["load", "run"]},
+    "timed_out": {"type": "boolean"},
+    "error": {"type": ["string", "null"]},
+    "output": {"type": "string"},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

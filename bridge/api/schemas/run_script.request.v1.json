@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:schema:run-script.request.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["script"],
+  "properties": {
+    "script": {"type": "string", "minLength": 1},
+    "args": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {"type": "string", "pattern": "^\\S+$"}
+    },
+    "dry_run": {"type": "boolean"},
+    "timeout_s": {"type": "integer", "minimum": 1, "maximum": 600}
+  }
+}

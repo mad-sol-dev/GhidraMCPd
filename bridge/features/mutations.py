@@ -35,7 +35,7 @@ __all__ = [
     "summarise",
 ]
 
-Kind = Literal["rename", "comment", "datatype", "label"]
+Kind = Literal["rename", "comment", "datatype", "label", "script"]
 
 #: Longest old/new value kept verbatim; the rest is elided.
 _VALUE_CHARS = 60
@@ -152,6 +152,8 @@ def render_lines(mutations: Sequence[Mutation]) -> List[str]:
             body = f"{entry.target}  datatype  {_datatype_body(entry)}"
         elif entry.kind == "label":
             body = f"{entry.target}  label     + {_render_value(entry.new)}"
+        elif entry.kind == "script":
+            body = f"{entry.target}  script    {_render_value(entry.new)}"
         else:
             body = (
                 f"{entry.target}  {entry.kind:<8}  "

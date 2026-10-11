@@ -1697,7 +1697,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         appendJsonField(sb, "timed_out", timedOut);
         appendJsonField(sb, "bundle_added", bundleAdded);
         appendJsonField(sb, "elapsed_ms", System.currentTimeMillis() - started);
-        appendJsonField(sb, "error", error);
+        // Not "error": a 200 carrying "error" reads as a failed request (API 3).
+        appendJsonField(sb, "script_error", error);
         appendJsonField(sb, "output", captured.text());
         appendJsonField(sb, "output_truncated", captured.truncated());
         appendJsonField(sb, "output_captured", outputCaptured);
