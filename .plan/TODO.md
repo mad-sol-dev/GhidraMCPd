@@ -6,10 +6,9 @@
 ## NOW
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): SCRIPT-ADAPTER Bridge-Tool `run_script` (Prototyp im Plugin fertig, siehe Arbeitslog "Skript-Adapter-Prototyp: Ergebnis").
+Recommended next focus (2026-10-11): CL-TOOL-REC-121 im ZK-Inkjet-Projekt (Umbasieren auf 0x00058000 mit `run_script` und `rebase_app_to_58000.py`, nicht an der eingefrorenen Kopie); danach Schreibpfad von `jt_slot_process`.
 
 ## NEXT
-- {SCRIPT-ADAPTER} Ghidra-Skripte aus einem Ordner des Analyse-Projekts ausführen (Entscheidung des Nutzers 2026-10-11). **Prototyp fertig und live geprüft** (Plugin 1.3.68, `POST /runScript`: Probelauf verworfen, echter Lauf ein Undo-Schritt, Fehler/Dialog/Timeout/Kompilierfehler; Befunde im Arbeitslog). Offen: Bridge-Tool `run_script`, Pfad relativ zu `GHIDRA_MCP_SCRIPT_DIR` (im ZK-Inkjet-Projekt `./ghidra_scripts`, Nutzer 2026-10-11), Pfade außerhalb abgelehnt, auch per Symlink; `dry_run` Default; hinter GHIDRA_MCP_ENABLE_WRITES; `list_mutations`; Java, Python über Jython/PyGhidra (beide im Ghidra des Nutzers) live prüfen.
 - {STREAMABLE-HTTP} MCP-Transport Streamable HTTP anbieten (löst SSE im MCP-Standard ab); braucht ein `mcp`-Update (1.5.0 hat ihn nicht). SSE danach als Altlast markieren oder entfernen.
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)

@@ -437,7 +437,7 @@
         "Echter Lauf nur mit GHIDRA_MCP_ENABLE_WRITES und dry_run=false, als ein Undo-Schritt",
         "Machbarkeit zuerst als Prototyp live geprueft"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PROTOTYPE-NAME",

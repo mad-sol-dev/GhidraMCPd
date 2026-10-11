@@ -600,9 +600,9 @@
       "updated_at": "2026-10-11T00:00:00+00:00"
     },
     "SCRIPT-ADAPTER": {
-      "commit": null,
-      "status": "todo",
-      "updated_at": null
+      "commit": "c55b0e5",
+      "status": "done",
+      "updated_at": "2026-10-11T00:00:00+00:00"
     },
     "PROTOTYPE-NAME": {
       "commit": "a48ceef",
