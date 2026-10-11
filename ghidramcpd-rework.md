@@ -2146,3 +2146,15 @@ Namen und Kommentar wie vorher.
 - `set_comment(0x00200064, ..., "disassembly")`: Erfolg gemeldet, Kommentar im Listing.
 - `set_comment(0x7f000000, ...)`: Fehler (INVALID_REQUEST, upstream UNMAPPED), kein Erfolg.
 
+### `jt_slot_process` live: an dieser Kopie nicht möglich (2026-10-11)
+
+Ghidra hat Sprungtabellen erkannt (`switchdataD_0021397c` u. a.), aber ihre Einträge zeigen
+auf 0x0006b…, außerhalb des gemappten `flash` (0x00200000–0x0047522b). Mit der Basis
+0x00058000 gerechnet landet 0x0006ba78 bei 0x00213a78, direkt neben der Tabelle. Von 1 266
+Funktionen ist keine das Ziel eines definierten Datenworts. Ein Slot mit einer gemappten
+Funktion als Ziel existiert also nicht; `jt_slot_process` hätte nichts umzubenennen, und
+auch der Nutzen der `jt_*`-Familie lässt sich hier nicht messen -- an diesem Programm
+können sie nicht funktionieren. Beides hängt an CL-TOOL-REC-121 (`flash` auf 0x00058000) im
+ZK-Inkjet-Projekt. Möglich wäre nur ein Test des Ablehnungspfads (Slot außerhalb des
+Bereichs, `dry_run=false`, es darf nichts geschrieben werden).
+
