@@ -88,14 +88,20 @@ RENAMED_ANSWER = "Function renamed successfully"
 COMMENT_SET_ANSWER = "Comment set successfully"
 
 #: The plugin's answer convention this bridge speaks (X-GhidraMCP-API).  At 2,
-#: every failure is an HTTP 4xx/5xx with {"status":"error","code","error"};
-#: older plugins answered failures in HTTP 200 prose, which this bridge no
-#: longer tries to recognise (R.24).
+#: every failure is an HTTP 4xx/5xx with {"status":"error","code","error"}
+#: (R.24); at 3, flags are JSON booleans, a cut scalar search says "truncated",
+#: an unusable cursor or a non-integer parameter is a 400 (R.24 phase 3).
+#: Only exactly this level is accepted: the same answer means something else
+#: at another level ("false" vs false), so a mismatch is refused, not guessed.
 PLUGIN_API_HEADER = "X-GhidraMCP-API"
-REQUIRED_PLUGIN_API = 2
+REQUIRED_PLUGIN_API = 3
 PLUGIN_TOO_OLD = (
-    "the Ghidra plugin predates API 2 (structured errors); install the "
+    f"the Ghidra plugin predates API {REQUIRED_PLUGIN_API}; install the "
     "current GhidraMCP extension from this repository and restart Ghidra"
+)
+PLUGIN_TOO_NEW = (
+    f"the Ghidra plugin speaks a newer API than this bridge (API {REQUIRED_PLUGIN_API}); "
+    "update the bridge from the same repository version as the plugin and restart it"
 )
 
 #: Answers to a read that are facts about the program, not failures: nothing
@@ -273,6 +279,9 @@ class CursorPageResult(Generic[T]):
     has_more: bool
     cursor: Optional[str]
     error: Optional[object] = None
+    #: Why the plugin stopped before completing the page (searchScalars'
+    #: inspection cap); None for a complete page.
+    truncated: Optional[str] = None
 
 
 @dataclass(slots=True)
@@ -494,12 +503,12 @@ class GhidraClient:
             if route_may_be_missing:
                 return missing
             raise UpstreamFailed(f"{missing.reason}; {PLUGIN_TOO_OLD}", code="PLUGIN_TOO_OLD", status=404)
-        api = response.headers.get(PLUGIN_API_HEADER, "")
-        if not api.strip().isdigit() or int(api) < REQUIRED_PLUGIN_API:
-            self._last_error = RequestError(
-                status=None, reason=PLUGIN_TOO_OLD, retryable=False, code="PLUGIN_TOO_OLD"
-            )
-            raise UpstreamFailed(PLUGIN_TOO_OLD, code="PLUGIN_TOO_OLD")
+        api = response.headers.get(PLUGIN_API_HEADER, "").strip()
+        if not api.isdigit() or int(api) != REQUIRED_PLUGIN_API:
+            too_new = api.isdigit() and int(api) > REQUIRED_PLUGIN_API
+            reason, code = (PLUGIN_TOO_NEW, "PLUGIN_TOO_NEW") if too_new else (PLUGIN_TOO_OLD, "PLUGIN_TOO_OLD")
+            self._last_error = RequestError(status=None, reason=reason, retryable=False, code=code)
+            raise UpstreamFailed(reason, code=code)
         if response.is_error:
             code: Optional[str] = None
             reason = body.strip()
@@ -525,11 +534,9 @@ class GhidraClient:
             payload = json.loads(text)
         except json.JSONDecodeError:
             payload = None
-        # A page envelope ({"items": [...], "error": ...}) is left to the page
-        # parsers: searchScalars sends found items *with* an error when its
-        # inspection cap stops it.  Any other 200 carrying "error" is not an
-        # API 2 answer and is a failure.
-        if isinstance(payload, Mapping) and "error" in payload and "items" not in payload:
+        # A 200 carrying "error" is not an API 3 answer and is a failure (a cut
+        # scalar page says "truncated" instead).
+        if isinstance(payload, Mapping) and "error" in payload:
             message = str(payload.get("error"))
             self._last_error = RequestError(status=status, reason=message, retryable=False)
             raise UpstreamFailed(message, status=status)
@@ -547,19 +554,16 @@ class GhidraClient:
     ) -> Optional[Dict[str, Any]]:
         """The payload with ``keys`` as real booleans, or None if one is neither.
 
-        API 2 plugins send ``"true"``/``"false"``; JSON booleans are accepted too,
-        so a plugin that fixes the type is not misread as "false".  Anything
-        else is a failure: defaulting to false would report a dirty program as
-        clean, or a save as not done.
+        API 3 sends JSON booleans (API 2 sent ``"true"``/``"false"``, which this
+        bridge no longer accepts).  Anything else is a failure: defaulting to
+        false would report a dirty program as clean, or a save as not done.
         """
 
         flags: Dict[str, Any] = dict(payload)
         for key in keys:
             value = payload.get(key)
-            if value is True or value == "true":
-                flags[key] = True
-            elif value is False or value == "false":
-                flags[key] = False
+            if isinstance(value, bool):
+                flags[key] = value
             else:
                 logger.warning("%s answered %s=%r", path, key, value)
                 self._note_failure(f"{path} answered {key}={value!r}, not a boolean")
@@ -745,10 +749,10 @@ class GhidraClient:
         cursor_val = payload.get("cursor")
         if not isinstance(cursor_val, str):
             cursor_val = None
-        error_val = payload.get("error")
-        if error_val is not None and not isinstance(error_val, str):
-            error_val = str(error_val)
-        return CursorPageResult(parsed_items, has_more, cursor_val, error=error_val)
+        truncated_val = None
+        if payload.get("truncated") is True:
+            truncated_val = str(payload.get("reason") or "the plugin stopped before completing the page")
+        return CursorPageResult(parsed_items, has_more, cursor_val, truncated=truncated_val)
 
     # ------------------------------------------------------------------
     # public helpers

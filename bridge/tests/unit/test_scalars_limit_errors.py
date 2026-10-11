@@ -1,9 +1,10 @@
 """search_scalars and the plugin's inspection cap.
 
 The plugin stops a page after 500 000 inspected instructions and says so in
-the page envelope: ``{"items": [...found so far...], "has_more": false,
-"error": "inspection cap of 500000 instructions reached before completing the
-page"}`` -- no cursor to continue from.  This test used to model a
+the page envelope (API 3): ``{"items": [...found so far...], "has_more": false,
+"truncated": true, "reason": "inspection cap of 500000 instructions reached
+before completing the page"}`` -- no cursor to continue from.  Under API 2 the
+reason came as ``"error"``.  This test used to model a
 "Scan limit exceeded" with HTTP 413, which the plugin never sends; the
 bridge's markers matched only that, so the real cap read as a complete result.
 """
@@ -38,14 +39,14 @@ def _fresh_cache():
 
 
 def test_cap_before_any_hit_is_a_failed_search_not_no_hits():
-    client = _client({"items": [], "has_more": False, "error": CAP})
+    client = _client({"items": [], "has_more": False, "truncated": True, "reason": CAP})
 
     with pytest.raises(UpstreamFailed, match="inspection cap"):
         scalars.search_scalars(client, value=0x10, query="0x10", limit=5, page=1)
 
 
 def test_cap_after_some_hits_keeps_them_and_says_truncated():
-    page = {"items": ["002af9c0: mov r0,#0x10", "002afa00: cmp r1,#0x10"], "has_more": False, "error": CAP}
+    page = {"items": ["002af9c0: mov r0,#0x10", "002afa00: cmp r1,#0x10"], "has_more": False, "truncated": True, "reason": CAP}
 
     result = scalars.search_scalars(_client(page), value=0x10, query="0x10", limit=5, page=1)
 
@@ -77,7 +78,7 @@ def test_an_empty_body_is_not_an_empty_page():
 def test_with_context_passes_the_cap_on():
     from bridge.features import batch_ops
 
-    page = {"items": ["002af9c0: mov r0,#0x10"], "has_more": False, "error": CAP}
+    page = {"items": ["002af9c0: mov r0,#0x10"], "has_more": False, "truncated": True, "reason": CAP}
 
     def handle(request):
         if request.url.path == "/searchScalars":
@@ -91,3 +92,12 @@ def test_with_context_passes_the_cap_on():
 
     assert result["truncated"] is True
     assert result.get("total") is None
+
+
+def test_a_page_with_an_error_field_is_not_an_api_3_answer():
+    """API 3 marks a cut page with "truncated"; a 200 with "error" is a failure."""
+
+    client = _client({"items": ["002af9c0: mov r0,#0x10"], "has_more": False, "error": CAP})
+
+    with pytest.raises(UpstreamFailed, match="inspection cap"):
+        scalars.search_scalars(client, value=0x10, query="0x10", limit=5, page=1)

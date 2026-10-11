@@ -1,4 +1,4 @@
-"""Mock transports that answer the way the Ghidra plugin does (API 2).
+"""Mock transports that answer the way the Ghidra plugin does (API 3).
 
 Every plugin response carries ``X-GhidraMCP-API``; the bridge refuses one
 without it (R.24).  A test that builds ``httpx.MockTransport`` directly would
@@ -14,6 +14,7 @@ from typing import Callable
 import httpx
 
 from bridge.ghidra.client import PLUGIN_API_HEADER, REQUIRED_PLUGIN_API
+from bridge.utils.errors import UpstreamFailed
 
 Handler = Callable[[httpx.Request], httpx.Response]
 
@@ -31,7 +32,7 @@ def plugin_transport(handler: Handler, *, api: int | None = REQUIRED_PLUGIN_API)
 
 
 def plugin_error(status: int, code: str, message: str) -> httpx.Response:
-    """A failure as the plugin sends it under API 2."""
+    """A failure as the plugin sends it (since API 2)."""
 
     return httpx.Response(status, json={"status": "error", "code": code, "error": message})
 
@@ -54,17 +55,23 @@ def plugin_cursor(route: str, discriminator: str, offset: int) -> str:
 
 
 def plugin_cursor_start(cursor: str | None, route: str, discriminator: str, offset: int) -> int:
-    """Where the plugin (API 2) starts for ``cursor``.
+    """Where the plugin starts for ``cursor``, for client-level stubs.
 
-    A cursor it cannot decode, or one for another route or query, is ignored
-    and ``offset`` used -- the silent restart R.24 phase 3 (part B) turns into
-    a 400.  Stubs model it so tests see what the plugin does today.
+    No cursor: ``offset``.  A cursor it cannot decode, or one for another
+    route or query, is a 400 INVALID_REQUEST (API 3; API 2 restarted at
+    ``offset`` silently), which the client raises as UpstreamFailed.
     """
 
-    parts = (cursor or "").split(".")
+    if not cursor:
+        return max(0, offset)
+    parts = cursor.split(".")
     if len(parts) == 4 and parts[:3] == ["v1", _b64url(route), _b64url(discriminator)]:
         try:
             return max(0, int(parts[3]))
         except ValueError:
             pass
-    return max(0, offset)
+    raise UpstreamFailed(
+        f"cursor belongs to another search, not {route} for '{discriminator}'",
+        code="INVALID_REQUEST",
+        status=400,
+    )

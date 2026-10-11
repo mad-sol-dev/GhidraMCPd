@@ -134,8 +134,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * JSON body, {@code {"status":"error","code":...,"error":...}}; success
      * bodies are unchanged.  The bridge refuses to work with a plugin that does
      * not send it -- the old answers put failures in HTTP 200 prose.
+     * 3 (R.24 phase 3): flags are JSON booleans; a cursor the route cannot use,
+     * a non-integer number parameter and an out-of-range length or count are
+     * 400s; a cut scalar search says {@code "truncated"}; unmapped addresses in
+     * /disassembleAt and /xrefs_from are UNMAPPED.  The bridge requires exactly
+     * this level: a bridge reading these answers with level-2 rules would read
+     * {@code true} as false.
      */
-    static final int API_LEVEL = 2;
+    static final int API_LEVEL = 3;
     static final String API_HEADER = "X-GhidraMCP-API";
 
     /** A failure: thrown anywhere below a handler, answered once by the dispatcher. */
@@ -188,6 +194,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         Throwable cause = (e instanceof InvocationTargetException && e.getCause() != null) ? e.getCause() : e;
         if (cause instanceof RouteError) {
             return (RouteError) cause;
+        }
+        if (cause instanceof CursorPager.InvalidCursorException) {
+            return badRequest(cause.getMessage());
         }
         String detail = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
         return internalError(context == null ? detail : context + ": " + detail);
@@ -932,10 +941,6 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 return;
             }
             int length = plugin.parseIntOrDefault(lengthStr, -1);
-            if (length < 0) {
-                plugin.sendJsonResponse(exchange, plugin.errorResponse("invalid length parameter"));
-                return;
-            }
             plugin.sendResponse(exchange, plugin.readBytesBase64(address, length));
         });
 
@@ -1015,6 +1020,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             handler.handle(plugin, exchange);
         } catch (RouteError e) {
             writeError(exchange, e);
+        } catch (CursorPager.InvalidCursorException e) {
+            writeError(exchange, badRequest(e.getMessage()));
         } catch (Exception e) {
             Msg.error(plugin, "Error handling request for " + exchange.getRequestURI(), e);
             writeError(exchange, asRouteError(e, "Internal error"));
@@ -2187,6 +2194,11 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             while (refIter.hasNext()) {
                 Reference ref = refIter.next();
                 Address fromAddr = ref.getFromAddress();
+                if (!fromAddr.isMemoryAddress()) {
+                    // "Entry Point" and the like: a marker, not a place that
+                    // refers.  Reported as "0xEntry Point" before.
+                    continue;
+                }
                 RefType refType = ref.getReferenceType();
 
                 ghidra.program.model.listing.Function fromFunc = program.getFunctionManager().getFunctionContaining(fromAddr);
@@ -2219,6 +2231,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
         Address addr = requireAddress(program, addressStr, "address");
+        if (!program.getMemory().contains(addr)) throw unmapped("no memory at " + addr);
 
         try {
             ReferenceManager refManager = program.getReferenceManager();
@@ -3026,15 +3039,17 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
-     * Parse an integer from a string, or return defaultValue if null/invalid.
+     * Parse an integer parameter; absent or empty gives defaultValue, anything
+     * else that is not an integer is a 400 (it used to become the default, so
+     * {@code limit=abc} answered 100 items).
      */
     private int parseIntOrDefault(String val, int defaultValue) {
-        if (val == null) return defaultValue;
+        if (val == null || val.isBlank()) return defaultValue;
         try {
-            return Integer.parseInt(val);
+            return Integer.parseInt(val.trim());
         }
         catch (NumberFormatException e) {
-            return defaultValue;
+            throw badRequest("expected an integer, got '" + val + "'");
         }
     }
 
@@ -3140,10 +3155,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
 
             CursorPager.CursorPage page = CursorPager.buildPage(resolved, pageItems, hasMore);
             if ((inspectionLimitHit || cancelled) && pageItems.size() < resolved.limit()) {
-                String errorMessage = inspectionLimitHit
+                String reason = inspectionLimitHit
                     ? "inspection cap of " + inspectionCap + " instructions reached before completing the page"
                     : "search cancelled after inspecting " + inspected + " instructions";
-                return CursorPager.toJson(page, this::jsonEscape, errorMessage);
+                return CursorPager.toJson(page, this::jsonEscape, reason);
             }
             return CursorPager.toJson(page, this::jsonEscape);
 
@@ -3349,17 +3364,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     private String handleDisassembleAt(String addressStr, int count) {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
-
-        // Cap count at 128
-        int effectiveCount = Math.min(Math.max(count, 1), 128);
+        Address addr = requireDisassemblyStart(program, addressStr, count);
+        int effectiveCount = count;
 
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
-            if (addr == null) {
-                return errorResponse("invalid address");
-            }
-
             List<String> lines = new ArrayList<>();
             InstructionIterator instructions = program.getListing().getInstructions(addr, true);
 
@@ -3390,29 +3398,48 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
+     * The address /disassembleAt starts from: a parsable, mapped address and a
+     * count of 1..128, or the 4xx that says which.  An address that is mapped
+     * but starts no instruction is allowed -- the listing begins at the next one.
+     */
+    private Address requireDisassemblyStart(Program program, String addressStr, int count) {
+        Address addr = requireAddress(program, addressStr, "address");
+        if (count < 1 || count > 128) {
+            throw badRequest("count must be between 1 and 128, got " + count);
+        }
+        if (!program.getMemory().contains(addr)) {
+            throw unmapped("no memory at " + addr);
+        }
+        return addr;
+    }
+
+    /**
      * {@code /disassembleAt?fmt=json}: the same instructions as the text form,
      * each as structured data (see {@link #instructionJson}).
      */
     private String disassembleAtJson(String addressStr, int count) {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
-        if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
-
-        int effectiveCount = Math.min(Math.max(count, 1), 128);
+        Address addr = requireDisassemblyStart(program, addressStr, count);
         try {
-            Address addr = program.getAddressFactory().getAddress(addressStr);
-            if (addr == null) {
-                return errorResponse("invalid address");
-            }
             StringBuilder sb = new StringBuilder("{\"instructions\":[");
             InstructionIterator instructions = program.getListing().getInstructions(addr, true);
+            Address start = null;
             int collected = 0;
-            while (instructions.hasNext() && collected < effectiveCount) {
+            while (instructions.hasNext() && collected < count) {
+                Instruction instr = instructions.next();
+                if (start == null) start = instr.getAddress();
                 if (collected > 0) sb.append(',');
-                sb.append(instructionJson(program, instructions.next()));
+                sb.append(instructionJson(program, instr));
                 collected++;
             }
-            return sb.append("]}").toString();
+            sb.append("],");
+            // The listing starts at the first instruction at or after the address;
+            // "start" says where that is, so a skip is stated, not inferred.
+            appendJsonField(sb, "requested", hexAddress(addr));
+            appendJsonField(sb, "start", start != null ? hexAddress(start) : null);
+            trimTrailingComma(sb);
+            return sb.append('}').toString();
         } catch (Exception e) {
             throw asRouteError(e, null);
         }
@@ -3598,8 +3625,13 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         if (program == null) throw notReady("No program loaded");
         if (addressStr == null || addressStr.isEmpty()) return errorResponse("address parameter is required");
 
-        // Cap length at 4096
-        int effectiveLength = Math.min(Math.max(length, 1), 4096);
+        // Exactly what was asked or a 400: 0 used to read one byte and more than
+        // 4096 was cut silently, so a short answer could not be told from a
+        // block end.  Now fewer bytes than asked means the memory ends there.
+        if (length < 1 || length > 4096) {
+            throw badRequest("length must be between 1 and 4096, got " + length);
+        }
+        int effectiveLength = length;
 
         try {
             Address addr = program.getAddressFactory().getAddress(addressStr);
@@ -3802,16 +3834,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      */
     private String checkProgramDirtyState() {
         Program program = getCurrentProgram();
-        if (program == null) {
-            StringBuilder sb = new StringBuilder();
-            sb.append('{');
-            appendJsonField(sb, "status", "ok");
-            appendJsonField(sb, "changed", "false");
-            appendJsonField(sb, "can_save", "false");
-            sb.append("\"message\":\"No program currently loaded\"");
-            sb.append('}');
-            return sb.toString();
-        }
+        if (program == null) throw notReady("No program loaded");
 
         boolean isChanged = program.isChanged();
         boolean canSave = program.canSave();
@@ -3821,8 +3844,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         sb.append('{');
         appendJsonField(sb, "status", "ok");
         appendJsonField(sb, "program_name", programName);
-        appendJsonField(sb, "changed", String.valueOf(isChanged));
-        appendJsonField(sb, "can_save", String.valueOf(canSave));
+        appendJsonField(sb, "changed", isChanged);
+        appendJsonField(sb, "can_save", canSave);
         if (isChanged) {
             sb.append("\"message\":\"Program has unsaved changes\"");
         } else {
@@ -3851,7 +3874,8 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             StringBuilder sb = new StringBuilder();
             sb.append('{');
             appendJsonField(sb, "status", "ok");
-            appendJsonField(sb, "saved", "false");
+            appendJsonField(sb, "saved", false);
+            appendJsonField(sb, "program_name", program.getName());
             sb.append("\"message\":\"Program has no unsaved changes\"");
             sb.append('}');
             return sb.toString();
@@ -3866,7 +3890,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             StringBuilder sb = new StringBuilder();
             sb.append('{');
             appendJsonField(sb, "status", "ok");
-            appendJsonField(sb, "saved", "true");
+            appendJsonField(sb, "saved", true);
             appendJsonField(sb, "program_name", program.getName());
             sb.append("\"message\":\"Program saved successfully\"");
             sb.append('}');
@@ -4141,6 +4165,10 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         sb.append(',');
     }
 
+    private void appendJsonField(StringBuilder sb, String key, boolean value) {
+        sb.append('"').append(key).append('"').append(':').append(value).append(',');
+    }
+
     private void appendJsonField(StringBuilder sb, String key, Number value) {
         sb.append('"').append(key).append('"').append(':');
         if (value == null) {
@@ -4359,8 +4387,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return perms.toString();
     }
 
+    /**
+     * {@code 0x<hex>} for an address in the default space; a named space keeps
+     * Ghidra's own {@code SPACE:offset} ({@code EXTERNAL:00000001}, not the
+     * {@code 0xEXTERNAL:00000001} it used to be).
+     */
     private String formatAddress(Address address) {
-        return "0x" + address.toString();
+        String text = address.toString();
+        return text.contains(":") ? text : "0x" + text;
     }
 
     private String jsonEscape(String input) {

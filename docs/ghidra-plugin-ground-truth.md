@@ -7,8 +7,9 @@ This page defines **exact request/response formats** for the Java plugin (plain 
 * **Port:** 8080 (plugin), **Content-Type:** `text/plain; charset=UTF-8`
 * **Encoding:** ASCII/UTF-8 (avoid umlauts), one **record per line**
 * **Sorting:** always **ascending by address** *before* applying limits
-* **Caps:** `limit ≤ 500`, `count ≤ 128` (disassembly), `length ≤ 4096` (bytes)
-* **Errors:** on invalid params return **HTTP 400** with a single line: `error: <reason>`
+* **Caps:** `limit ≤ 500`, `count` 1..128 (disassembly), `length` 1..4096 (bytes); a `count` or `length` outside its range is a 400, not clamped (API 3)
+* **Errors (API 2+):** every failure is an HTTP 4xx/5xx with `{"status":"error","code","error"}`; a number parameter that is not an integer is a 400 (API 3); every response carries `X-GhidraMCP-API` (now 3)
+* **Cursors:** `searchFunctions`/`searchScalars` answer a cursor they did not issue for this route and query with a 400 (API 3; API 2 restarted at page one)
 * **Pagination:** the plugin returns the **full list**; Python does filter/sort/paginate to `total/page/limit`
 * **List endpoints:** support `offset` and `limit` parameters for pagination
 
@@ -65,7 +66,7 @@ Raw plugin routes are exposed on **port 8080** for non-MCP access:
   * The Python client fills in `value` and (optionally) the function name itself.
   * Scans honor **cancellation** and a **hard inspection cap (500k instructions across all functions checked)**.
     * If cancellation or the cap triggers mid-scan, the HTTP 200 body still returns **all accumulated matches**.
-    * When the cap is hit, the envelope includes an `error` field explaining the cap and how many instructions were inspected; clients should surface that message.
+    * The envelope then says `"truncated": true` with a `"reason"` (API 3; API 2 put the reason in an `error` field). There is no cursor to continue from.
 
 ---
 
@@ -111,12 +112,13 @@ Raw plugin routes are exposed on **port 8080** for non-MCP access:
   Notes:
 
   * `BYTESHEX` is a continuous uppercase hex string of the instruction bytes.
+  * The listing starts at the first instruction **at or after** `address`; with `fmt=json` the answer carries `"requested"` and `"start"`, so a skip is stated. An address with no memory is 404 `UNMAPPED` (API 3).
 
 ---
 
 ### 4) `/readBytes?address=0xNNNN&length=N`
 
-* **Params:** `address` (hex), `length` (cap 4096)
+* **Params:** `address` (hex), `length` (1..4096, else 400). Fewer bytes than asked means the memory block ends there.
 * **Response:** **one line** containing **only Base64 data** (no prefixes).
 
   ```

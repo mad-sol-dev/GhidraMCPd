@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from bridge.ghidra.client import GhidraClient
+from bridge.ghidra.client import PLUGIN_API_HEADER, REQUIRED_PLUGIN_API, GhidraClient
 from bridge.utils.logging import request_scope
 
 
@@ -10,7 +10,7 @@ class FakeResponse:
     def __init__(self, text: str, status_code: int = 200) -> None:
         self.text = text
         self.status_code = status_code
-        self.headers = {"X-GhidraMCP-API": "2"}
+        self.headers = {PLUGIN_API_HEADER: str(REQUIRED_PLUGIN_API)}
 
     @property
     def is_error(self) -> bool:  # pragma: no cover - property behavior is trivial

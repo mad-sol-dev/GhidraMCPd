@@ -55,12 +55,13 @@ Where to read the installed version:
 - Install Extensions dialog: in the description ("Plugin version ...")
 - Ghidra log: `GhidraMCPPlugin <version> loaded!`
 - HTTP: `curl http://127.0.0.1:8080/plugin_version` (works without an open program;
-  `"api"` is the answer convention, 2 since R.24)
+  `"api"` is the answer convention: 2 since R.24, 3 since R.24 phase 3)
 
-The bridge refuses a plugin below API 2. Tests that talk to a mocked plugin over HTTP
-build their transport with `bridge/tests/plugin_http.py` (`plugin_transport` adds the
-API header, `plugin_error` builds an API 2 failure), so the mocks answer the way the
-plugin does.
+The bridge accepts exactly its own API level (`REQUIRED_PLUGIN_API`); a unit test holds
+the plugin's `API_LEVEL` to it. Tests that talk to a mocked plugin over HTTP build their
+transport with `bridge/tests/plugin_http.py` (`plugin_transport` adds the API header,
+`plugin_error` builds a failure, `plugin_cursor` a cursor as CursorPager writes it), so
+the mocks answer the way the plugin does.
 
 The `version=` line in `extension.properties` must stay the Ghidra version; Ghidra
 refuses the extension otherwise.

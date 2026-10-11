@@ -12,7 +12,7 @@ class UpstreamFailed(RuntimeError):
     Raised where a failed request would otherwise read as an empty result --
     "no matches" is a statement about the program, a failed search is not.
     ``code`` and ``status`` are the plugin's (API 2: INVALID_REQUEST,
-    NOT_FOUND, UNMAPPED, CONFLICT, NOT_READY, INTERNAL), or PLUGIN_TOO_OLD, or
+    NOT_FOUND, UNMAPPED, CONFLICT, NOT_READY, INTERNAL), or PLUGIN_TOO_OLD/_NEW, or
     None for a transport failure.
     """
 
@@ -48,6 +48,11 @@ def upstream_failure_error(exc: "UpstreamFailed") -> Dict[str, object]:
         return make_error(ErrorCode.UNAVAILABLE, message=str(exc), recovery=(
             "Build and install the GhidraMCP extension from this repository, then restart Ghidra.",
             "Check the installed build with GET /plugin_version on the plugin port.",
+        ))
+    if code == "PLUGIN_TOO_NEW":
+        return make_error(ErrorCode.UNAVAILABLE, message=str(exc), recovery=(
+            "Update the bridge to the repository version the plugin was built from, then restart it.",
+            "Check the plugin's API with GET /plugin_version on the plugin port.",
         ))
     if code == "NOT_READY":
         return make_error(ErrorCode.UNAVAILABLE, message=str(exc), recovery=(

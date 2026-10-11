@@ -34,7 +34,7 @@ def plugin(client):
 def unchanged(plugin):
     yield
     dirty = httpx.get(f"{GHIDRA_URL}check_dirty_state", timeout=10).json()
-    assert dirty["changed"] == "false", dirty
+    assert dirty["changed"] is False, dirty
 
 
 def _active_id(client: GhidraClient) -> str:

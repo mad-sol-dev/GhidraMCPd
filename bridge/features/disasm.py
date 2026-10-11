@@ -32,7 +32,7 @@ def disassemble_at(
     """
     increment_counter("disasm.disassemble_at.calls")
     
-    # Hard cap count to 128
+    # The plugin answers a count outside 1..128 with a 400 (API 3).
     count = min(count, 128)
     
     # Fetch disassembly from Ghidra
@@ -50,7 +50,9 @@ def disassemble_at(
     increment_counter("disasm.disassemble_at.instructions", len(items))
     
     payload: Dict[str, object] = {"items": items}
-    attach_coverage(payload, items, requested=address)
+    error = getattr(client, "last_error", None)
+    unmapped = not items and getattr(error, "code", None) == "UNMAPPED"
+    attach_coverage(payload, items, requested=address, unmapped=unmapped)
     if normalize_fmt(fmt) == "text":
         to_text(payload)
     return payload
@@ -61,6 +63,7 @@ def attach_coverage(
     items: List[Dict[str, str]],
     *,
     requested: int,
+    unmapped: bool = False,
 ) -> Dict[str, object]:
     """Add ``coverage`` and ``method_note`` when the listing is not what it looks like.
 
@@ -80,6 +83,7 @@ def attach_coverage(
         skipped_bytes=skipped,
         gap_bytes=int(report["gap_bytes"]),
         gap_count=len(gaps),
+        unmapped=unmapped,
     )
     if note is None:
         return payload

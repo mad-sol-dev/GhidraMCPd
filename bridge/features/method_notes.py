@@ -173,14 +173,25 @@ def listing_coverage_note(
     skipped_bytes: int,
     gap_bytes: int = 0,
     gap_count: int = 0,
+    unmapped: bool = False,
 ) -> str | None:
     """Describe where a disassembly listing really starts and what it left out.
+
+    ``unmapped``: the listing is empty because the plugin said UNMAPPED (API 3),
+    not because nothing is defined there.
 
     Returns ``None`` for a listing that starts at the requested address and runs
     without holes -- the ordinary case, which must not pay for this text.
     """
 
     if start is None:
+        if unmapped:
+            return (
+                f"No memory is mapped at {requested} (the plugin answered UNMAPPED), "
+                "so there is nothing to disassemble -- not code without "
+                "instructions. Check the address against project_info's "
+                "memory blocks."
+            )
         return (
             f"Blind spot: no instructions are defined at or after {requested}, "
             "so this listing is empty for a reason that says nothing about the "

@@ -170,7 +170,7 @@ public class CursorPagerTest {
     }
 
     @Test
-    public void includesErrorWhenInspectionCapHit() {
+    public void marksTruncationWhenInspectionCapHit() {
         CursorPager.CursorRequest request = new CursorPager.CursorRequest(
             "capTest",
             "discriminator",
@@ -186,6 +186,53 @@ public class CursorPagerTest {
         String json = CursorPager.toJson(page, CursorPager::defaultEscaper,
             "inspection cap reached after 3 instructions");
 
-        assertEquals("{\"items\":[\"hit-0\"],\"has_more\":false,\"error\":\"inspection cap reached after 3 instructions\"}", json);
+        assertEquals("{\"items\":[\"hit-0\"],\"has_more\":false,\"truncated\":true,"
+            + "\"reason\":\"inspection cap reached after 3 instructions\"}", json);
+    }
+
+    private static CursorPager.CursorRequest search(String discriminator, String cursor) {
+        return new CursorPager.CursorRequest("searchFunctions", discriminator, 0, 2, 2, 10, cursor);
+    }
+
+    @Test
+    public void aCursorFromThisSearchResumesWhereItLeftOff() {
+        List<String> items = List.of("a", "b", "c", "d");
+        CursorPager.CursorPage first = CursorPager.fromList(items, search("q", null));
+        CursorPager.CursorPage second = CursorPager.fromList(items, search("q", first.cursor()));
+        assertEquals(List.of("c", "d"), second.items());
+    }
+
+    @Test
+    public void anUndecodableCursorIsRefusedNotRestarted() {
+        for (String bad : List.of("garbage", "v2.x.y.2", "v1.!!.!!.2", "v1.c2VhcmNoRnVuY3Rpb25z.cQ.x")) {
+            try {
+                CursorPager.resolve(search("q", bad));
+                fail("accepted cursor " + bad);
+            } catch (CursorPager.InvalidCursorException expected) {
+                // refused: page one again would read as the next page
+            }
+        }
+    }
+
+    @Test
+    public void aCursorFromAnotherSearchIsRefused() {
+        String fromQ = CursorPager.fromList(List.of("a", "b", "c"), search("q", null)).cursor();
+        try {
+            CursorPager.resolve(search("other", fromQ));
+            fail("accepted a cursor issued for another query");
+        } catch (CursorPager.InvalidCursorException expected) {
+            assertTrue(expected.getMessage().contains("another search"));
+        }
+        try {
+            CursorPager.resolve(new CursorPager.CursorRequest("searchScalars", "q", 0, 2, 2, 10, fromQ));
+            fail("accepted a cursor issued for another route");
+        } catch (CursorPager.InvalidCursorException expected) {
+            // refused
+        }
+    }
+
+    @Test
+    public void anEmptyCursorMeansNoCursor() {
+        assertEquals(0, CursorPager.resolve(search("q", "")).startOffset());
     }
 }

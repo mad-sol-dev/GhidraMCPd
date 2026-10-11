@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 from bridge.api.validators import validate_payload
 from bridge.features import batch_ops, disasm, memory
 from bridge.features.listing import coverage
+from bridge.ghidra.client import RequestError
 
 
 @dataclass
@@ -282,3 +283,18 @@ def test_full_read_bytes_carries_no_note():
     client = StubClient(read_results={0x1000: b"\x01\x02\x03\x04"})
     payload = memory.read_bytes(client, address=0x1000, length=4)
     assert "method_note" not in payload
+
+
+def test_an_unmapped_address_is_named_as_such_not_as_undefined_code():
+    """API 3: the plugin answers UNMAPPED there; read_bytes would fail too."""
+
+    client = StubClient()
+    client.last_error = RequestError(
+        status=404, reason="no memory at 00000010", retryable=False, code="UNMAPPED"
+    )
+
+    payload = disasm.disassemble_at(client, address=0x10, count=4)
+
+    assert payload["items"] == []
+    assert "No memory is mapped at 0x00000010" in payload["method_note"]
+    assert "read_bytes" not in payload["method_note"]

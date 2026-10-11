@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from bridge.ghidra.client import CursorPageResult, RequestError
 from bridge.tests.plugin_http import plugin_cursor, plugin_cursor_start
+from bridge.utils.errors import UpstreamFailed
 
 
 @dataclass
@@ -200,8 +201,11 @@ class ReferenceGhidraClient:
 
     def read_bytes(self, address: int, length: int) -> Optional[bytes]:
         self._clear_error()
-        # The plugin (API 2) reads at least one byte and at most 4096.
-        length = min(max(length, 1), 4096)
+        # The plugin (API 3) answers a length outside 1..4096 with a 400.
+        if not 1 <= length <= 4096:
+            raise UpstreamFailed(
+                f"length must be between 1 and 4096, got {length}", code="INVALID_REQUEST", status=400
+            )
         offset = address - self._base
         if offset < 0 or offset >= len(self._data):
             self._set_error(404, "address out of range")

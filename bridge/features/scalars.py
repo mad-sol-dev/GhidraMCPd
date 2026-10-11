@@ -87,16 +87,18 @@ def search_scalars(
             cache.invalidate(cache_key)
         raise
 
-    if page_result.error and not page_result.items:
-        # Nothing found *and* an error is a failed search, not "no hits" --
-        # the inspection cap among them: it stopped before finishing the page.
+    failure = page_result.error
+    if failure is None and page_result.truncated and not page_result.items:
+        # Stopped before finding anything is a failed search, not "no hits".
+        failure = page_result.truncated
+    if failure:
         if cache_key is not None:
             cache.invalidate(cache_key)
-        raise UpstreamFailed(f"scalar search failed upstream: {_reason(page_result.error)}")
-    # Items with an error: the plugin's inspection cap stopped the page early.
+        raise UpstreamFailed(f"scalar search failed upstream: {_reason(failure)}")
+    # Items on a "truncated" page: the plugin's inspection cap stopped it early.
     # What was found is real, the rest was never looked at, and there is no
     # cursor to continue from -- a hard cap, so truncated.
-    stopped_early = bool(page_result.error)
+    stopped_early = bool(page_result.truncated)
 
     raw_items = page_result.items if page_result.items is not None else []
 
@@ -140,7 +142,7 @@ def search_scalars(
     # never reported rather than sometimes.
     finalize_page(result, keeps_total=False, truncated=True if stopped_early else None)
 
-    if cache_key is not None and not page_result.error:
+    if cache_key is not None and not page_result.error and not stopped_early:
         cache.set(cache_key, result)
 
     return result

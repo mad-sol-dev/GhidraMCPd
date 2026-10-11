@@ -22,6 +22,17 @@ public final class CursorPager {
     }
 
     /**
+     * A cursor the route cannot use: not decodable, or issued for another
+     * route or query.  Answered as a 400 -- it used to restart at page one
+     * silently, so a repeated page read as the next one.
+     */
+    public static final class InvalidCursorException extends IllegalArgumentException {
+        public InvalidCursorException(String message) {
+            super(message);
+        }
+    }
+
+    /**
      * Request describing cursor pagination inputs.
      */
     public record CursorRequest(
@@ -72,14 +83,15 @@ public final class CursorPager {
 
         int start = Math.max(0, request.offset());
         if (request.cursor() != null && !request.cursor().isEmpty()) {
-            Optional<CursorState> state = decodeCursor(request.cursor());
-            if (state.isPresent()) {
-                CursorState cursorState = state.get();
-                if (cursorState.routeKey().equals(request.routeKey())
-                    && cursorState.discriminator().equals(request.discriminator())) {
-                    start = Math.max(0, cursorState.offset());
-                }
+            CursorState cursorState = decodeCursor(request.cursor())
+                .orElseThrow(() -> new InvalidCursorException("cursor is not one this server issued"));
+            if (!cursorState.routeKey().equals(request.routeKey())
+                || !cursorState.discriminator().equals(request.discriminator())) {
+                throw new InvalidCursorException(
+                    "cursor belongs to another search, not " + request.routeKey()
+                        + " for '" + request.discriminator() + "'");
             }
+            start = Math.max(0, cursorState.offset());
         }
 
         return new ResolvedRequest(request.routeKey(), request.discriminator(), start, requestedLimit);
@@ -122,9 +134,12 @@ public final class CursorPager {
     }
 
     /**
-     * Serialize a page into JSON using the provided escaper and optional error message.
+     * Serialize a page into JSON; a non-empty {@code truncatedReason} marks a
+     * page the search stopped before completing ({@code "truncated":true} and
+     * {@code "reason"}).  It used to be an {@code "error"} next to
+     * {@code has_more:false}, which read as a complete answer.
      */
-    public static String toJson(CursorPage page, Function<String, String> escaper, String error) {
+    public static String toJson(CursorPage page, Function<String, String> escaper, String truncatedReason) {
         Function<String, String> safeEscaper = escaper != null ? escaper : CursorPager::defaultEscaper;
         StringBuilder sb = new StringBuilder();
         sb.append("{\"items\":[");
@@ -139,22 +154,8 @@ public final class CursorPager {
         if (page.hasMore() && page.cursor() != null && !page.cursor().isEmpty()) {
             sb.append(",\"cursor\":\"").append(page.cursor()).append('\"');
         }
-        if (error != null && !error.isEmpty()) {
-            sb.append(",\"error\":\"").append(safeEscaper.apply(error)).append('\"');
-        }
-        sb.append('}');
-        return sb.toString();
-    }
-
-    /**
-     * Build a JSON error payload with the pagination envelope.
-     */
-    public static String errorJson(String message, Function<String, String> escaper) {
-        Function<String, String> safeEscaper = escaper != null ? escaper : CursorPager::defaultEscaper;
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"items\":[],\"has_more\":false");
-        if (message != null && !message.isEmpty()) {
-            sb.append(",\"error\":\"").append(safeEscaper.apply(message)).append('\"');
+        if (truncatedReason != null && !truncatedReason.isEmpty()) {
+            sb.append(",\"truncated\":true,\"reason\":\"").append(safeEscaper.apply(truncatedReason)).append('\"');
         }
         sb.append('}');
         return sb.toString();

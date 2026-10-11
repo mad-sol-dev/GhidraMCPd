@@ -16,7 +16,7 @@ from mcp.server.fastmcp import FastMCP
 
 from bridge.api.tools import register_tools
 from bridge.features import analyze, strings
-from bridge.ghidra.client import GhidraClient
+from bridge.ghidra.client import REQUIRED_PLUGIN_API, GhidraClient
 from bridge.tests.plugin_http import (
     plugin_cursor,
     plugin_cursor_start,
@@ -24,6 +24,7 @@ from bridge.tests.plugin_http import (
     plugin_transport,
 )
 from bridge.utils.cache import get_search_cache
+from bridge.utils.errors import UpstreamFailed
 from bridge.utils.program_context import PROGRAM_SELECTIONS
 
 PLUGIN_SOURCE = (
@@ -92,8 +93,25 @@ def test_a_plugin_without_api_2_is_named_with_how_to_fix():
 
     error = result["errors"][0]
     assert error["code"] == "UNAVAILABLE"
-    assert "predates API 2" in error["message"]
+    assert f"predates API {REQUIRED_PLUGIN_API}" in error["message"]
     assert any("install" in step.lower() for step in error["recovery"])
+
+
+@pytest.mark.parametrize("api, code", [
+    (REQUIRED_PLUGIN_API - 1, "PLUGIN_TOO_OLD"),
+    (REQUIRED_PLUGIN_API + 1, "PLUGIN_TOO_NEW"),
+])
+def test_only_exactly_the_bridges_api_is_accepted(api, code):
+    """The same answer means something else at another level ("false" vs false)."""
+
+    client = GhidraClient("http://ghidra.test/", transport=plugin_transport(
+        lambda request: httpx.Response(200, json={"status": "ok", "changed": False, "can_save": True}),
+        api=api,
+    ))
+
+    with pytest.raises(UpstreamFailed) as raised:
+        client.check_dirty_state()
+    assert raised.value.code == code
 
 
 def test_an_invalid_address_is_a_bad_request_not_a_crash_text():
@@ -194,21 +212,18 @@ def test_every_response_writer_sets_the_api_header():
         assert "API_HEADER" in body, writer
 
 
-# --- flags: today's strings, tomorrow's booleans, nothing else -------------------
+# --- flags: JSON booleans, nothing else ------------------------------------------
 
 
-def _dirty(changed, can_save="true"):
+def _dirty(changed, can_save=True):
     return httpx.Response(200, json={
         "status": "ok", "program_name": "alpha", "changed": changed,
         "can_save": can_save, "message": "m",
     })
 
 
-@pytest.mark.parametrize("changed, expected", [
-    ("true", True), ("false", False),   # API 2 sends strings
-    (True, True), (False, False),       # a plugin with real booleans must not read as "clean"
-])
-def test_dirty_state_reads_both_forms_of_a_flag(changed, expected):
+@pytest.mark.parametrize("changed, expected", [(True, True), (False, False)])
+def test_dirty_state_reads_boolean_flags(changed, expected):
     result = _tools({"check_dirty_state": _dirty(changed)})["check_dirty_state"].fn()
 
     assert result["ok"] is True
@@ -216,9 +231,12 @@ def test_dirty_state_reads_both_forms_of_a_flag(changed, expected):
     assert result["data"]["can_save"] is True
 
 
-@pytest.mark.parametrize("changed", [None, "yes", 1, "True"])
+@pytest.mark.parametrize("changed", [None, "yes", 1, "True", "true", "false"])
 def test_dirty_state_refuses_a_flag_it_cannot_read(changed):
-    """Defaulting to false would report a dirty program as clean."""
+    """Defaulting to false would report a dirty program as clean.
+
+    "true"/"false" are API 2's strings; an API 3 plugin does not send them.
+    """
 
     result = _tools({"check_dirty_state": _dirty(changed)})["check_dirty_state"].fn()
 
@@ -227,8 +245,8 @@ def test_dirty_state_refuses_a_flag_it_cannot_read(changed):
     assert "not a boolean" in str(result["errors"][0])
 
 
-@pytest.mark.parametrize("saved, expected", [("true", True), (True, True), ("false", False), (False, False)])
-def test_save_reads_both_forms_of_saved(saved, expected):
+@pytest.mark.parametrize("saved, expected", [(True, True), (False, False)])
+def test_save_reads_saved(saved, expected):
     answer = httpx.Response(200, json={
         "status": "ok", "saved": saved, "program_name": "alpha", "message": "m",
     })
@@ -259,7 +277,28 @@ def test_stub_cursors_match_the_plugins():
     live = "v1.c2VhcmNoRnVuY3Rpb25z.dGh1bms.2"
     assert plugin_cursor("searchFunctions", "thunk", 2) == live
     assert plugin_cursor_start(live, "searchFunctions", "thunk", 0) == 2
-    # API 2 ignores a cursor it cannot use and starts at offset (part B: 400).
-    assert plugin_cursor_start("garbage", "searchFunctions", "thunk", 5) == 5
-    assert plugin_cursor_start(live, "searchFunctions", "usb", 0) == 0
-    assert plugin_cursor_start(live, "searchScalars", "thunk", 0) == 0
+    assert plugin_cursor_start(None, "searchFunctions", "thunk", 5) == 5
+    # API 3 refuses a cursor it cannot use (API 2 restarted at offset).
+    for bad, route, disc in [("garbage", "searchFunctions", "thunk"),
+                             (live, "searchFunctions", "usb"),
+                             (live, "searchScalars", "thunk")]:
+        with pytest.raises(UpstreamFailed) as raised:
+            plugin_cursor_start(bad, route, disc, 0)
+        assert raised.value.code == "INVALID_REQUEST"
+
+
+# --- plugin and bridge name the same level ----------------------------------------
+
+
+def test_the_plugin_announces_the_level_the_bridge_requires():
+    level = re.search(r"static final int API_LEVEL = (\d+);", _source())
+    assert level is not None
+    assert int(level.group(1)) == REQUIRED_PLUGIN_API
+
+
+def test_the_plugin_sends_no_flag_as_a_string():
+    """API 3: changed/can_save/saved are JSON booleans (they were "true"/"false")."""
+
+    source = _source()
+    assert not re.search(r'appendJsonField\(sb, "\w+", String\.valueOf\(', source)
+    assert not re.search(r'appendJsonField\(sb, "\w+", "(true|false)"\)', source)

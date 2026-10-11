@@ -528,7 +528,9 @@ All three routes share the standard per-request write guard. Each successful wri
       ],
       "summary": {
         "inbound": 0,
-        "outbound": 0
+        "inbound_truncated": false,
+        "outbound": 0,
+        "outbound_truncated": false
       }
     }
   }
@@ -2327,6 +2329,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | `callers` | array<object> | Yes |  |
   | `count` | integer | Yes | min=0 |
   | `string` | string | Yes | pattern=^0x[0-9a-fA-F]+$ |
+  | `truncated` | boolean | Yes |  |
 
   ```json
   {
@@ -2339,7 +2342,8 @@ All three routes share the standard per-request write guard. Each successful wri
       }
     ],
     "count": 0,
-    "string": "0x0"
+    "string": "0x0",
+    "truncated": false
   }
   ```
 

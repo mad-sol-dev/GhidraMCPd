@@ -40,7 +40,7 @@ def _probe() -> tuple[Optional[dict], str]:
         info = client.get_project_info()
     except UpstreamFailed as exc:
         # Ghidra answered; what it answered is the reason (e.g. a plugin that
-        # predates API 2), not "no instance".
+        # speaks another API level), not "no instance".
         return None, f"Ghidra at {GHIDRA_URL} cannot be used: {exc}"
     except Exception as exc:  # noqa: BLE001
         return None, f"no Ghidra instance at {GHIDRA_URL} ({type(exc).__name__})"
