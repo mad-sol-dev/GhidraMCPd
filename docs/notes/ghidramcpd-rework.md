@@ -2395,3 +2395,30 @@ usbd_init_phy_cep(void)`, `changed:false`. Vor dem Undo war im Edit-Menü auch R
 
 **Offen:** Python-Skripte
 (braucht PyGhidra/Jython). Danach das Bridge-Tool `run_script` wie im Hand-off oben.
+
+## run_script live über MCP (2026-10-11)
+
+Branch `script-adapter-tool`, Plugin 1.3.70, Bridge aus Claude Desktop
+(`GHIDRA_MCP_SCRIPT_DIR` = `zk-inkjet-printer/firmware/tools/scripts/ghidra`).
+
+- Offline gefunden: `/runScript` schickte `"error": null`; der Client liest jede
+  200-Antwort mit `error` als Fehlschlag (API 3). Plugin-Feld heißt jetzt `script_error`.
+- 1.3.69, `inventory.py` (Jython) im Probelauf: `ok:true`, `output` leer. Jython-Skripte
+  laufen in einem eigenen Thread (der Thread-Filter des Abgriffs verlor ihr `println`), und
+  Jythons `print` geht über `ConsoleService.getStdOut()` direkt in die Konsole. Den
+  Konsolentext zu vergleichen taugt nicht (verzögert über `SwingUpdateManager`, vorne
+  gekürzt bei 50 000 Zeichen). 1.3.70 kopiert `ScriptMessage`s aller Threads, solange ein
+  Skript läuft; `inventory.py` nutzt jetzt `println` (Kommentar im Skript).
+- PyGhidra (Quelltext `pyghidra/script.py`): ersetzt `print` durch eine Funktion, die in
+  den Writer von `execute()` schreibt -- käme also direkt zurück. Gewählt wird der
+  Provider über `# @runtime Jython|PyGhidra`. Live: „Ghidra was not started with PyGhidra.
+  Python is not available" -- das Plugin ist installiert, Python 3 gibt es nur mit Start
+  über `pyghidraRun`. Ein Ladefehler ohne Ausgabe verweist jetzt auf `error`.
+- 1.3.70, `inventory.py` im Probelauf: vollständige Zählung zurück (1266 Funktionen,
+  48 benannt, 37 Kommentare, 100 Hexzahlen im alten Bereich), etwa 10 KB, `modified:false`,
+  danach `changed:false`.
+- Im MCP-Eintrag steht `MCP_ENABLE_WRITES`; die Bridge liest `GHIDRA_MCP_ENABLE_WRITES`.
+  Writes sind nur an, weil die lokale `.env` sie setzt.
+
+Offen: echter Lauf (`dry_run=false`) über MCP; danach CL-TOOL-REC-121 (Umbasieren mit
+`rebase_app_to_58000.py`) im ZK-Inkjet-Projekt, nicht an der eingefrorenen Kopie.
