@@ -1508,18 +1508,23 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
      * write to the writer handed to execute(): in 11.4.2 they go to
      * {@code Msg} as a {@link ghidra.app.script.ScriptMessage} and to the tool's
      * console.  {@code Msg} has a setter for its logger but no getter, so the
-     * one in place is read by reflection and put back afterwards.  Only
-     * messages from the thread running the script are copied.
+     * one in place is read by reflection and put back afterwards.
+     *
+     * <p>Messages from every thread are copied while the script runs: a Jython
+     * script runs in a thread of its own (1.3.69 lost its println output to a
+     * thread filter), and only one script runs through this plugin at a time.
+     * A script started by hand in Ghidra at the same moment would be mixed in.
+     * Python's own print is not a ScriptMessage: under PyGhidra it writes to
+     * the writer handed to execute() and is captured there; under Jython it
+     * goes straight to the tool's console and is not.
      */
     static final class ScriptOutputCapture implements ghidra.util.ErrorLogger {
         private final ghidra.util.ErrorLogger delegate;
         private final java.io.PrintWriter out;
-        private final Thread owner;
 
-        ScriptOutputCapture(ghidra.util.ErrorLogger delegate, java.io.PrintWriter out, Thread owner) {
+        ScriptOutputCapture(ghidra.util.ErrorLogger delegate, java.io.PrintWriter out) {
             this.delegate = delegate;
             this.out = out;
-            this.owner = owner;
         }
 
         /** The logger Msg uses now, or null when it cannot be read. */
@@ -1534,7 +1539,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         }
 
         private void copy(String prefix, Object message) {
-            if (message instanceof ghidra.app.script.ScriptMessage && Thread.currentThread() == owner) {
+            if (message instanceof ghidra.app.script.ScriptMessage) {
                 out.println(prefix + formatted(message));
             }
         }
@@ -1661,7 +1666,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                     ghidra.util.ErrorLogger logger = ScriptOutputCapture.current();
                     outputCaptured = logger != null;
                     if (outputCaptured) {
-                        Msg.setErrorLogger(new ScriptOutputCapture(logger, writer, Thread.currentThread()));
+                        Msg.setErrorLogger(new ScriptOutputCapture(logger, writer));
                     }
                     int tx = program.startTransaction("MCP script: " + file.getName());
                     try {

@@ -182,6 +182,18 @@ def test_a_compile_error_points_at_the_output(folder):
     assert not any("console" in n for n in data["notes"])
 
 
+def test_a_runtime_that_is_missing_points_at_the_error(folder):
+    client = FakeClient(plugin_answer(
+        ok=False, modified=False, phase="load", output="", output_captured=False,
+        script_error="GhidraScriptLoadException: Ghidra was not started with PyGhidra. "
+                     "Python is not available"))
+    data = scripts.run_script(client, script_dir=folder, script="Probe.java")
+
+    assert "PyGhidra" in data["error"]
+    assert any("error says why" in n for n in data["notes"])
+    assert not any("compiler" in n for n in data["notes"])
+
+
 def test_a_timeout_says_so(folder):
     client = FakeClient(plugin_answer(ok=False, modified=False, timed_out=True,
                                       script_error="timed out after 3 s"))

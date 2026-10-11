@@ -137,11 +137,16 @@ Things to know:
   Ghidra's Bundle Manager, where it stays (and shows up in the Script Manager). One script
   that does not compile blocks the others in its folder; the answer carries the compiler's
   messages, and Ghidra may show an error dialog besides.
-- Python scripts run through whatever Ghidra has (Jython or PyGhidra).
+- Python scripts run under the runtime their header names: `# @runtime Jython`
+  (Python 2.7, always there) or `# @runtime PyGhidra` (Python 3, only when Ghidra was
+  started with `pyghidraRun`; otherwise the answer says "Ghidra was not started with
+  PyGhidra").
 - While a script runs, the plugin answers nothing else. `timeout_s` (default 60, at most
   600) stops a script only at its next monitor check (`monitor.checkCancelled()`).
 - A script that asks (`askString`, `askAddress`, ...) opens a dialog in Ghidra and waits
   for someone to answer it. Write scripts that take their values from `getScriptArgs()`.
-- What a script prints comes back as `output` (up to 64 KiB).
+- What a script prints with `println()`/`printf()` comes back as `output` (up to
+  64 KiB), and so does `print` under PyGhidra. Under Jython, `print` goes only to
+  Ghidra's console -- use `println()` there.
 - Whatever you change in Ghidra by hand while a script runs joins its transaction, and a
   dry run rolls it back too.

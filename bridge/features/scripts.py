@@ -32,6 +32,7 @@ SCRIPTS_OFF = (
 _NOTE_DRY_RUN = "dry run: the script ran, then everything it changed in the program was rolled back"
 _NOTE_WRITES_DISABLED = WRITES_DISABLED_NOTE
 _NOTE_LOAD_FAILED = "the script did not load; the compiler's messages are in output"
+_NOTE_LOAD_REFUSED = "the script did not load; error says why"
 _NOTE_TIMED_OUT = (
     "timed out: the script stopped at its next monitor check; nothing was committed"
 )
@@ -133,7 +134,8 @@ def run_script(
     if not dry_run and not writes_enabled:
         notes.append(_NOTE_WRITES_DISABLED)
     if phase == "load" and not ok:
-        notes.append(_NOTE_LOAD_FAILED)
+        # Compile errors come with output; a missing runtime (PyGhidra) only with error.
+        notes.append(_NOTE_LOAD_FAILED if output.strip() else _NOTE_LOAD_REFUSED)
     elif timed_out:
         notes.append(_NOTE_TIMED_OUT)
     elif not ok:
