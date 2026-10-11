@@ -598,6 +598,16 @@
       "commit": "97da882",
       "status": "done",
       "updated_at": "2026-10-11T00:00:00+00:00"
+    },
+    "SCRIPT-ADAPTER": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
+    },
+    "PROTOTYPE-NAME": {
+      "commit": null,
+      "status": "todo",
+      "updated_at": null
     }
   }
 }

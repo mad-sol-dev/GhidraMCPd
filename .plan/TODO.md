@@ -6,9 +6,11 @@
 ## NOW
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach CL-TOOL-REC-121 (flash-Basis); R.22-Cache nur nach Messung; Skript-Adapter (Entscheidung offen). Hand-off: Ende von `docs/notes/ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach CL-TOOL-REC-121 (flash-Basis); R.22-Cache nur nach Messung; SCRIPT-ADAPTER: Machbarkeits-Prototyp. Hand-off: Ende von `docs/notes/ghidramcpd-rework.md`.
 
 ## NEXT
+- {SCRIPT-ADAPTER} Ghidra-Skripte aus einem Ordner des Analyse-Projekts ausführen (Entscheidung des Nutzers 2026-10-11): Probelauf in äußerer Transaktion, die verworfen wird; echter Lauf als ein Undo-Schritt; Ausgabe zurück; nur Skripte aus dem konfigurierten Ordner, kein eingereichter Text; hinter GHIDRA_MCP_ENABLE_WRITES. Zuerst Machbarkeits-Prototyp. Recherche und API-Befund am Ende von `docs/notes/ghidramcpd-rework.md`.
+- {PROTOTYPE-NAME} `/set_function_prototype` übernimmt den Namen aus dem Prototyp nur bei Standardnamen (`RENAME_IF_DEFAULT`) und meldet trotzdem Erfolg; Namen übernehmen (`FunctionRenameOption.RENAME`, wie das Original 2.0) und die gesetzte Signatur zurückmelden. Kein Bridge-Tool betroffen; mit dem nächsten Plugin-Update.
 - {STREAMABLE-HTTP} MCP-Transport Streamable HTTP anbieten (löst SSE im MCP-Standard ab); braucht ein `mcp`-Update (1.5.0 hat ihn nicht). SSE danach als Altlast markieren oder entfernen.
 - {R.9} Firmware-set workflows (boot→app→res prompts, swap-back guidance)
 - {R.11} LLM recipes on existing tools (string→xrefs→disasm, scalar→MMIO→annotate, region→functions→analyze)

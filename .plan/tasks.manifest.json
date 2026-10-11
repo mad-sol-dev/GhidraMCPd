@@ -427,6 +427,30 @@
       "status": "todo"
     },
     {
+      "id": "SCRIPT-ADAPTER",
+      "title": "Ghidra-Skripte aus dem Analyse-Projekt ausfuehren",
+      "area": "plugin, bridge",
+      "depends_on": [],
+      "dod": [
+        "Nur Skripte aus einem konfigurierten Ordner des Analyse-Projekts, kein eingereichter Code",
+        "Probelauf: aeussere Transaktion, danach verworfen; Ausgabe und Zusammenfassung zurueck",
+        "Echter Lauf nur mit GHIDRA_MCP_ENABLE_WRITES und dry_run=false, als ein Undo-Schritt",
+        "Machbarkeit zuerst als Prototyp live geprueft"
+      ],
+      "status": "todo"
+    },
+    {
+      "id": "PROTOTYPE-NAME",
+      "title": "set_function_prototype uebernimmt den Namen und meldet die gesetzte Signatur",
+      "area": "plugin",
+      "depends_on": [],
+      "dod": [
+        "Name aus dem Prototyp wird auch bei benannten Funktionen gesetzt (FunctionRenameOption.RENAME)",
+        "Antwort enthaelt die tatsaechlich gesetzte Signatur statt eines Erfolgssatzes"
+      ],
+      "status": "todo"
+    },
+    {
       "id": "STREAMABLE-HTTP",
       "title": "MCP-Transport Streamable HTTP",
       "area": "bridge",

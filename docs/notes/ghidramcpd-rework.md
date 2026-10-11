@@ -2205,3 +2205,41 @@ fest eingebaut; das JDK muss 17 oder neuer sein (`release 17`, nicht „JDK 21")
 `ErrorCode.TOO_MANY_REQUESTS` wird nirgends ausgelöst (Aufgabe `DEAD-TOO-MANY-REQUESTS`).
 Der Nutzer hat gegengelesen; der Prüfvermerk sagt seitdem „read and fact-checked by the maintainer". Das alte Demo-Video bleibt weg (alter Stand, laut Nutzer teils falsche Ergebnisse).
 
+## Original-Repo und Skript-Adapter (2026-10-11)
+
+**Original (LaurieWired/GhidraMCP).** Die Verläufe sind in Git nicht verbunden: Der Fork
+enthält die ersten 61 Commits des Originals mit gleichen Texten, anderen Hashes (Verlauf neu
+geschrieben); GitHub meldet deshalb „64 voraus". Wirklich neu sind 3 Commits vom
+2026-10-10: Version 2.0.0 mit Ghidra 12.1.4, Gradle, installierbarem Python-Paket (`uvx`),
+Streamable HTTP (`mcp>=1.30`), Headless über PyGhidra, Plugin aufgeteilt in Kern und
+GUI/Headless-Anbindung, strukturierte Fehler mit HTTP-Status (`McpException`, unabhängig
+dieselbe Idee wie API 2). Keine Skript-Ausführung, keine Budgets. Übernehmen lässt sich
+nichts direkt; relevant: Ghidra-12-Port irgendwann, Headless für Live-Tests, und der Fix
+„Apply function name from set_function_prototype" -- unser Plugin hat denselben Fehler
+(Aufgabe PROTOTYPE-NAME).
+
+**Skript-Adapter, Anlass (Nutzer).** Die Lücke ist die Übergabe: Claude schreibt ein
+Skript, der Nutzer muss herausfinden, wo es hingehört und wie man es startet. Der Adapter
+soll Claude das Skript selbst ausführen lassen; das Go ist die Rückfrage des Clients.
+Entscheidung: Skripte liegen im Analyse-Projekt; zuerst Machbarkeit.
+
+**API-Befund (Ghidra 11.4.2, an den JARs geprüft).** `GhidraScriptUtil.getProvider(file)`
+→ `provider.getScriptInstance(file, writer)` → `script.setScriptArgs(...)` →
+`script.execute(state, monitor, writer)`. `execute` öffnet über `FlatProgramAPI.start()`
+selbst eine Transaktion und schließt sie mit `end(...)`. Ghidra verschachtelt
+Transaktionen: Eine äußere Transaktion des Plugins, ohne Commit beendet, verwirft alles --
+der Probelauf; mit Commit ein Undo-Schritt. Nicht abgedeckt: Nebenwirkungen außerhalb der
+Programmdatenbank (Dateien, `save()`, andere Programme), Skripte mit eigenem
+`start()`/`end()`, Dialoge (`ask*`) aus dem HTTP-Thread, der Pfad mit
+`AnalysisMode.DISABLED`. Java-Skripte brauchen den OSGi-Bundle-Host
+(`acquireBundleHostReference()`).
+
+**Bestehende Projekte (Recherche, Quelltext gelesen).** bethington/ghidra-mcp (~5,4k
+Sterne; Skriptdatei oder Inline-Java, aus per `GHIDRA_MCP_ALLOW_SCRIPTS`, Timeout
+kooperativ), ReVa (Inline/Datei, nur PyGhidra, Timeout 60 s, Ausgabe gekappt, standardmäßig
+an), GhidrAssistMCP (Skripte anlegen und ausführen, kein Schalter, kein Timeout), GhydraMCP
+(aus per Schalter, „arbitrary code execution"), kawaiidra (Headless-Unterprozess, Jython
+inline). Keines beschränkt auf einen vorab eingecheckten Ordner, keines bietet Probelauf
+oder Rollback über eine äußere Transaktion. Übernehmenswert: Timeout über einen
+abbrechbaren Monitor, getrennte und gekappte Ausgabe, Bundle-Host-Handhabung.
+
