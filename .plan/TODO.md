@@ -4,12 +4,9 @@
 > Standards: 1-based `page`, `has_more`, deterministic sorting, strict envelope `{ok,data,errors[]}`.
 
 ## NOW
-- {R.24-PHASE3} Rest aus der R.24-Bestandsaufnahme. Bestandsaufnahme 2026-10-11 (Plugin live geprüft, Bridge im Code), Details am Ende von `ghidramcpd-rework.md`. Entscheidungen des Nutzers: **API 3 mit exakter Prüfung** (Bridge lehnt jede andere API ab, auch eine neuere); `/disassembleAt` läuft an einer Nicht-Instruktion weiter, **meldet aber den echten Start**; die 9 `paginateList`-Textrouten bleiben (kein Bridge-Nutzer; keine solche Route ohne JSON-Form auf die Whitelist).
-  - ~~**Teil A, nur Bridge**~~ **erledigt 2026-10-11** (`3bc4e63`…`4d57f8e`; live 59/59, Referenzlauf 40/40, 60 193 Bytes, Programm unverändert). War: `changed`/`can_save`/`saved` in beiden Formen annehmen, sonst Fehler (Voraussetzung für B); `string_xrefs_compact.count` und `analyze_function_complete` (inbound-Zahlen, `truncated`) melden Kappung; `search_functions(context_lines)` verschluckt Fehler nicht mehr; `collect` prüft `length`/`count`; `search_scalars_with_context` ohne unbrauchbaren `resume_cursor`; `reference_run.py` prüft den Status von `/methods`; Stubs auf echte Formen (Cursor `v1.…`, `readBytes length=0`, `searchFunctions` ohne Programm = 425).
-  - **Teil B, Plugin + Bridge, ein Reinstall, API 3:** Cursor ungültig/fremd → 400; `readBytes` `length=0` → 400, kurze/gekappte Lesung per Header markiert; echte JSON-Booleans; `check_dirty_state` ohne Programm → NOT_READY; ungültige Ganzzahlen → 400 statt Default; `searchScalars` markiert Teilergebnis am Inspektionslimit; `/xrefs_from` und `/disassembleAt` an ungemappter Adresse → 404 UNMAPPED; `/disassembleAt` meldet den echten Start; Bridge verlangt API == 3.
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): R.24 Phase 3, Teil B (Plugin, ein Reinstall, API 3). Hand-off: Ende von `ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): R.29 (Zeichenbudget für analyze_function_complete; Sockel 8 485 von 8 500). Hand-off: Ende von `ghidramcpd-rework.md`. Hand-off: Ende von `ghidramcpd-rework.md`.
 
 ## NEXT
 - {R.29} Character/token-based result limits for analyze_function_complete (replace or supplement line-based truncation with char/token budgets to avoid mid-block cutoffs)

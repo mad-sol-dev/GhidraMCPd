@@ -2069,3 +2069,25 @@ Programm danach unverändert (`check_dirty_state`). Offen bleibt Teil B. Im selb
 angefasst: `analyze_function_complete.strings` ist ebenfalls bei `limit` gekappt, zeigt aber
 `limit` mit an.
 
+### Teil B erledigt (2026-10-11, API 3, Plugin 1.3.66)
+
+Ein Commit, `6a8b50b`, Plugin und Bridge zusammen; installiert und live geprüft.
+
+- Plugin: `changed`/`can_save`/`saved` als JSON-Booleans (`save_program` ohne Änderungen
+  nennt jetzt das Programm); ein Cursor, den die Route nicht ausgegeben hat, eine
+  Nicht-Zahl, `readBytes length` außerhalb 1..4096 und `disassembleAt count` außerhalb
+  1..128 sind 400; `/disassembleAt` und `/xrefs_from` an ungemappter Adresse sind
+  UNMAPPED; `/disassembleAt?fmt=json` meldet `requested`/`start`; `check_dirty_state` ohne
+  Programm NOT_READY; ein abgebrochener Scalar-Suchlauf sagt `truncated`/`reason` statt
+  `error`; Adressen außerhalb des Default-Raums behalten `SPACE:offset`, `/xrefs_to`
+  überspringt Nicht-Speicher-Quellen („0xEntry Point").
+- Bridge: verlangt genau API 3 (`PLUGIN_TOO_OLD` darunter, `PLUGIN_TOO_NEW` darüber),
+  Flags nur als Booleans, ein 200 mit `error` ist immer ein Fehler, `disassemble_at` nennt
+  UNMAPPED als solches. Ein Quelltext-Test hält `API_LEVEL` auf `REQUIRED_PLUGIN_API`.
+- Kurze Lesungen ohne eigenen Header: Seit Längen außerhalb 1..4096 ein 400 sind, heißt
+  weniger Bytes eindeutig, dass der Block endet; das erkennt die Bridge schon.
+
+Live mit 1.3.66: 71/71 (12 neue API-3-Proben, lesend), Referenzlauf 40/40, 60 193 Bytes,
+Programm unverändert. Über MCP: `disassemble_at 0x10` meldet „No memory is mapped" statt
+einer Auflistung ab 0x00200000; `search_imports` liefert `EXTERNAL:00000001`.
+

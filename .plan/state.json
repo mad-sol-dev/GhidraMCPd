@@ -523,8 +523,9 @@
       "status": "done"
     },
     "R.24-PHASE3": {
-      "commit": null,
-      "status": "todo"
+      "commit": "6a8b50b",
+      "status": "done",
+      "updated_at": "2026-10-11T00:00:00+00:00"
     },
     "R.24-PHASE1": {
       "commit": "21ba8ab",

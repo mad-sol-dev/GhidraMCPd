@@ -698,7 +698,7 @@
         "Ungueltiger Cursor ist ein Fehler, kein stiller Neustart",
         "readBytes length=0 ist ein Fehler; kurze Lesungen markiert; Wahrheitswerte als JSON-Booleans"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "R.24-PHASE1",
