@@ -667,6 +667,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             boolean dryRun = !"false".equalsIgnoreCase(params.get("dry_run"));
             plugin.sendJsonResponse(exchange, plugin.createLabelAt(params.get("address"), params.get("name"), dryRun));
         });
+        registerWriteHandler(server, "/runScript", (plugin, exchange) -> {
+            Map<String, String> params = plugin.parsePostParams(exchange);
+            // Anything but an explicit "false" is a dry run.
+            boolean dryRun = !"false".equalsIgnoreCase(params.get("dry_run"));
+            int timeoutSeconds = plugin.parseIntOrDefault(params.get("timeout_s"), DEFAULT_SCRIPT_TIMEOUT_S);
+            plugin.sendJsonResponse(exchange,
+                plugin.runScript(params.get("path"), params.get("args"), dryRun, timeoutSeconds));
+        });
         registerWriteHandler(server, "/renameVariable", (plugin, exchange) -> {
             Map<String, String> params = plugin.parsePostParams(exchange);
             String functionName = params.get("functionName");
@@ -823,8 +831,7 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             String functionAddress = params.get("function_address");
             String prototype = params.get("prototype");
 
-            plugin.setFunctionPrototype(functionAddress, prototype);
-            plugin.sendResponse(exchange, "Function prototype set successfully");
+            plugin.sendJsonResponse(exchange, plugin.setFunctionPrototype(functionAddress, prototype));
         });
 
         registerWriteHandler(server, "/set_local_variable_type", (plugin, exchange) -> {
@@ -1451,6 +1458,181 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return sb.append('}').toString();
     }
 
+    static final int DEFAULT_SCRIPT_TIMEOUT_S = 60;
+    static final int MAX_SCRIPT_TIMEOUT_S = 600;
+    static final int MAX_SCRIPT_OUTPUT_CHARS = 64 * 1024;
+    /** One script at a time: they share the program and, while one runs, its open transaction. */
+    private static final Object SCRIPT_LOCK = new Object();
+
+    /**
+     * Keeps the first {@code limit} characters written to it and counts the rest,
+     * so a chatty script cannot grow the answer without bound.
+     */
+    static final class BoundedWriter extends java.io.Writer {
+        private final StringBuilder kept = new StringBuilder();
+        private final int limit;
+        private long dropped;
+
+        BoundedWriter(int limit) {
+            this.limit = limit;
+        }
+
+        @Override
+        public synchronized void write(char[] cbuf, int off, int len) {
+            int room = Math.max(0, limit - kept.length());
+            int take = Math.min(room, len);
+            kept.append(cbuf, off, take);
+            dropped += len - take;
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() {
+        }
+
+        synchronized String text() {
+            return kept.toString();
+        }
+
+        synchronized boolean truncated() {
+            return dropped > 0;
+        }
+    }
+
+    /**
+     * Run a Ghidra script file against the active program inside one outer
+     * transaction (SCRIPT-ADAPTER prototype).
+     *
+     * <p>{@code dry_run=true} (the default) runs the script and then ends the
+     * outer transaction without commit: everything the script did to the
+     * program database is rolled back, including what the script committed
+     * itself -- Ghidra nests transactions, and an inner commit only counts when
+     * the outermost one commits.  A real run commits the outer transaction, one
+     * undo step.  Not covered by the rollback: what a script does outside this
+     * program (files, other programs, {@code save()}).
+     *
+     * <p>A script that throws is an answer, not a route failure: {@code ok:false}
+     * with the output up to the failure, nothing committed.  {@code phase}
+     * says whether it failed loading (compile errors are in the output) or
+     * running.  The timeout is cooperative: a script that never checks its
+     * monitor is not stopped, and while it runs this server answers nothing
+     * else (the HTTP server handles one request at a time).
+     *
+     * <p>Java scripts compile in an OSGi bundle per source directory; a
+     * directory the Bundle Manager does not know yet is added to it
+     * ({@code bundle_added}), which the tool keeps in its configuration.
+     */
+    private String runScript(String pathStr, String argsStr, boolean dryRun, int timeoutSeconds) {
+        Program program = getCurrentProgram();
+        if (program == null) throw notReady("No program loaded");
+        if (pathStr == null || pathStr.isBlank()) throw badRequest("path is required");
+        java.io.File file = new java.io.File(pathStr.trim());
+        if (!file.isAbsolute()) throw badRequest("path must be absolute: " + pathStr);
+        if (!file.isFile()) throw notFound("No script file at " + file);
+        if (timeoutSeconds < 1 || timeoutSeconds > MAX_SCRIPT_TIMEOUT_S) {
+            throw badRequest("timeout_s must be 1.." + MAX_SCRIPT_TIMEOUT_S + ", got " + timeoutSeconds);
+        }
+        String[] args = argsStr == null || argsStr.isBlank() ? new String[0] : argsStr.trim().split("\\s+");
+
+        generic.jar.ResourceFile source = new generic.jar.ResourceFile(file);
+        BoundedWriter captured = new BoundedWriter(MAX_SCRIPT_OUTPUT_CHARS);
+        java.io.PrintWriter writer = new java.io.PrintWriter(captured, true);
+
+        boolean ok = false;
+        boolean committed = false;
+        boolean modified = false;
+        boolean bundleAdded = false;
+        boolean timedOut = false;
+        String phase = "load";
+        String error = null;
+        long started = System.currentTimeMillis();
+
+        synchronized (SCRIPT_LOCK) {
+            ghidra.app.plugin.core.osgi.BundleHost bundleHost =
+                ghidra.app.script.GhidraScriptUtil.acquireBundleHostReference();
+            try {
+                ghidra.app.script.GhidraScriptProvider provider =
+                    ghidra.app.script.GhidraScriptUtil.getProvider(source);
+                if (provider == null) {
+                    throw badRequest("No script provider for " + file.getName()
+                        + " (Java needs .java; Python needs PyGhidra or Jython in this Ghidra)");
+                }
+                if (provider instanceof ghidra.app.script.JavaScriptProvider) {
+                    generic.jar.ResourceFile dir = source.getParentFile();
+                    if (bundleHost.getExistingGhidraBundle(dir) == null) {
+                        bundleHost.add(dir, true, false);
+                        bundleAdded = true;
+                    }
+                }
+
+                ghidra.app.script.GhidraScript script;
+                try {
+                    script = provider.getScriptInstance(source, writer);
+                } catch (Exception e) {
+                    error = describe(e);
+                    script = null;
+                }
+
+                if (script != null) {
+                    phase = "run";
+                    script.setScriptArgs(args);
+                    ghidra.app.script.GhidraState state = new ghidra.app.script.GhidraState(
+                        tool, tool.getProject(), program, null, null, null);
+                    ghidra.util.task.TimeoutTaskMonitor monitor = ghidra.util.task.TimeoutTaskMonitor
+                        .timeoutIn(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
+                    long modBefore = program.getModificationNumber();
+                    int tx = program.startTransaction("MCP script: " + file.getName());
+                    try {
+                        script.execute(state, monitor, writer);
+                        ok = true;
+                    } catch (Throwable e) {
+                        timedOut = monitor.didTimeout();
+                        error = timedOut ? "timed out after " + timeoutSeconds + " s" : describe(e);
+                    } finally {
+                        monitor.finished();
+                        modified = program.getModificationNumber() != modBefore;
+                        committed = ok && !dryRun;
+                        program.endTransaction(tx, committed);
+                    }
+                }
+            } finally {
+                writer.flush();
+                ghidra.app.script.GhidraScriptUtil.releaseBundleHostReference();
+            }
+        }
+
+        StringBuilder sb = new StringBuilder("{");
+        appendJsonField(sb, "status", "ok");
+        appendJsonField(sb, "ok", ok);
+        appendJsonField(sb, "script", file.getName());
+        appendJsonField(sb, "dry_run", dryRun);
+        appendJsonField(sb, "committed", committed);
+        appendJsonField(sb, "modified", modified);
+        appendJsonField(sb, "phase", phase);
+        appendJsonField(sb, "timed_out", timedOut);
+        appendJsonField(sb, "bundle_added", bundleAdded);
+        appendJsonField(sb, "elapsed_ms", System.currentTimeMillis() - started);
+        appendJsonField(sb, "error", error);
+        appendJsonField(sb, "output", captured.text());
+        appendJsonField(sb, "output_truncated", captured.truncated());
+        trimTrailingComma(sb);
+        return sb.append('}').toString();
+    }
+
+    /** An exception as one line: class and message, the cause's when it has one. */
+    private static String describe(Throwable e) {
+        Throwable cause = e;
+        while ((cause instanceof InvocationTargetException || cause instanceof ghidra.app.script.GhidraScriptLoadException)
+                && cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        return cause.getClass().getSimpleName() + (message == null || message.isEmpty() ? "" : ": " + message);
+    }
+
     private String renameVariableInFunction(String functionName, String oldVarName, String newVarName) {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
@@ -2046,17 +2228,19 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
     }
 
     /**
-     * Set a function's prototype with proper error handling using ApplyFunctionSignatureCmd
-     */
-    /**
-     * Apply a C prototype to the function that starts at an address; throws a
-     * RouteError saying why not.
+     * Apply a C prototype to the function that starts at an address and answer
+     * the signature the function has afterwards; throws a RouteError saying why not.
      *
      * <p>It used to commit a plate comment "Setting prototype: ..." in its own
      * transaction before parsing -- also when the prototype was then rejected.
      * That write was never asked for and is gone.
+     *
+     * <p>The name in the prototype is applied (PROTOTYPE-NAME): the three-argument
+     * command renames only functions with a default name, so "void foo(int)" on
+     * a user-named function changed the parameters, kept the old name and
+     * still answered "Function prototype set successfully".
      */
-    private void setFunctionPrototype(String functionAddrStr, String prototype) {
+    private String setFunctionPrototype(String functionAddrStr, String prototype) {
         Program program = getCurrentProgram();
         if (program == null) throw notReady("No program loaded");
         Address addr = requireAddress(program, functionAddrStr, "function_address");
@@ -2080,7 +2264,9 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             boolean commit = false;
             try {
                 ghidra.app.cmd.function.ApplyFunctionSignatureCmd cmd =
-                    new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(addr, sig, SourceType.USER_DEFINED);
+                    new ghidra.app.cmd.function.ApplyFunctionSignatureCmd(addr, sig, SourceType.USER_DEFINED,
+                        false, false, DataTypeConflictHandler.DEFAULT_HANDLER,
+                        ghidra.app.cmd.function.FunctionRenameOption.RENAME);
                 if (!cmd.applyTo(program, new ConsoleTaskMonitor())) {
                     throw badRequest("prototype not applied: " + cmd.getStatusMsg());
                 }
@@ -2093,6 +2279,14 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                 program.endTransaction(tx, commit);
             }
         }, "Failed to set function prototype");
+
+        StringBuilder sb = new StringBuilder("{");
+        appendJsonField(sb, "status", "ok");
+        appendJsonField(sb, "address", hexAddress(addr));
+        appendJsonField(sb, "name", func.getName());
+        appendJsonField(sb, "signature", func.getPrototypeString(false, false));
+        trimTrailingComma(sb);
+        return sb.append('}').toString();
     }
 
     /**

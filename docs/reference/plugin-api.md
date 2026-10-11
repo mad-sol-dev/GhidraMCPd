@@ -32,7 +32,7 @@ reach the port.
 
 ## Routes
 
-52 routes plus `/plugin_version`. "Bridge" marks the routes the bridge calls
+53 routes plus `/plugin_version`. "Bridge" marks the routes the bridge calls
 (`bridge/ghidra/whitelist.py`); the others are there for scripts and older clients.
 
 ### Read routes
@@ -100,6 +100,7 @@ Change the program or its file. With `domain_file_id` set and naming another pro
 | `/renameFunction` |  |
 | `/renameVariable` |  |
 | `/rename_function_by_address` | yes |
+| `/runScript` |  |
 | `/save_program` | yes |
 | `/set_decompiler_comment` | yes |
 | `/set_disassembly_comment` | yes |

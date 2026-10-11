@@ -35,7 +35,7 @@ ROUTE_PATTERN = re.compile(
 # which the first version of this pattern did not see, plus /createLabel
 # (R.12).  A change in the plugin moves the number, and then it is updated
 # deliberately.
-EXPECTED_ROUTE_COUNT = 53
+EXPECTED_ROUTE_COUNT = 54
 
 
 def plugin_routes() -> set[str]:

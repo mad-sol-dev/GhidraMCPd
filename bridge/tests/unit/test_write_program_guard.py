@@ -190,8 +190,8 @@ def _plugin_write_routes() -> set[str]:
 
 def test_every_bridge_write_key_hits_a_checked_plugin_route():
     write_routes = _plugin_write_routes()
-    # 15 routes that call a mutating method or save, on 2026-10-10
-    assert len(write_routes) == 15
+    # 16 routes that call a mutating method or save, on 2026-10-11 (+/runScript)
+    assert len(write_routes) == 16
     candidates = {**ENDPOINT_CANDIDATES, **POST_ENDPOINT_CANDIDATES}
     for key, aliases in candidates.items():
         checked = all(alias in write_routes for alias in aliases)
