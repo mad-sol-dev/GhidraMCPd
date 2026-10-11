@@ -2361,6 +2361,14 @@ nicht live geprüft.
 5. Was der Nutzer während eines Laufs in Ghidra ändert, landet in derselben äußeren
    Transaktion und wird beim Probelauf mit verworfen.
 
-**Offen:** `ask*` ohne Argumente (Dialog aus dem HTTP-Thread; Test 4, nicht gelaufen),
+**Test 4, `ask*` ohne Argumente** (Probelauf): Ghidra öffnet den Dialog auch aus dem
+HTTP-Thread; die Anfrage wartet, bis jemand ihn schließt (hier 15,5 s), und solange
+antwortet das Plugin auf nichts (Befund 4). Cancel ergibt `ok:false`,
+`CancelledException: Operation cancelled`, `modified:false`, danach `changed:false`. Der
+Timeout greift in einem Dialog vermutlich nicht (er fragt den Monitor nicht ab; nicht
+gemessen). Für das Tool: Skripte, die vom Modell gestartet werden, dürfen nicht fragen --
+alle Werte über `args`; ein Dialog hält bis zum Klick alles an.
+
+**Offen:**
 Timeout live, Kompilierfehler live (`phase:"load"`), PROTOTYPE-NAME live, Python-Skripte
 (braucht PyGhidra/Jython). Danach das Bridge-Tool `run_script` wie im Hand-off oben.
