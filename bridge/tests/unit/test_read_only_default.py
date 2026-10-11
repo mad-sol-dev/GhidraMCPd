@@ -20,6 +20,7 @@ from starlette.testclient import TestClient
 
 from bridge.api.routes import make_routes
 from bridge.api.tools import register_tools
+from bridge.tests.plugin_http import function_search_page
 from bridge.features import datatypes, jt, labels, mmio
 from bridge.utils.config import WRITES_DISABLED_NOTE, WRITES_ENABLE_HOWTO, writes_status
 from bridge.utils.program_context import PROGRAM_SELECTIONS
@@ -76,6 +77,10 @@ def test_every_write_feature_notes_the_same_words():
 class _Client:
     base_url = "http://ghidra/"
     last_error = None
+
+    def search_functions(self, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
+        # No other function has the new name (rename_function checks for duplicates).
+        return function_search_page([], query, limit=limit, offset=offset, cursor=cursor)
 
     def __init__(self) -> None:
         self.saves = 0

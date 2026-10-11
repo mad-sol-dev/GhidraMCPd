@@ -492,6 +492,39 @@ def register_tools(
 
         return read_function_name(client, address)
 
+    def _duplicate_name_warnings(client, name: str, address: int) -> list[str]:
+        """A warning per other function already called ``name``.
+
+        Ghidra accepts a rename to a name another function has (live, 2026-10-11:
+        FUN_00200060 became a second usbd_init_phy_cep), so the duplicate is
+        named before it is made -- in a dry run too.  A failed search is not
+        "no duplicates": it propagates.
+        """
+
+        others: list[str] = []
+        cursor = None
+        while True:
+            page = client.search_functions(name, limit=500, cursor=cursor)
+            if page.error:
+                raise UpstreamFailed(f"duplicate-name check failed: {page.error}")
+            for line in page.items:
+                found, _, addr_text = str(line).rpartition(" @ ")
+                if found != name:
+                    continue
+                try:
+                    found_address = int(addr_text.strip(), 16)
+                except ValueError:
+                    continue
+                if found_address != address:
+                    others.append(int_to_hex(found_address))
+            if not page.has_more or not page.cursor:
+                break
+            cursor = page.cursor
+        return [
+            f"'{name}' already names the function at {other}; Ghidra allows the duplicate"
+            for other in others
+        ]
+
     def _current_function_comment(client, address: int) -> str | None:
         """The comment a write is about to replace -- if it can be read at all.
 
@@ -988,7 +1021,8 @@ def register_tools(
             new_name: the new name.
             dry_run: default true; validate and report without renaming.
 
-        Returns success (false in dry_run), address, new_name and a message."""
+        Returns success (false in dry_run), address, new_name, a message, and
+        warnings if the name is taken."""
         with request_scope(
             "rename_function",
             logger=logger,
@@ -1009,6 +1043,7 @@ def register_tools(
                 )
 
             previous_name = _current_function_name(client, parsed_address)
+            warnings = _duplicate_name_warnings(client, new_name, parsed_address)
 
             # Dry run mode - return success without executing
             if dry_run:
@@ -1020,12 +1055,15 @@ def register_tools(
                     applied=False,
                     reason="dry_run",
                 )
-                return envelope_ok({
+                answer = {
                     "success": False,
                     "address": address,
                     "new_name": new_name,
                     "message": f"DRY RUN: Would rename function at {address} to '{new_name}' " + _dry_run_hint()
-                })
+                }
+                if warnings:
+                    answer["warnings"] = warnings
+                return envelope_ok(answer)
 
             # Check if writes are enabled
             if not enable_writes:
@@ -1057,12 +1095,15 @@ def register_tools(
                 new=new_name,
                 applied=True,
             )
-            return envelope_ok({
+            answer = {
                 "success": True,
                 "address": address,
                 "new_name": new_name,
                 "message": f"Function at {address} renamed to '{new_name}'"
-            })
+            }
+            if warnings:
+                answer["warnings"] = warnings
+            return envelope_ok(answer)
 
     @server.tool()
     @tracked_tool()

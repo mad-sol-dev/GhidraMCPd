@@ -68,6 +68,7 @@ def test_a_refused_rename_keeps_the_plugins_status():
         "get_function_by_address": httpx.Response(
             200, text="Function: old at 00401000\nSignature: undefined old(void)\nEntry: 00401000\n"),
         "rename_function_by_address": plugin_error(409, "CONFLICT", "Symbol already exists: taken"),
+        "searchFunctions": httpx.Response(200, json={"items": [], "has_more": False}),
     })
 
     result = tools["rename_function"].fn("0x401000", "taken", dry_run=False)
@@ -337,3 +338,52 @@ def test_a_one_shot_search_the_plugin_cut_is_not_counted_as_complete(tool, args,
     assert result["ok"] is False
     assert result["errors"][0]["code"] == "RESULT_TOO_LARGE"
     assert "narrow the query" in result["errors"][0]["message"]
+
+
+# --- a rename to a name another function has is named before it is made ----------
+
+_FUN = httpx.Response(200, text="Function: FUN_00200060 at 00200060\nEntry: 00200060\n")
+
+
+def _search(*lines: str) -> httpx.Response:
+    return httpx.Response(200, json={"items": list(lines), "has_more": False})
+
+
+def test_a_dry_run_rename_warns_about_a_duplicate():
+    """Live 2026-10-11: Ghidra renamed FUN_00200060 to an existing name without complaint."""
+
+    tools = _tools({
+        "get_function_by_address": _FUN,
+        "searchFunctions": _search("usbd_init_phy_cep @ 002af9c0", "usbd_init_phy_cep2 @ 002b0000"),
+    })
+
+    result = tools["rename_function"].fn("0x00200060", "usbd_init_phy_cep")
+
+    assert result["ok"] is True and result["data"]["success"] is False
+    assert result["data"]["warnings"] == [
+        "'usbd_init_phy_cep' already names the function at 0x002af9c0; Ghidra allows the duplicate"
+    ]
+
+
+def test_a_rename_without_a_duplicate_carries_no_warnings():
+    tools = _tools({
+        "get_function_by_address": _FUN,
+        # a longer name and the function itself are not duplicates
+        "searchFunctions": _search("usbd_init_phy_cep2 @ 002b0000", "usbd_init_phy_cep @ 00200060"),
+    })
+
+    result = tools["rename_function"].fn("0x00200060", "usbd_init_phy_cep")
+
+    assert "warnings" not in result["data"]
+
+
+def test_a_failed_duplicate_check_is_not_no_duplicates():
+    tools = _tools({
+        "get_function_by_address": _FUN,
+        "searchFunctions": plugin_error(500, "INTERNAL", "search exploded"),
+    })
+
+    result = tools["rename_function"].fn("0x00200060", "usbd_init_phy_cep")
+
+    assert result["ok"] is False
+    assert "search exploded" in str(result["errors"][0])

@@ -73,6 +73,8 @@ class FakePlugin:
             return httpx.Response(200, text=json.dumps({"status": "ok", "warnings": []}))
         if path == "get_function_by_address":
             return httpx.Response(200, text="Function: old_name at 00401000\nEntry: 00401000\n")
+        if path == "searchFunctions":  # rename_function's duplicate-name check
+            return httpx.Response(200, text=json.dumps({"items": [], "has_more": False}))
         if path in {"rename_function_by_address", "set_disassembly_comment", "createStructure"}:
             if self.switch_before_write:
                 self.active = self.switch_before_write

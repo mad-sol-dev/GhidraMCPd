@@ -14,6 +14,7 @@ import pytest
 from mcp.server.fastmcp import FastMCP
 
 from bridge.api.tools import register_tools
+from bridge.tests.plugin_http import function_search_page
 
 ADDRESS = 0x002AF9C0
 
@@ -28,6 +29,10 @@ class _Client:
         if isinstance(self.payload, Exception):
             raise self.payload
         return self.payload
+
+    def search_functions(self, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
+        # No other function has the new name (rename_function checks for duplicates).
+        return function_search_page([], query, limit=limit, offset=offset, cursor=cursor)
 
     def get_current_program_status(self) -> dict[str, Any]:
         return {"state": "READY"}
