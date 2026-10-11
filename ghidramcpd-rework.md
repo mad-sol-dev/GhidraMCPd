@@ -2131,3 +2131,18 @@ Ctrl+Z); Übergang `LOADING`→`READY` (braucht eine laufende Analyse); Nutzen d
 nur nach Messung, Skript-Adapter (Entscheidung). Randfall ohne Anlass: Xref-Adressen in
 Overlay-Räumen (`SPACE:offset`) überspringt der Client still; das Referenzprogramm hat keine.
 
+### Schreibtest WRITE-ANSWER-TRUTHFUL (2026-10-11, live, mit Zustimmung)
+
+An der eingefrorenen Kopie über die echten Tools (`dry_run=false`), danach vom Nutzer mit
+dreimal Ctrl+Z zurückgenommen, ohne Speichern; `check_dirty_state` danach `changed: false`,
+Namen und Kommentar wie vorher.
+
+- `rename_function(0x00200060, "r24_probe_renamed")`: Erfolg gemeldet, Name gesetzt.
+- `rename_function(0x00200060, "usbd_init_phy_cep")` (Name existiert an 0x002af9c0):
+  **Erfolg gemeldet, und es ist passiert** -- Ghidra erlaubt doppelte Funktionsnamen im
+  globalen Namensraum. Die Annahme, das scheitere mit CONFLICT, war falsch; die Antwort war
+  wahr. Offene Frage: Soll `rename_function` vor einer Dublette warnen? (Passt zu den 96
+  Label-Dubletten im ZK-Inkjet-Projekt, CL-TOOL-REC-122.)
+- `set_comment(0x00200064, ..., "disassembly")`: Erfolg gemeldet, Kommentar im Listing.
+- `set_comment(0x7f000000, ...)`: Fehler (INVALID_REQUEST, upstream UNMAPPED), kein Erfolg.
+
