@@ -142,11 +142,12 @@ Things to know:
   started with `pyghidraRun`; otherwise the answer says "Ghidra was not started with
   PyGhidra").
 - While a script runs, the plugin answers nothing else. `timeout_s` (default 60, at most
-  600) stops a script only at its next monitor check (`monitor.checkCancelled()`).
+  600) stops a script only at its next monitor check (`monitor.checkCancelled()`), Jython
+  scripts included.
 - A script that asks (`askString`, `askAddress`, ...) opens a dialog in Ghidra and waits
   for someone to answer it. Write scripts that take their values from `getScriptArgs()`.
-- What a script prints with `println()`/`printf()` comes back as `output` (up to
-  64 KiB), and so does `print` under PyGhidra. Under Jython, `print` goes only to
-  Ghidra's console -- use `println()` there.
+- What a script prints comes back as `output` (up to 64 KiB): `println()`/`printf()`,
+  and Python's `print` under Jython and PyGhidra. A Jython script that raises is
+  `ok: false` with the traceback in `output`; nothing it did is kept.
 - Whatever you change in Ghidra by hand while a script runs joins its transaction, and a
   dry run rolls it back too.

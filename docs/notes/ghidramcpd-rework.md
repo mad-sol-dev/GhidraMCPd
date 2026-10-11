@@ -2464,3 +2464,28 @@ den Start über `pyghidraRun`; bis dahin Python-Skripte als Jython mit `println`
 
 **Sonst offen** (`.plan/TODO.md`): STREAMABLE-HTTP (Pflege), R.22-Cache nur nach
 Messung, Ghidra-12-Port irgendwann.
+
+## Jython-Ausnahmen wurden zu `ok:true` (2026-10-11, Abend)
+
+Gemeldet aus der ZK-Inkjet-Sitzung (beim Umbasieren und `fid_messen.py`): Ein Jython-Skript,
+das eine Ausnahme wirft, kam als `ok:true` mit leerer Ausgabe zurück. Ursache (Quelltext
+`Jython-src.zip`): `JythonScript` startet das Skript in `JythonScriptExecutionThread`,
+der jede `PyException` fängt, den Traceback in die Konsole schreibt und normal endet --
+`execute()` kehrt zurück, und ein echter Lauf hätte übernommen, was das Skript bis zum
+Fehler getan hatte. Liegt im `GhidraState` unter `ghidra.jython.interpreter` schon ein
+Interpreter, ruft `JythonScript` dagegen `execFile` direkt im aufrufenden Thread auf, ohne
+`catch` (der Weg für `runScript` aus einem Jython-Skript). Plugin 1.3.71 legt dort einen
+eigenen `GhidraJythonInterpreter` ab (Reflection), dessen `out`/`err` in die gekappte
+Ausgabe gehen. Nebenwirkung: Python-`print` kommt jetzt auch zurück; ein Jython-Skript wird
+bei Abbruch nicht mehr von Ghidra unterbrochen, nur noch an Monitor-Abfragen.
+
+Live mit 1.3.71 am umbasierten Programm (`flash` ab 0x00058000), `mcp_probe_jython.py` an
+0x001079C4: Probelauf mit `fail` → `ok:false`, `script_error` „PyException: ValueError:
+...", Traceback in `output`, `print` und `println` beide da; Probelauf ohne `fail` →
+`ok:true`, beide Zeilen; echter Lauf mit `fail` → `committed:false`, danach `changed:false`,
+kein Kommentar.
+
+Für ZK-Inkjet: Ergebnisse von Jython-Skripten, die vor 1.3.71 mit `ok:true` und leerer
+oder kurzer Ausgabe zurückkamen, sind nicht belegt; die Konsole zeigt, ob ein Traceback
+dabei war. Die eigenen `try/except`-Klammern sind ab 1.3.71 nicht mehr nötig.
+
