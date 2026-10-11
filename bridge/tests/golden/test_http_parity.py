@@ -9,6 +9,7 @@ import pytest
 from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
+from bridge.tests.plugin_http import function_search_page
 from bridge.api.routes import make_routes
 from bridge.ghidra.client import DataTypeOperationResult
 from bridge.tests.listing_records import UNPLACED_0x7000, insn, listing
@@ -279,8 +280,8 @@ class GoldenStubGhidraClient:
     def read_cstring(self, address: int, *, max_len: int = 256) -> Optional[str]:
         return self._string_lookup.get(address)
 
-    def search_functions(self, query: str) -> List[str]:
-        """Return a predictable list of functions for testing."""
+    def search_functions(self, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
+        """A predictable list of functions, paged as the plugin pages it."""
         all_functions = [
             f"func_{i:04d} @ 0x{0x00400000 + i * 0x100:08x}"
             for i in range(10)
@@ -291,7 +292,8 @@ class GoldenStubGhidraClient:
 
         # Simple filter by query
         normalized_query = query.lower()
-        return [f for f in all_functions if normalized_query in f.lower()]
+        matches = [f for f in all_functions if normalized_query in f.lower()]
+        return function_search_page(matches, query, limit=limit, offset=offset, cursor=cursor)
 
     def disassemble_at(self, address: int, count: int) -> List[Dict[str, str]]:
         return [

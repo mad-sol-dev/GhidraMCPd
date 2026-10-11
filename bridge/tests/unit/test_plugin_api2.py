@@ -311,3 +311,11 @@ def test_current_program_names_the_program():
 
     assert result["ok"] is True
     assert (result["data"]["domain_file_id"], result["data"]["name"]) == ("prog-1", "alpha")
+
+
+@pytest.mark.parametrize("body", [{"has_more": False}, {"items": "x", "has_more": False}])
+def test_a_page_without_an_items_list_is_a_failure_not_an_empty_page(body):
+    result = _tools({"searchFunctions": httpx.Response(200, json=body)})["search_functions"].fn("usb")
+
+    assert result["ok"] is False
+    assert "without an items list" in str(result["errors"][0])

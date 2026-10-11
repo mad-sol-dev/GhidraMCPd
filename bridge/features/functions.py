@@ -123,35 +123,17 @@ def search_functions(
         offset: int,
         cursor: Optional[str],
     ) -> CursorPageResult[str]:
-        """Invoke the client search API while tolerating legacy signatures."""
+        """One page from the plugin (a TypeError is a bug, not a legacy client)."""
 
-        try:
-            result = client.search_functions(
-                search_query,
-                limit=limit,
-                offset=offset,
-                cursor=cursor,
-            )
-        except TypeError as exc:
-            if cursor:
-                raise ValueError(
-                    "resume_cursor is not supported by the configured client",
-                ) from exc
-            legacy_lines = client.search_functions(search_query)
-            lines = [str(line).strip() for line in legacy_lines if str(line).strip()]
-            sliced = lines[offset : offset + limit]
-            has_more = len(lines) > offset + limit
-            return CursorPageResult(sliced, has_more, None, error=None)
+        result = client.search_functions(
+            search_query,
+            limit=limit,
+            offset=offset,
+            cursor=cursor,
+        )
 
         if isinstance(result, CursorPageResult):
             return result
-
-        if isinstance(result, list):
-            lines = [str(line).strip() for line in result if str(line).strip()]
-            sliced = lines[offset : offset + limit]
-            has_more = len(lines) > offset + limit
-            return CursorPageResult(sliced, has_more, None, error=None)
-
         raise TypeError("search_functions returned an unexpected result type")
 
     had_error = False

@@ -2311,10 +2311,7 @@ def register_tools(
         Args:
             value: the constant, hex string '0xB1008000' or int.
             limit: results per page, >= 1, default 20.
-            page: 1-based, >= 1, default 1.
-
-        size counts body bytes, not end minus start; a thunk shares its
-        target's name and is flagged is_thunk."""
+            page: 1-based, >= 1, default 1."""
 
         request_payload = {"value": value, "limit": limit, "page": page}
         valid, errors = validate_payload("search_scalars.request.v1.json", request_payload)
@@ -2371,7 +2368,10 @@ def register_tools(
             address_min: inclusive lower bound, hex, e.g. '0x002af000'.
             address_max: inclusive upper bound, hex, >= address_min.
             limit: results per page, >= 1, default 20.
-            page: 1-based, >= 1, default 1."""
+            page: 1-based, >= 1, default 1.
+
+        size counts body bytes, not end minus start; a thunk shares its
+        target's name and is flagged is_thunk."""
 
         request_payload = {
             "address_min": address_min,

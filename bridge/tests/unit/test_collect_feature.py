@@ -4,6 +4,7 @@ import pytest
 
 import bridge.features.collect as collect
 from bridge.features.collect import execute_collect
+from bridge.tests.plugin_http import function_search_page
 from bridge.utils.errors import ErrorCode
 from bridge.utils.logging import SafetyLimitExceeded
 
@@ -19,11 +20,9 @@ class StubClient:
             for index in range(max(0, count))
         ]
 
-    def search_functions(self, query: str):
-        return [
-            "foo @ 0x00100000",
-            "bar @ 0x00200000",
-        ]
+    def search_functions(self, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
+        lines = ["foo @ 0x00100000", "bar @ 0x00200000"]
+        return function_search_page(lines, query, limit=limit, offset=offset, cursor=cursor)
 
 
 def _first_query(result: dict[str, object]) -> dict[str, object]:

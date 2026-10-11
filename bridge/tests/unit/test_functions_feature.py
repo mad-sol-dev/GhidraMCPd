@@ -7,6 +7,7 @@ from typing import Iterable, List
 import pytest
 
 from bridge.features import functions
+from bridge.tests.plugin_http import function_search_page
 from bridge.utils.errors import UpstreamFailed
 
 
@@ -14,15 +15,10 @@ class DummyClient:
     def __init__(self, results: Iterable[str]) -> None:
         self._results = list(results)
 
-    def search_functions(self, query: str) -> List[str]:
+    def search_functions(self, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
         normalized = query.lower()
-        if not normalized:
-            return list(self._results)
-        return [
-            line
-            for line in self._results
-            if normalized in line.lower()
-        ]
+        matches = [line for line in self._results if not normalized or normalized in line.lower()]
+        return function_search_page(matches, query, limit=limit, offset=offset, cursor=cursor)
 
     def disassemble_at(self, address: int, count: int) -> List[dict[str, str]]:
         return [

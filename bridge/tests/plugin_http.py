@@ -75,3 +75,21 @@ def plugin_cursor_start(cursor: str | None, route: str, discriminator: str, offs
         code="INVALID_REQUEST",
         status=400,
     )
+
+
+def function_search_page(matches, query: str, *, limit: int = 100, offset: int = 0, cursor=None):
+    """``client.search_functions`` for stubs: one page of ``matches`` as the plugin pages them.
+
+    ``matches`` are the already-filtered lines; the cursor is CursorPager's for
+    this query, and a foreign one is refused as the plugin refuses it.
+    """
+
+    from bridge.ghidra.client import CursorPageResult
+
+    disc = "*" if query.strip() in {"", "*"} else query.lower()
+    start = plugin_cursor_start(cursor, "searchFunctions", disc, offset)
+    end = start + max(1, limit)
+    has_more = end < len(matches)
+    return CursorPageResult(
+        list(matches[start:end]), has_more, plugin_cursor("searchFunctions", disc, end) if has_more else None
+    )

@@ -724,13 +724,16 @@ class GhidraClient:
                 [], False, None, error=f"{path} answered with a {type(payload).__name__}, not a page"
             )
 
-        items_raw = payload.get("items", [])
+        items_raw = payload.get("items")
         if not isinstance(items_raw, list):
+            # Not an empty page: an empty page is {"items":[],"has_more":false}.
             logger.warning(
                 "cursor endpoint returned non-list items",
                 extra={"path": path, "items_type": type(items_raw).__name__},
             )
-            items_raw = []
+            return CursorPageResult(
+                [], False, None, error=f"{path} answered without an items list"
+            )
 
         parsed_items: List[T] = []
         if item_parser is None:
