@@ -2369,6 +2369,23 @@ Timeout greift in einem Dialog vermutlich nicht (er fragt den Monitor nicht ab; 
 gemessen). Für das Tool: Skripte, die vom Modell gestartet werden, dürfen nicht fragen --
 alle Werte über `args`; ein Dialog hält bis zum Klick alles an.
 
+**Timeout** (`McpSpin.java`, prüft den Monitor alle 100 ms, `timeout_s=3`): `ok:false`,
+`timed_out:true`, „timed out after 3 s", 4,1 s gesamt, Ausgabe bis dahin, nichts geändert.
+
+**Kompilierfehler** (`mcp_probe_broken/McpBroken.java`, eigener Ordner -- Ghidra kompiliert
+einen Skriptordner als ein Bundle, ein kaputtes Skript daneben blockiert die anderen):
+`ok:false`, `phase:"load"`, Compiler-Meldung mit Zeile in `output`, `bundle_added:true`.
+`error` ist nur „ClassNotFoundException: McpBroken not found by 23be4d18 [27]" -- das Tool
+sollte bei `phase:"load"` auf die Ausgabe verweisen. `output_captured:false` ist hier
+richtig (der Lauf kam nicht bis zum Abfangen), liest sich aber missverständlich. Danach lief
+`McpProbe` weiter normal. In Ghidra erschien ein Fehlerdialog „Uncaught Exception"
+(4 Fehler): `NullPointerException` in `BundleStatus.setSummary`, „status is null". Laut
+Bytecode stellt die Bundle-Manager-Tabelle jede Meldung per `Swing.runLater` in Reihenfolge
+zu und sucht die Zeile für einen Build-Fehler über `getStatusFromLocation`; findet sie
+keine, kracht es. Vermutung: Ort und Tabellenschlüssel passen für das Bundle nicht
+zusammen, kein Timing-Problem. Ob Ghidras Script Manager mit demselben Skript denselben
+Dialog zeigt, ist nicht geprüft. Der Dialog blockiert nichts, bleibt aber stehen.
+
 **Offen:**
-Timeout live, Kompilierfehler live (`phase:"load"`), PROTOTYPE-NAME live, Python-Skripte
+PROTOTYPE-NAME live, Python-Skripte
 (braucht PyGhidra/Jython). Danach das Bridge-Tool `run_script` wie im Hand-off oben.
