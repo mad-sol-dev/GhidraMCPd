@@ -2158,3 +2158,13 @@ können sie nicht funktionieren. Beides hängt an CL-TOOL-REC-121 (`flash` auf 0
 ZK-Inkjet-Projekt. Möglich wäre nur ein Test des Ablehnungspfads (Slot außerhalb des
 Bereichs, `dry_run=false`, es darf nichts geschrieben werden).
 
+### Dubletten-Warnung und `jt_slot_process`-Ablehnungspfad (2026-10-11)
+
+- `rename_function` warnt jetzt, wenn eine andere Funktion den neuen Namen schon trägt
+  (`warnings` mit deren Adresse), auch im Dry-Run; es lehnt nicht ab. Eine gescheiterte
+  Suche ist ein Fehler, nicht „keine Dublette". Auf Wunsch des Nutzers (`c953ea9`). Live als
+  Dry-Run: `usbd_init_phy_cep` an 0x00200060 meldet 0x002af9c0. Sockel 8 485 → 8 493.
+- `jt_slot_process` live mit `dry_run=false` an `switchdataD_0021397c`, Slot 0 (Ziel
+  0x0006ba78, außerhalb `flash`): `OUT_OF_RANGE`, `renamed`/`comment_set` false, Programm
+  unverändert. Der Schreibpfad selbst bleibt bis CL-TOOL-REC-121 ungeprüft.
+
