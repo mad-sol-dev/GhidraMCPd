@@ -1159,6 +1159,13 @@
                     "locked": {
                       "type": "boolean"
                     },
+                    "name": {
+                      "description": "Project file name; null if the project listing does not carry it.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "state": {
                       "enum": [
                         "IDLE",
@@ -1176,6 +1183,7 @@
                   },
                   "required": [
                     "domain_file_id",
+                    "name",
                     "locked",
                     "state"
                   ],
@@ -1205,6 +1213,13 @@
                     "locked": {
                       "type": "boolean"
                     },
+                    "name": {
+                      "description": "Project file name; null if the project listing does not carry it.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "state": {
                       "enum": [
                         "IDLE",
@@ -1222,6 +1237,7 @@
                   },
                   "required": [
                     "domain_file_id",
+                    "name",
                     "locked",
                     "state"
                   ],
@@ -4366,6 +4382,13 @@
                     "locked": {
                       "type": "boolean"
                     },
+                    "name": {
+                      "description": "Project file name; null if the project listing does not carry it.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "state": {
                       "enum": [
                         "IDLE",
@@ -4383,6 +4406,7 @@
                   },
                   "required": [
                     "domain_file_id",
+                    "name",
                     "locked",
                     "state"
                   ],

@@ -933,6 +933,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `name` | string | Yes |  |
   | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
@@ -940,6 +941,7 @@ All three routes share the standard per-request write guard. Each successful wri
   {
     "domain_file_id": "string",
     "locked": false,
+    "name": "string",
     "state": "IDLE",
     "warnings": [
       "string"
@@ -959,6 +961,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `name` | string | Yes |  |
   | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
@@ -966,6 +969,7 @@ All three routes share the standard per-request write guard. Each successful wri
   {
     "domain_file_id": "string",
     "locked": false,
+    "name": "string",
     "state": "IDLE",
     "warnings": [
       "string"
@@ -2283,6 +2287,7 @@ All three routes share the standard per-request write guard. Each successful wri
   | --- | --- | --- | --- |
   | `domain_file_id` | string | Yes |  |
   | `locked` | boolean | Yes |  |
+  | `name` | string | Yes |  |
   | `state` | string | Yes | enum=['IDLE', 'LOADING', 'READY'] |
   | `warnings` | array<string> | No |  |
 
@@ -2290,6 +2295,7 @@ All three routes share the standard per-request write guard. Each successful wri
   {
     "domain_file_id": "string",
     "locked": false,
+    "name": "string",
     "state": "IDLE",
     "warnings": [
       "string"

@@ -7,12 +7,23 @@
     "domain_file_id": {
       "type": "string"
     },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Project file name; null if the project listing does not carry it."
+    },
     "locked": {
       "type": "boolean"
     },
     "state": {
       "type": "string",
-      "enum": ["IDLE", "LOADING", "READY"]
+      "enum": [
+        "IDLE",
+        "LOADING",
+        "READY"
+      ]
     },
     "warnings": {
       "type": "array",
@@ -23,6 +34,7 @@
   },
   "required": [
     "domain_file_id",
+    "name",
     "locked",
     "state"
   ]

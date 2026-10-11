@@ -55,6 +55,7 @@ from ..utils.program_context import (
     lock_selection_for_requestor,
     mark_used_for_context,
     normalize_selection,
+    program_name,
     requestor_from_context,
     validate_program_id,
 )
@@ -671,6 +672,7 @@ def register_tools(
 
         payload = {
             "domain_file_id": selected_domain,
+            "name": program_name(files, selected_domain),
             "locked": state.locked or upstream_locked,
             "state": state_value,
         }
@@ -751,6 +753,7 @@ def register_tools(
 
         payload = {
             "domain_file_id": state.domain_file_id,
+            "name": program_name(files, state.domain_file_id),
             "locked": state.locked,
             "state": state_value,
         }

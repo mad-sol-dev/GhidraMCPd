@@ -302,3 +302,12 @@ def test_the_plugin_sends_no_flag_as_a_string():
     source = _source()
     assert not re.search(r'appendJsonField\(sb, "\w+", String\.valueOf\(', source)
     assert not re.search(r'appendJsonField\(sb, "\w+", "(true|false)"\)', source)
+
+
+def test_current_program_names_the_program():
+    """The docstring promised a name; the answer carried only the id."""
+
+    result = _tools({})["get_current_program"].fn()
+
+    assert result["ok"] is True
+    assert (result["data"]["domain_file_id"], result["data"]["name"]) == ("prog-1", "alpha")

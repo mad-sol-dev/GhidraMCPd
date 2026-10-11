@@ -216,6 +216,22 @@ def validate_program_id(files: object, domain_file_id: str) -> bool:
     return False
 
 
+def program_name(files: object, domain_file_id: str | None) -> str | None:
+    """The project file name of the Program *domain_file_id*, or None if not listed."""
+
+    if not domain_file_id or not isinstance(files, Sequence):
+        return None
+    for entry in files:
+        if not isinstance(entry, Mapping):
+            continue
+        if str(entry.get("type", "")).lower() != "program":
+            continue
+        if _normalize_domain_file_id(entry.get("domain_file_id")) == domain_file_id:
+            name = entry.get("name")
+            return str(name) if name else None
+    return None
+
+
 def requestor_from_request(request: Request) -> Hashable:
     """Derive a stable requester key from an HTTP request."""
 

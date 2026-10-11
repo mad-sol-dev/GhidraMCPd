@@ -15,6 +15,7 @@ from ...utils.program_context import (
     ProgramSelectionError,
     lock_selection_for_requestor,
     normalize_selection,
+    program_name,
     requestor_from_request,
     validate_program_id,
 )
@@ -126,6 +127,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
 
             payload = {
                 "domain_file_id": selected_domain,
+                "name": program_name(files, selected_domain),
                 "locked": state.locked or upstream_locked,
                 "state": state_value,
             }
@@ -211,6 +213,7 @@ def create_program_routes(deps: RouteDependencies) -> List[Route]:
 
         payload = {
             "domain_file_id": state.domain_file_id,
+            "name": program_name(files, state.domain_file_id),
             "locked": state.locked,
             "state": state_value,
         }
