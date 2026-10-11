@@ -319,3 +319,21 @@ def test_a_page_without_an_items_list_is_a_failure_not_an_empty_page(body):
 
     assert result["ok"] is False
     assert "without an items list" in str(result["errors"][0])
+
+
+@pytest.mark.parametrize("tool, args, route, items", [
+    ("search_strings", ("usb",), "strings", [{"address": "0x00200000", "literal": "usb", "refs": 0}]),
+    ("search_imports", ("usb",), "imports", ["usb_x -> EXTERNAL:00000001"]),
+    ("search_exports", ("usb",), "exports", ["usb_x -> 0x00200000"]),
+    ("search_xrefs_to", ("0x002af9c0", ""), "xrefs_to", [{"address": "0x00200000", "context": "c"}]),
+])
+def test_a_one_shot_search_the_plugin_cut_is_not_counted_as_complete(tool, args, route, items):
+    """These fetch everything and count it; a cut list gave a wrong total."""
+
+    answer = httpx.Response(200, json={"items": items, "has_more": True})
+
+    result = _tools({route: answer})[tool].fn(*args)
+
+    assert result["ok"] is False
+    assert result["errors"][0]["code"] == "RESULT_TOO_LARGE"
+    assert "narrow the query" in result["errors"][0]["message"]

@@ -29,7 +29,7 @@ from time import perf_counter
 from .models import FunctionMeta, Xref
 from .whitelist import DEFAULT_WHITELIST, WhitelistEntry
 from ..utils.errors import UpstreamFailed
-from ..utils.logging import current_request, increment_counter, scoped_timer
+from ..utils.logging import SafetyLimitExceeded, current_request, increment_counter, scoped_timer
 
 logger = logging.getLogger("ghidra.bridge.client")
 
@@ -569,6 +569,18 @@ class GhidraClient:
                 self._note_failure(f"{path} answered {key}={value!r}, not a boolean")
                 return None
         return flags
+
+    @staticmethod
+    def _require_complete(payload: Mapping[str, Any], what: str, limit: int) -> Mapping[str, Any]:
+        """``payload`` if it holds every match; SafetyLimitExceeded if the plugin cut it.
+
+        The one-shot searches fetch everything and count it themselves; a cut
+        list would be counted as the whole (a wrong total, has_more false).
+        """
+
+        if payload.get("has_more") is True:
+            raise SafetyLimitExceeded(f"{what} matches (narrow the query)", limit, limit + 1)
+        return payload
 
     def _require_payload(self, payload: Optional[Mapping[str, Any]], what: str) -> Mapping[str, Any]:
         """The payload, or UpstreamFailed: a failed listing must not read as an empty one."""
@@ -1221,6 +1233,7 @@ class GhidraClient:
             if payload is not None:
                 break
         payload = self._require_payload(payload, f"references to 0x{address:08x}")
+        payload = self._require_complete(payload, "reference search", 999999)
         items_raw = payload.get("items", [])
         parsed: List[Xref] = []
         for raw in items_raw:
@@ -1246,6 +1259,7 @@ class GhidraClient:
             schema_key="strings",
         )
         payload = self._require_payload(payload, "string search")
+        payload = self._require_complete(payload, "string search", 100000)
         results: List[Dict[str, Any]] = []
         for raw in payload.get("items", []):
             if not isinstance(raw, Mapping):
@@ -1303,6 +1317,7 @@ class GhidraClient:
             schema_key="symbols",
         )
         payload = self._require_payload(payload, "import search")
+        payload = self._require_complete(payload, "import search", 999999)
         return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_exports(self, query: str) -> List[str]:
@@ -1317,6 +1332,7 @@ class GhidraClient:
             schema_key="symbols",
         )
         payload = self._require_payload(payload, "export search")
+        payload = self._require_complete(payload, "export search", 999999)
         return [str(item).strip() for item in payload.get("items", []) if str(item).strip()]
 
     def search_functions(
