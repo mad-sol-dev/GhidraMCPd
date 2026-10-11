@@ -6,7 +6,7 @@ An MCP server that lets an AI assistant work in Ghidra -- search, read, disassem
 decompile, and (when you allow it) rename and comment -- while spending as few tokens as
 the question needs.
 
-> **Text:** written by Claude; not yet reviewed by the maintainer.
+> **Text:** written by Claude, read and fact-checked by the maintainer.
 > **Code:** mostly AI-generated (Codex, AiderDesk, Claude Code), tested by use, by the
 > test suite and by live checks against a reference program, not reviewed line by line.
 >

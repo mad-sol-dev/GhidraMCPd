@@ -2203,5 +2203,5 @@ Beim Schreiben gefunden und korrigiert: Das Plugin wird unter *Configure > Devel
 aktiviert (nicht *Miscellaneous*); optionale Adapter sind nur `x86`/`i386`, ARM/Thumb ist
 fest eingebaut; das JDK muss 17 oder neuer sein (`release 17`, nicht „JDK 21").
 `ErrorCode.TOO_MANY_REQUESTS` wird nirgends ausgelöst (Aufgabe `DEAD-TOO-MANY-REQUESTS`).
-Der Prüfvermerk sagt „not yet reviewed by the maintainer", bis der Nutzer gegengelesen hat.
+Der Nutzer hat gegengelesen; der Prüfvermerk sagt seitdem „read and fact-checked by the maintainer". Das alte Demo-Video bleibt weg (alter Stand, laut Nutzer teils falsche Ergebnisse).
 
