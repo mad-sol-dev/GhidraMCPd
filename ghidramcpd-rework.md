@@ -2104,3 +2104,30 @@ nicht, ist es `RESULT_TOO_LARGE`. Live an 0x002af9c0 (voll 1 103 Tokens): 800 �
 500 → 499, 300 abgelehnt (319). Erklärung Zeilen gegen Tokens in `docs/getting-started.md`.
 Die laufende Desktop-Bridge hat das erst nach einem Neustart.
 
+## Kleinkram erledigt (2026-10-11)
+
+- `get_current_program`/`select_program` (Tools und HTTP): `name` aus der Projektliste;
+  der Docstring versprach ihn, die Antwort trug nur die ID (`64267c6`).
+- `analyze_function_complete.strings`: `truncated` bei Kappung, Hinweis in
+  `features.notes`; `string_reference_count` war 0, wenn `features` ohne `strings`
+  angefragt wurde (`23ba4b6`). Live: `ui_main_loop` hat mehr als 6 Strings und mehr als
+  40 Aufrufe.
+- Funktionssuche ohne Legacy-Rückfall (`TypeError` → zweiter Aufruf, nackte Liste) — nur
+  für Stubs mit einer Signatur, die der Client nie hatte; Stubs paginieren jetzt über
+  `plugin_http.function_search_page`. Eine Cursor-Seite ohne `items`-Liste ist ein Fehler.
+  Der Docstring-Rest bei `search_scalars` gehörte zu `list_functions_in_range` (`7cd87b6`).
+- Einmal-Suchen (`search_strings`/`imports`/`exports`/`xrefs_to`) lehnen eine vom Plugin
+  gekappte Liste mit RESULT_TOO_LARGE ab, statt sie als vollständig zu zählen (`29ffdae`).
+- Kontextfenster (`search_scalars_with_context`, `search_functions(context_lines)`) am
+  Treffer zentriert statt ab Treffer − 4n; dabei gefunden: unter API 3 wäre ein Start vor
+  dem Speicherblock UNMAPPED und das Fenster leer gewesen; abgefangen (`af6656e`).
+- `.plan/sync_state.sh` füllt nur Tasks ohne Commit und überschreibt erfasste nicht mehr
+  (`9810c6a`).
+
+**Offen, braucht den Nutzer:** `jt_slot_process` nie live geschrieben und
+`WRITE-ANSWER-TRUTHFUL` nur im Stub (je ein Schreibtest an der eingefrorenen Kopie, mit
+Ctrl+Z); Übergang `LOADING`→`READY` (braucht eine laufende Analyse); Nutzen der
+`jt_*`-Familie messen (braucht eine bekannte Sprungtabelle als Anker). Sonst offen: R.22-Cache
+nur nach Messung, Skript-Adapter (Entscheidung). Randfall ohne Anlass: Xref-Adressen in
+Overlay-Räumen (`SPACE:offset`) überspringt der Client still; das Referenzprogramm hat keine.
+
