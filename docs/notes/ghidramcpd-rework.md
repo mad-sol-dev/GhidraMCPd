@@ -1973,6 +1973,8 @@ Test-Transport (`plugin_http.py`), der wie das Plugin antwortet.
 
 ## Hand-off (2026-10-11)
 
+> **Abgelöst** durch das Hand-off „Nächste Sitzung: Skript-Adapter-Prototyp" am Ende dieses Dokuments. Seither erledigt: R.24 Phase 3 (A und B, API 3, Plugin 1.3.66), R.29, Kleinkram, Schreibtests, LOADING→READY, Doku neu.
+
 **Vor der nächsten Arbeit am ZK-Inkjet-Projekt:** die dortige Bridge mit aktuellem Code neu
 starten. Ein alter Bridge-Stand versteht die Fehlerstatus von Plugin 1.3.65 nicht. Die lokale,
 ignorierte `.env` in diesem Repo setzt `GHIDRA_MCP_ENABLE_WRITES=true`; eine aus diesem
@@ -2242,4 +2244,73 @@ an), GhidrAssistMCP (Skripte anlegen und ausführen, kein Schalter, kein Timeout
 inline). Keines beschränkt auf einen vorab eingecheckten Ordner, keines bietet Probelauf
 oder Rollback über eine äußere Transaktion. Übernehmenswert: Timeout über einen
 abbrechbaren Monitor, getrennte und gekappte Ausgabe, Bundle-Host-Handhabung.
+
+## Hand-off: nächste Sitzung -- Skript-Adapter-Prototyp (2026-10-11)
+
+**Stand.** `main` = `origin/main` bis auf den Plan-Commit `90339a3` (siehe unten). Plugin
+1.3.66 (API 3) installiert, Bridge verlangt genau API 3. Offline-Tests grün (662),
+Live-Suite 71/71, Referenzlauf 40/40 mit 60 193 Bytes, Schema-Sockel 8 493 von 8 500. Die
+eingefrorene Kopie ist unverändert (`changed: false`, Fingerabdruck wie
+`baseline/fingerprint.json`). Doku neu (README, `docs/`), `CLAUDE.md` importiert `AGENTS.md`.
+
+**Einstieg.** Branch `script-adapter-prototype` von `main`. Erst diesen Abschnitt und
+„Original-Repo und Skript-Adapter" oben lesen (API-Befund, Recherche).
+
+**Ziel des Prototyps.** Klären, ob das Plugin ein Ghidra-Skript aus einer Datei ausführen,
+die Ausgabe einfangen und im Probelauf alles verwerfen kann. Noch kein fertiges Tool.
+
+**Bauplan.**
+
+1. *Plugin-Route* `POST /runScript` als `registerWriteHandler` (dann gilt die
+   `domain_file_id`-Prüfung mit). Parameter: `path` (absolute Skriptdatei), `args`
+   (optional, durch Leerzeichen getrennt oder als wiederholter Parameter), `dry_run`
+   (alles außer explizit `false` ist Probelauf, wie `/createLabel`).
+   - Ablauf: `GhidraScriptUtil.acquireBundleHostReference()` (Java-Skripte brauchen den
+     OSGi-Bundle-Host), `getProvider(file)` -- kein Provider ist 400 --,
+     `getScriptInstance(file, writer)`, `setScriptArgs(...)`, `GhidraState` aus Tool,
+     Projekt und Programm (ohne Location/Selection), dann
+     `int tx = program.startTransaction("MCP script: <name>")`, `script.execute(state,
+     monitor, writer)`, `program.endTransaction(tx, !dryRun && ok)`; im `finally`
+     `releaseBundleHostReference()`.
+   - Antwort JSON: `ok`, `dry_run`, `committed`, `output` (gekappt, z. B. 64 KiB, mit
+     `output_truncated`), bei Fehler `error` mit Ausnahmetext. Fehler im Skript ist eine
+     Antwort mit `ok:false` und Ausgabe, kein 500 -- die Ausgabe bis zum Fehler zählt.
+   - Monitor: `TaskMonitor` mit Abbruch nach Zeitlimit (`TimeoutTaskMonitor` o. ä.,
+     prüfen, ob 11.4.2 ihn hat), kooperativ.
+   - Offen und im Prototyp zu prüfen: läuft `execute` aus dem HTTP-Thread (nicht EDT)
+     sauber? Was tun `ask*`-Aufrufe ohne Argumente (hängen sie)? Verhält sich die
+     verschachtelte Transaktion wie erwartet (Skript beendet seine mit `end(true)`, äußere
+     ohne Commit verwirft trotzdem)?
+2. *Test-Skript* im Repo unter `scripts/ghidra/` (nur für den Prototyp; später liegen
+   Skripte im Analyse-Projekt): setzt einen EOL-Kommentar an einer Argument-Adresse und
+   druckt eine Zeile. Java (`.java`, `extends GhidraScript`), weil das ohne PyGhidra geht.
+3. *PROTOTYPE-NAME im selben Build*: `/set_function_prototype` mit
+   `FunctionRenameOption.RENAME` (Konstruktor mit 7 Argumenten, in 11.4.2 vorhanden) und
+   die gesetzte Signatur als Antwort statt „Function prototype set successfully". Damit
+   reicht ein Reinstall für beides. API-Stufe bleibt 3, wenn sich nur Erfolgsantworten
+   dieser Route ändern -- prüfen, ob die Bridge die Route nutzt (Stand: nein).
+4. *Unit-/Java-Tests* soweit ohne Ghidra möglich (Parameterprüfung); Quelltext-Tests der
+   Bridge laufen lassen (`test_plugin_api2.py` prüft u. a. Fehlerprosa und Header).
+5. *Build, Reinstall* (Commit vorher, damit die Version sauber ist; Nutzer installiert und
+   startet Ghidra neu; `curl /plugin_version` prüfen).
+6. *Live-Test an der eingefrorenen Kopie, je mit Zustimmung des Nutzers*:
+   - Probelauf mit dem Test-Skript: Ausgabe kommt, `committed:false`, danach
+     `check_dirty_state` `changed:false`, Kommentar nicht im Listing.
+   - Echter Lauf: Kommentar im Listing; der Nutzer macht **ein** Ctrl+Z, danach
+     `changed:false` und Kommentar weg. Falls mehr Undo-Schritte nötig sind, ist das ein
+     Befund.
+   - Fehlerfall: Skript mit absichtlicher Ausnahme -- `ok:false`, Ausgabe bis dahin,
+     nichts committet.
+
+**Danach, wenn der Prototyp trägt** (eigene Sitzung): Bridge-Tool `run_script` (Pfad
+relativ zu einem konfigurierten Ordner des Analyse-Projekts, z. B.
+`GHIDRA_MCP_SCRIPT_DIR`; Pfade außerhalb abgelehnt, auch per Symlink), `dry_run` Default
+true, Schreibschalter, Eintrag in `list_mutations`, Schema, Docstring im Sockel-Budget
+(nur 7 Token frei: anderswo kürzen), Doku (`docs/tools.md`, `docs/setup.md`), Tests. Erster
+echter Anwendungsfall: Umbasieren auf 0x00058000 im ZK-Inkjet-Projekt (CL-TOOL-REC-121),
+nicht an der eingefrorenen Kopie.
+
+**Sonst offen** (`.plan/TODO.md`): STREAMABLE-HTTP (Nutzer: Pflege, nicht dringend),
+R.22-Cache nur nach Messung, Schreibpfad von `jt_slot_process` nach CL-TOOL-REC-121,
+Ghidra-12-Port irgendwann (das Original ist auf 12.1.4).
 

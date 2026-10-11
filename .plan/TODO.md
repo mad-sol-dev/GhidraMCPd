@@ -6,7 +6,7 @@
 ## NOW
 - {R.22} Data type lookup cache — **Korrektheitsteil erledigt** (siehe DONE). Offen: der Cache selbst, nur wenn eine Messung zeigt, dass der lineare Durchlauf über alle Datentypen spürbar kostet; er bräuchte Invalidierung bei create/update/delete und Programmwechsel.
 
-Recommended next focus (2026-10-11): jt_slot_process-Schreibpfad live erst nach CL-TOOL-REC-121 (flash-Basis); R.22-Cache nur nach Messung; SCRIPT-ADAPTER: Machbarkeits-Prototyp. Hand-off: Ende von `docs/notes/ghidramcpd-rework.md`.
+Recommended next focus (2026-10-11): SCRIPT-ADAPTER-Prototyp auf Branch `script-adapter-prototype`, zusammen mit PROTOTYPE-NAME (ein Reinstall). Bauplan: Hand-off am Ende von `docs/notes/ghidramcpd-rework.md`.
 
 ## NEXT
 - {SCRIPT-ADAPTER} Ghidra-Skripte aus einem Ordner des Analyse-Projekts ausführen (Entscheidung des Nutzers 2026-10-11): Probelauf in äußerer Transaktion, die verworfen wird; echter Lauf als ein Undo-Schritt; Ausgabe zurück; nur Skripte aus dem konfigurierten Ordner, kein eingereichter Text; hinter GHIDRA_MCP_ENABLE_WRITES. Zuerst Machbarkeits-Prototyp. Recherche und API-Befund am Ende von `docs/notes/ghidramcpd-rework.md`.
