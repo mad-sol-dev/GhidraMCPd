@@ -70,6 +70,15 @@ NOW=$(date -Iseconds)
 update() {
   local id="$1" sha_val="$2"
   [ -z "${sha_val:-}" ] && return 0
+  # A task is done once: its commit is the one that did it, not the latest one
+  # that touched the same files.  Fill only a task without a commit; rewriting
+  # recorded ones moved e.g. API-MOUNT to an unrelated later commit.
+  local recorded
+  recorded=$(state_commit "$id")
+  if [ -n "$recorded" ] && [ "$recorded" != "pending" ]; then
+    echo "= $id stays $recorded"
+    return 0
+  fi
   tmp=.plan/state.json.tmp
   jq --arg id "$id" --arg sha "$sha_val" --arg now "$NOW" \
      '.tasks[$id].status="done"
