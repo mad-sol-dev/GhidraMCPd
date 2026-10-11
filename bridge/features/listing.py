@@ -26,6 +26,7 @@ __all__ = [
     "ListingUnavailable",
     "structured_listing",
     "compile_query",
+    "context_window",
     "coverage",
     "coverage_fields",
     "filter_instructions",
@@ -104,6 +105,34 @@ def _entry_length(entry: Mapping[str, Any]) -> int | None:
     if not raw or len(raw) % 2:
         return None
     return len(raw) // 2
+
+
+def context_window(client: Any, address: int, lines: int) -> List[Dict[str, Any]]:
+    """``lines`` instructions either side of the one at ``address``.
+
+    Asking for 2n+1 instructions from ``address - 4n`` centres the hit only
+    where every instruction is 4 bytes and defined: with 2-byte Thumb code the
+    hit lands late, with data in front it lands late, with short x86
+    instructions it can fall outside the window.  So more is fetched (from
+    ``address - 4n``, up to 4n+1+n instructions -- every possible instruction
+    before plus n after), the hit is found by address, and n either side of it
+    are kept.  A start before the memory block (UNMAPPED under API 3) falls
+    back to starting at the hit.  If the hit is not an instruction start in
+    the listing, the first 2n+1 instructions from the start are returned, as
+    before.
+    """
+
+    count = 2 * lines + 1
+    if lines <= 0:
+        return list(client.disassemble_at(address, 1) or [])
+    start = max(0, address - lines * 4)
+    fetched = list(client.disassemble_at(start, min(128, 5 * lines + 1)) or [])
+    if not fetched and start != address:
+        fetched = list(client.disassemble_at(address, lines + 1) or [])
+    hit = next((i for i, entry in enumerate(fetched) if _entry_address(entry) == address), None)
+    if hit is None:
+        return fetched[:count]
+    return fetched[max(0, hit - lines): hit + lines + 1]
 
 
 def coverage(entries: Sequence[Mapping[str, Any]], *, requested: int) -> Dict[str, Any]:

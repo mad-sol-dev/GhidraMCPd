@@ -18,6 +18,7 @@ from . import method_notes
 from .listing import (
     batch_to_text,
     compile_query,
+    context_window,
     coverage,
     coverage_fields,
     filter_instructions,
@@ -289,14 +290,8 @@ def search_scalars_with_context(
         addr_str = item.get("address", "0x0")
         addr = parse_hex(addr_str)
         
-        # Calculate context window
-        context_start = max(0, addr - context_lines * 4)
-        context_count = context_lines * 2 + 1
-        
-        # Get disassembly context
-        context_disasm = client.disassemble_at(context_start, context_count)
-        
-        context_disasm = context_disasm if context_disasm is not None else []
+        # n instructions either side of the hit, found by address
+        context_disasm = context_window(client, addr, context_lines)
         match: Dict[str, object] = {
             "address": addr_str,
             "value": int_to_hex(value),

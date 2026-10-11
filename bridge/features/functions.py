@@ -15,6 +15,7 @@ from ..utils.cache import (
 from ..utils.errors import UpstreamFailed
 from ..utils.hex import parse_hex
 from . import method_notes
+from .listing import context_window
 from .pagination import finalize_page
 
 _FUNCTION_LINE = re.compile(
@@ -252,7 +253,6 @@ def search_functions(
         disassemble = getattr(client, "disassemble_at", None)
         window_before = context_lines
         window_after = context_lines
-        instruction_count = window_before + window_after + 1
         for item in items:
             enriched: Dict[str, object] = dict(item)
             raw_address = str(item.get("address", "")).strip()
@@ -267,10 +267,9 @@ def search_functions(
                 address_int = None
             disassembly: List[Dict[str, str]] = []
             if callable(disassemble) and address_int is not None:
-                context_start = max(0, address_int - window_before * 4)
                 # A failed read propagates: an empty window would read as
                 # "nothing there" (UpstreamFailed becomes the tool's error).
-                raw_context = disassemble(context_start, max(1, instruction_count))
+                raw_context = context_window(client, address_int, window_before)
                 disassembly = _normalize_disassembly(raw_context)
             enriched["context"] = {
                 "window": {
