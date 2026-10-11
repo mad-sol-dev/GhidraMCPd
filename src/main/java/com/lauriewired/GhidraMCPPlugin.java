@@ -1668,14 +1668,21 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
                     if (outputCaptured) {
                         Msg.setErrorLogger(new ScriptOutputCapture(logger, writer));
                     }
+                    Object jython = null;
                     int tx = program.startTransaction("MCP script: " + file.getName());
                     try {
+                        jython = JythonInterpreterHandle.attach(script, state, writer);
                         script.execute(state, monitor, writer);
                         ok = true;
                     } catch (Throwable e) {
                         timedOut = monitor.didTimeout();
                         error = timedOut ? "timed out after " + timeoutSeconds + " s" : describe(e);
+                        if (!timedOut && JythonInterpreterHandle.isPythonException(e)) {
+                            // The traceback is the useful part, and Jython puts it in toString().
+                            writer.println(String.valueOf(e).strip());
+                        }
                     } finally {
+                        JythonInterpreterHandle.release(jython, state);
                         if (outputCaptured) {
                             Msg.setErrorLogger(logger);
                         }
@@ -1711,6 +1718,65 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
         return sb.append('}').toString();
     }
 
+    /**
+     * Runs a Jython script in an interpreter of this plugin's making (by reflection: Jython
+     * is not on the compile path).
+     *
+     * <p>Left to itself, JythonScript runs the script in a thread of its own,
+     * JythonScriptExecutionThread, which catches every Python exception, prints the
+     * traceback to the tool's console and ends normally: execute() returned, the run read
+     * as ok, and a real run committed what the script had done up to the failure (seen in
+     * the ZK-Inkjet session).  When the state already holds an interpreter under
+     * {@code ghidra.jython.interpreter}, JythonScript calls execFile on it directly, in
+     * the calling thread and without a catch -- the path Ghidra uses for runScript from a
+     * running Jython script.  Handing it one whose output goes to the captured writer makes
+     * Python exceptions reach execute()'s caller and brings Python's print back as well.
+     * The price: Ghidra no longer interrupts the script on cancel; it stops only where it
+     * checks its monitor, as Java scripts do.
+     */
+    static final class JythonInterpreterHandle {
+        static final String JYTHON_SCRIPT = "ghidra.jython.JythonScript";
+        static final String INTERPRETER_CLASS = "ghidra.jython.GhidraJythonInterpreter";
+        /** JythonScript.JYTHON_INTERPRETER, package-private there. */
+        static final String STATE_KEY = "ghidra.jython.interpreter";
+
+        /** The interpreter now in {@code state}, or null when the script is not Jython. */
+        static Object attach(ghidra.app.script.GhidraScript script, ghidra.app.script.GhidraState state,
+                java.io.Writer out) throws ReflectiveOperationException {
+            if (!JYTHON_SCRIPT.equals(script.getClass().getName())) {
+                return null;
+            }
+            Class<?> type = Class.forName(INTERPRETER_CLASS, true, script.getClass().getClassLoader());
+            Object interpreter = type.getMethod("get").invoke(null);
+            type.getMethod("setOut", java.io.Writer.class).invoke(interpreter, out);
+            type.getMethod("setErr", java.io.Writer.class).invoke(interpreter, out);
+            state.addEnvironmentVar(STATE_KEY, interpreter);
+            return interpreter;
+        }
+
+        /** Clean the interpreter up and take it out of the state; it cannot be reused. */
+        static void release(Object interpreter, ghidra.app.script.GhidraState state) {
+            if (interpreter == null) {
+                return;
+            }
+            state.removeEnvironmentVar(STATE_KEY);
+            try {
+                interpreter.getClass().getMethod("cleanup").invoke(interpreter);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                Msg.warn(GhidraMCPPlugin.class, "Jython interpreter cleanup failed: " + e);
+            }
+        }
+
+        static boolean isPythonException(Throwable e) {
+            for (Throwable t = e; t != null; t = t.getCause()) {
+                if ("org.python.core.PyException".equals(t.getClass().getName())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     /** An exception as one line: class and message, the cause's when it has one. */
     private static String describe(Throwable e) {
         Throwable cause = e;
@@ -1719,6 +1785,15 @@ public class GhidraMCPPlugin extends ProgramPlugin implements ProgramCapable {
             cause = cause.getCause();
         }
         String message = cause.getMessage();
+        if (message == null || message.isBlank()) {
+            // A Jython PyException carries no message; its toString() is the traceback,
+            // whose last line names the Python exception ("AttributeError: ...").
+            String[] lines = String.valueOf(cause).strip().split("\\R");
+            String last = lines[lines.length - 1].strip();
+            if (!last.isEmpty() && !last.equals(cause.getClass().getName())) {
+                return cause.getClass().getSimpleName() + ": " + last;
+            }
+        }
         return cause.getClass().getSimpleName() + (message == null || message.isEmpty() ? "" : ": " + message);
     }
 
