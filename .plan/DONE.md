@@ -61,3 +61,4 @@
 - 2026-10-11 **WRITE-TESTS-LIVE** — WRITE-ANSWER-TRUTHFUL live bestätigt (Schreibtest, Ctrl+Z); `rename_function` warnt vor Dubletten; `jt_slot_process`-Ablehnungspfad live, Schreibpfad wartet auf CL-TOOL-REC-121 _commit:c953ea9_
 - 2026-10-11 **LOADING-READY-LIVE** — Übergang LOADING→READY live beobachtet (98 s), Tools lehnen bei LOADING ab; Kopie danach ohne Speichern zurückgesetzt _commit:2006b5b_
 - 2026-10-11 **DEAD-TOO-MANY-REQUESTS** — ungenutzten Fehlercode TOO_MANY_REQUESTS entfernt _commit:97da882_
+- 2026-10-11 **PROTOTYPE-NAME** — `/set_function_prototype` übernimmt den Namen (`FunctionRenameOption.RENAME`) und antwortet mit JSON samt gesetzter Signatur; live an 0x002AF9C0 (ein Ctrl+Z, `changed:false`) _commit:a48ceef_

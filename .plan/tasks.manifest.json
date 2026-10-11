@@ -448,7 +448,7 @@
         "Name aus dem Prototyp wird auch bei benannten Funktionen gesetzt (FunctionRenameOption.RENAME)",
         "Antwort enthaelt die tatsaechlich gesetzte Signatur statt eines Erfolgssatzes"
       ],
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "STREAMABLE-HTTP",
