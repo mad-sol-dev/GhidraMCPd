@@ -2420,5 +2420,47 @@ Branch `script-adapter-tool`, Plugin 1.3.70, Bridge aus Claude Desktop
 - Im MCP-Eintrag steht `MCP_ENABLE_WRITES`; die Bridge liest `GHIDRA_MCP_ENABLE_WRITES`.
   Writes sind nur an, weil die lokale `.env` sie setzt.
 
-Offen: echter Lauf (`dry_run=false`) über MCP; danach CL-TOOL-REC-121 (Umbasieren mit
-`rebase_app_to_58000.py`) im ZK-Inkjet-Projekt, nicht an der eingefrorenen Kopie.
+- Echter Lauf über das Tool (Tool-Funktion direkt aus Python, echter Client gegen
+  1.3.70, Probe-Ordner dieses Repos statt des ZK-Inkjet-Ordners): `ok:true`,
+  `applied:true`, `modified:true`, Ausgabe da; `list_mutations` → `McpProbe.java  script
+  0x002af9c4`, übernommen. Ein Ctrl+Z, Undo danach ausgegraut, `changed:false`, Kommentar
+  weg. Über den stdio-Transport selbst nur der Probelauf (`inventory.py`).
+
+## Hand-off (2026-10-11, Abend)
+
+**Stand.** `main` = `origin/main`. Plugin 1.3.70 (API 3) installiert, Bridge verlangt API 3.
+Offline 698 Tests grün (mit Plan-Tests), Java 15, Schema-Sockel 8 474 von 8 500. Neu in
+dieser Sitzung: `run_script` (SCRIPT-ADAPTER, im Plan erledigt) und PROTOTYPE-NAME. Die
+eingefrorene Kopie ist unverändert (`changed:false`); der Nutzer hat sie vorher als
+`zk-inkjet-1225_2026_10_11_frozen.gar` archiviert. Fingerabdruck und Referenzlauf sind in
+dieser Sitzung nicht neu gemessen worden (am Lesepfad hat sich nichts geändert, nur
+Docstrings von `collect`, `disassemble_batch`, `list_mutations`).
+
+**Arbeitsteilung (Nutzer).** Änderungen im ZK-Inkjet-Projekt macht die ZK-Inkjet-Sitzung,
+nach einem Auftrag von hier; die Ergebnisse kommen zurück in dieses Log. Dort gilt:
+`research/TRUTH.csv` ist autoritativ, keine neuen beschreibenden Dokumente -- ein Auftrag
+geht deshalb als Text an den Nutzer, nicht als Datei. `firmware/` dort ist ein Git-Repo,
+das Elternverzeichnis nicht.
+
+**Ausgegebener Auftrag: CL-TOOL-REC-121** (Umbasieren `flash` 0x00200000 → 0x00058000
+mit `run_script rebase_app_to_58000.py`). Kern: `inventory.py` einchecken und vorher/nachher
+laufen lassen; im Rebase-Skript `print` → `println` und bei fehlgeschlagener
+Selbstprüfung eine Ausnahme werfen (sonst `ok:true`, und ein echter Lauf übernähme das
+Ergebnis); erst Dry-Run, `check_dirty_state` und `project_info` (Block wieder bei
+0x00200000?), dann echt. Zurück hierher: Antworten beider Läufe (`ok`, `applied`,
+`modified`, `notes`, Anfang/Ende von `output`), `check_dirty_state` nach dem Dry-Run,
+Anzahl Undo-Schritte, Dialoge, Abweichungen. Ungeprüft und deshalb die eigentliche Frage
+für GhidraMCPd: ob die äußere Transaktion ein `moveBlock` und `createInitializedBlock`
+genauso sauber verwirft wie einen Kommentar.
+
+**Danach hier.** Schreibpfad von `jt_slot_process` am umbasierten Programm. Offen ist, ob
+an der Arbeitsdatenbank (mit Zustimmung, Ctrl+Z) oder an einer neu eingefrorenen Kopie --
+dann Fingerabdruck und Referenzlauf neu aufsetzen.
+
+**Kleinkram.** In `claude_desktop_config.json` steht `MCP_ENABLE_WRITES`; die Bridge liest
+`GHIDRA_MCP_ENABLE_WRITES`. Writes sind an, weil die Bridge die `.env` dieses Repos
+ausgehend von ihrer Quelldatei findet, unabhängig vom Startverzeichnis. PyGhidra braucht
+den Start über `pyghidraRun`; bis dahin Python-Skripte als Jython mit `println`.
+
+**Sonst offen** (`.plan/TODO.md`): STREAMABLE-HTTP (Pflege), R.22-Cache nur nach
+Messung, Ghidra-12-Port irgendwann.
