@@ -201,3 +201,26 @@ for func in funcs["data"]["items"]:
         fields=["function", "disasm", "xrefs"]
     )
 ```
+
+**Bounding a dossier: lines or tokens.** `analyze_function_complete` has two kinds of
+limit, and both apply -- whichever is reached first.
+
+- *Lines* (`options.disasm.before/after/max_instructions`, `options.decompile.max_lines`)
+  fix **what** you get: the same instructions and lines for every function, whatever
+  they cost. Use them when you want comparable windows.
+- *Tokens* (`max_result_tokens`) fix **what it costs**: disasm and decompile shrink by
+  the same fraction, at whole lines (the decompilation from its end, the listing around
+  the target), until the dossier fits; the cut sections and `meta.truncated` say so,
+  and `meta.estimate_tokens` is never above the ceiling. If the rest of the dossier
+  alone is larger than the ceiling, the call fails with `RESULT_TOO_LARGE` instead of
+  returning something bigger than asked.
+
+```python
+# full decompilation, but never more than ~1500 tokens in total
+analyze_function_complete(
+    address="0x002af9c0",
+    fields=["function", "decompile"],
+    options={"decompile": {"max_lines": 500}},
+    max_result_tokens=1500,
+)
+```

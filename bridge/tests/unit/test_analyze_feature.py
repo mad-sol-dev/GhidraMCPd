@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from bridge.features import analyze
+from bridge.utils.logging import SafetyLimitExceeded
 from bridge.tests.listing_records import insn, listing
 
 
@@ -204,3 +205,71 @@ def test_xrefs_exactly_at_their_limit_are_complete() -> None:
     assert (summary["inbound_truncated"], summary["outbound_truncated"]) == (False, False)
     assert payload["features"]["notes"] == []
     assert payload["meta"]["truncated"] is False
+
+
+# --- max_result_tokens is a ceiling, not a label -----------------------------
+
+
+class LongFunction(StubClient):
+    """40 instructions and a 60-line decompilation: big enough to need trimming."""
+
+    def disassemble_function_structured(self, address: int) -> Dict[str, object]:
+        return listing(address, [
+            insn(0x1000 + 4 * i, "mov", text=f"mov r{i % 8},#0x{i:x}") for i in range(40)
+        ])
+
+    def decompile_function(self, address: int) -> Optional[str]:
+        return "\n".join(f"  uVar{i} = FUN_{i:08x}(param_1, {i});" for i in range(60))
+
+
+def _dossier(budget: Optional[int]) -> Dict[str, object]:
+    return analyze.analyze_function_complete(
+        LongFunction(),
+        address=0x1000 + 4 * 20,
+        fields=["function", "disasm", "decompile"],
+        max_result_tokens=budget,
+        options={"disasm": {"before": 16, "after": 16}, "decompile": {"max_lines": 500}},
+    )
+
+
+def test_without_a_budget_nothing_is_trimmed() -> None:
+    payload = _dossier(None)
+
+    assert len(payload["disasm"]["window"]) == 33
+    assert payload["decompile"]["snippet"].count("\n") == 59
+    assert payload["meta"]["truncated"] is False
+
+
+def test_a_budget_trims_disasm_and_decompile_to_fit() -> None:
+    full = _dossier(None)["meta"]["estimate_tokens"]
+    budget = full // 2
+
+    payload = _dossier(budget)
+
+    assert payload["meta"]["estimate_tokens"] <= budget
+    assert payload["meta"]["truncated"] is True
+    window = payload["disasm"]["window"]
+    assert 0 < len(window) < 33 and payload["disasm"]["truncated"] is True
+    # cut around the target, which stays in the window and is pointed at
+    assert window[payload["disasm"]["center_index"]]["is_target"] is True
+    snippet = payload["decompile"]["snippet"]
+    assert payload["decompile"]["truncated"] is True and payload["decompile"]["lines"] == 60
+    # whole lines from the start: no line is cut in the middle
+    assert all(line.endswith(";") for line in snippet.split("\n"))
+    assert snippet.startswith("  uVar0 = ")
+
+
+def test_a_budget_that_already_fits_changes_nothing() -> None:
+    full = _dossier(None)
+    payload = _dossier(full["meta"]["estimate_tokens"])
+
+    assert payload["disasm"] == full["disasm"]
+    assert payload["decompile"] == full["decompile"]
+    assert payload["meta"]["truncated"] is False
+
+
+def test_a_budget_too_small_for_the_rest_is_refused_not_ignored() -> None:
+    """The function and meta alone exceed 10 tokens; trimming cannot help."""
+
+    with pytest.raises(SafetyLimitExceeded, match="even without disasm and decompile"):
+        _dossier(10)

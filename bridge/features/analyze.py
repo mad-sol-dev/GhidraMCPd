@@ -24,7 +24,7 @@ from ..utils.errors import UpstreamFailed
 from ..utils.hex import int_to_hex
 from .function_meta import read_function_name
 from .listing import structured_listing
-from ..utils.logging import enforce_batch_limit, increment_counter
+from ..utils.logging import SafetyLimitExceeded, enforce_batch_limit, increment_counter
 from ..utils.tokens import estimate_tokens
 
 
@@ -225,7 +225,11 @@ def analyze_function_complete(
             outbound_limit=config.outbound_limit if outbound_truncated else None,
         )
 
-    truncated = disasm_truncated or decompile_truncated or inbound_truncated or outbound_truncated
+    trimmed = max_result_tokens is not None and _fit_to_budget(payload, max_result_tokens)
+
+    truncated = (
+        disasm_truncated or decompile_truncated or inbound_truncated or outbound_truncated or trimmed
+    )
 
     data_without_meta = {k: v for k, v in payload.items() if k != "meta"}
     estimate_tokens = _estimate_tokens(data_without_meta)
@@ -487,6 +491,46 @@ def _build_disasm_window(
             "truncated": truncated,
         },
         truncated,
+    )
+
+
+def _fit_to_budget(payload: Dict[str, object], budget: int) -> bool:
+    """Shrink disasm and decompile until ``payload`` fits ``budget`` tokens.
+
+    Both are cut at whole lines -- the decompilation from its end, the listing
+    symmetrically around the target -- by the same fraction, in 5 % steps, so
+    neither ends mid-line and neither is sacrificed for the other.  The sections
+    that were cut say ``truncated``.  Returns whether anything was cut; raises
+    SafetyLimitExceeded when even without both sections the dossier is larger
+    than the budget (a dossier over its ceiling must not come back as fitting).
+    """
+
+    if _estimate_tokens(payload) <= budget:
+        return False
+
+    disasm = payload.get("disasm") if isinstance(payload.get("disasm"), dict) else None
+    decompile = payload.get("decompile") if isinstance(payload.get("decompile"), dict) else None
+    window = list(disasm["window"]) if disasm else []
+    target = next((i for i, item in enumerate(window) if item.get("is_target")), len(window) // 2)
+    snippet = decompile.get("snippet") if decompile else None
+    lines = snippet.split("\n") if snippet else []
+
+    for step in range(19, -1, -1):
+        fraction = step / 20
+        if disasm is not None and window:
+            keep = round(len(window) * fraction)
+            start = min(max(target - keep // 2, 0), len(window) - keep)
+            disasm["window"] = window[start:start + keep]
+            disasm["center_index"] = target - start if keep else -1
+            disasm["truncated"] = True
+        if decompile is not None and lines:
+            decompile["snippet"] = "\n".join(lines[:round(len(lines) * fraction)])
+            decompile["truncated"] = True
+        if _estimate_tokens(payload) <= budget:
+            return True
+
+    raise SafetyLimitExceeded(
+        "max_result_tokens (even without disasm and decompile)", budget, _estimate_tokens(payload)
     )
 
 
